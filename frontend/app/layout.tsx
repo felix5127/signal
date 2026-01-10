@@ -63,7 +63,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <MotionConfig reducedMotion="reduce" transition={{ duration: 0.2 }}>
+        <MotionConfig reducedMotion="user" transition={{ duration: 0.2 }}>
           <Navbar />
           {children}
           <Footer />
