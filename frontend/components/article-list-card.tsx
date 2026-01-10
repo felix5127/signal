@@ -11,7 +11,7 @@ import { ArrowUpRight } from 'lucide-react'
 
 export interface ArticleResource {
   id: number
-  source: string
+  source?: string
   source_name?: string
   source_icon_url?: string
   url: string

@@ -18,12 +18,29 @@ export interface Resource {
   id: number
   type: string
   title: string
-  description: string
+  title_translated?: string
+  description?: string
   url: string
   author?: string
-  published_at?: string
-  created_at: string
+  source?: string
+  source_name?: string
+  source_icon_url?: string
+  one_sentence_summary?: string
+  one_sentence_summary_zh?: string
+  summary?: string
+  summary_zh?: string
+  content_markdown?: string
+  domain?: string
+  subdomain?: string
+  tags?: string[]
+  score?: number
   final_score?: number
+  is_featured?: boolean
+  word_count?: number
+  read_time?: number
+  duration?: number
+  published_at?: string
+  created_at?: string
   metadata?: Record<string, any>
 }
 
