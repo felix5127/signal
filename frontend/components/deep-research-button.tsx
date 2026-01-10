@@ -100,7 +100,7 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
             reportData.sources = Array.isArray(parsed) ? parsed : [parsed]
           } catch {
             // If parsing fails, split by comma or create single-item array
-            reportData.sources = reportData.sources.split(',').map(s => s.trim())
+            reportData.sources = reportData.sources.split(',').map((s: string) => s.trim())
           }
         } else if (!reportData.sources) {
           reportData.sources = []
