@@ -106,7 +106,7 @@ export function ResourceCard({ resource, className }: ResourceCardProps) {
     ''
 
   // 获取来源名称
-  const sourceName = resource.source_name || SOURCE_NAMES[resource.source] || resource.source
+  const sourceName = resource.source_name || (resource.source ? SOURCE_NAMES[resource.source] : undefined) || resource.source || 'Unknown'
 
   // 获取分类
   const domain = resource.domain || resource.category || ''
@@ -179,7 +179,7 @@ export function ResourceCard({ resource, className }: ResourceCardProps) {
                 color="default"
                 size="xs"
                 className={cn(
-                  SOURCE_COLORS[resource.source] || 'bg-[var(--ds-surface-2)] text-[var(--ds-muted)]'
+                  (resource.source ? SOURCE_COLORS[resource.source] : '') || 'bg-[var(--ds-surface-2)] text-[var(--ds-muted)]'
                 )}
               >
                 {sourceName}
