@@ -4,6 +4,8 @@
  * [POS]: UI 布局组件 - 内容容器
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+'use client'
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 

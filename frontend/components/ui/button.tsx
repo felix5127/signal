@@ -4,6 +4,8 @@
  * [POS]: UI 基础层 - 核心交互原语
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+'use client'
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"

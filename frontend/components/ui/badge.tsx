@@ -4,6 +4,8 @@
  * [POS]: ui/ 视觉反馈组件，被需要高亮标签的界面消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
+'use client'
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 

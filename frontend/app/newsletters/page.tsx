@@ -1,10 +1,15 @@
-// Input: Backend API (GET /api/newsletters)
-// Output: 周刊列表页面，展示所有周刊卡片（带动效）
-// Position: 周刊列表页，服务端渲染 + 响应式网格布局 + Framer Motion 动画
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+/**
+ * [INPUT]: 依赖 React useState/useEffect，后端 API (GET /api/newsletters)
+ * [OUTPUT]: 周刊列表页面，展示所有周刊卡片（带动效）
+ * [POS]: 周刊列表页，客户端渲染 + 响应式网格布局
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Star, BarChart3 } from 'lucide-react'
+import { Star, BarChart3, Loader2 } from 'lucide-react'
 
 // 周刊数据类型
 interface Newsletter {
@@ -26,23 +31,57 @@ interface ApiResponse {
   page_size: number
 }
 
-// 服务端获取周刊列表
-async function getNewsletters(): Promise<ApiResponse> {
-  const apiUrl = process.env.INTERNAL_API_URL || 'http://signal-backend:8000'
-  const res = await fetch(`${apiUrl}/api/newsletters?page_size=50`, {
-    cache: 'no-store',
-  })
+// API URL helper
+const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-  if (!res.ok) {
-    throw new Error('Failed to fetch newsletters')
+export default function NewslettersPage() {
+  const [items, setItems] = useState<Newsletter[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchNewsletters() {
+      try {
+        const apiUrl = getApiUrl()
+        const res = await fetch(`${apiUrl}/api/newsletters?page_size=50`)
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch newsletters')
+        }
+
+        const data: ApiResponse = await res.json()
+        setItems(data.items || [])
+      } catch (e) {
+        setError('无法加载周刊列表')
+        console.error('Failed to fetch newsletters:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchNewsletters()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
   }
 
-  return res.json()
-}
-
-export default async function NewslettersPage() {
-  const data = await getNewsletters()
-  const { items } = data
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">{error}</p>
+          <Link href="/" className="text-blue-600 hover:underline">
+            返回首页
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -50,7 +89,7 @@ export default async function NewslettersPage() {
         {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            📰 技术周刊
+            技术周刊
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             每周五自动生成，筛选本周最值得阅读的技术情报
@@ -76,7 +115,7 @@ export default async function NewslettersPage() {
 
                   {/* 日期 */}
                   <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                    📅 {new Date(nl.published_at).toLocaleDateString('zh-CN', {
+                    {new Date(nl.published_at).toLocaleDateString('zh-CN', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
