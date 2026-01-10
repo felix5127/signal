@@ -155,11 +155,13 @@ export function ResourceCard({ resource, className }: ResourceCardProps) {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {/* 评分徽章 */}
-            <DesignScoreBadge
-              score={score}
-              maxScore={5}
-              size="xs"
-            />
+            {score !== undefined && (
+              <DesignScoreBadge
+                score={score}
+                maxScore={5}
+                size="xs"
+              />
+            )}
 
             {/* 来源标签 + 图标 */}
             <div className="flex items-center gap-1">
