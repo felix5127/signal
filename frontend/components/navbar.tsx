@@ -76,7 +76,7 @@ export default function Navbar() {
           <div className="hidden md:flex flex-1 items-center justify-center md:space-x-3">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+              const isActive = pathname === item.href || pathname.startsWith(item.href)
 
               return (
                 <Link key={item.id} href={item.href}>
@@ -148,7 +148,7 @@ export default function Navbar() {
               <div className="py-4 space-y-1">
                 {NAV_ITEMS.map((item, index) => {
                   const Icon = item.icon
-                  const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+                  const isActive = pathname === item.href || pathname.startsWith(item.href)
 
                   return (
                     <motion.div
