@@ -42,10 +42,14 @@ export function BackToTop() {
         boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
       }}
       onHoverStart={(e) => {
-        e.currentTarget.style.boxShadow = '0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)'
+        if (e.currentTarget) {
+          e.currentTarget.style.boxShadow = '0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)'
+        }
       }}
       onHoverEnd={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)'
+        if (e.currentTarget) {
+          e.currentTarget.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)'
+        }
       }}
       aria-label="返回顶部"
     >
