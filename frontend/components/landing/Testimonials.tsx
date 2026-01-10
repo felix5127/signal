@@ -94,7 +94,7 @@ export function Testimonials({
                 >
                   <StarRating rating={testimonials[currentIndex].rating} />
                   <blockquote className="text-xl md:text-2xl mb-6 italic">
-                    "{testimonials[currentIndex].quote}"
+                    &ldquo;{testimonials[currentIndex].quote}&rdquo;
                   </blockquote>
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
@@ -177,7 +177,7 @@ export function Testimonials({
                 <CardContent className="p-6">
                   <StarRating rating={testimonial.rating} />
                   <blockquote className="text-base mb-6 italic flex-1">
-                    "{testimonial.quote}"
+                    &ldquo;{testimonial.quote}&rdquo;
                   </blockquote>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
