@@ -121,7 +121,7 @@ export function ArticleListCard({ resource, className }: ArticleListCardProps) {
     resource.one_sentence_summary_zh ||
     resource.one_sentence_summary ||
     ''
-  const sourceName = resource.source_name || SOURCE_NAMES[resource.source] || resource.source
+  const sourceName = resource.source_name || (resource.source ? SOURCE_NAMES[resource.source] : undefined) || resource.source || 'Unknown'
   const domain = resource.domain
   const subdomain = resource.subdomain
   const score = resource.score ?? resource.final_score
