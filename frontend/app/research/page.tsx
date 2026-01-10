@@ -46,16 +46,17 @@ interface Task {
   } | null
 }
 
+// API URL helper
+const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 export default function ResearchPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const apiUrl = getApiUrl()
 
   const fetchTasks = async () => {
     try {
-      const apiUrl = process.env.NODE_ENV === 'development'
-        ? 'http://localhost:8000'
-        : ''
       const res = await fetch(`${apiUrl}/api/tasks?task_type=deep_research&limit=20`)
       if (res.ok) {
         const data = await res.json()
