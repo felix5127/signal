@@ -1,0 +1,216 @@
+# AI Signal Hunter 配置文件
+# 更新提醒：修改后需重启 Docker 服务
+#
+# ⚠️ 注意：LLM配置已迁移至环境变量 (.env 文件)
+#   请在 .env 中配置: LLM_PROVIDER, LLM_MODEL, LLM_BASE_URL 等
+#   本文件仅保留数据源、过滤规则等非敏感配置
+
+# 网络配置
+network:
+  proxy_url: ""  # 如需代理，填写：http://127.0.0.1:7890
+  timeout: 30
+  rate_limit: 1  # 请求间隔（秒）
+
+# 数据源配置
+sources:
+  hackernews:
+    enabled: true
+    score_threshold: 30  # 进一步降低阈值 50→30，增加新闻数量
+    max_items: 20  # 每次抓取最大条数 (降低控制量)
+    keywords:
+      - AI
+      - LLM
+      - GPT
+      - ML
+      - model
+      - neural
+      - transformer
+      - diffusion
+      - fine-tuning
+      - RAG
+      - embedding
+      - Claude
+      - ChatGPT
+      - OpenAI
+      - Anthropic
+
+  github:
+    enabled: true  # 启用 GitHub 数据源
+    min_stars_today: 50  # 每日最少新增 Stars 数（用于趋势判断）
+    max_items: 10  # 每次抓取最大条数 (降低控制量)
+    languages:
+      - Python
+      - JavaScript
+      - TypeScript
+      - Rust
+      - Go
+      - Java
+    exclude_patterns:
+      - awesome-
+      - cheatsheet
+      - tutorial-
+      - learn-
+      - resources
+    orgs_whitelist:
+      - openai
+      - anthropics
+      - google
+      - meta-llama
+      - microsoft
+
+  huggingface:
+    enabled: true  # 启用 Hugging Face 数据源（无需 Token）
+    min_likes: 100  # 提高门槛 10→100，只收录重要模型
+    min_downloads: 1000  # 提高下载量要求 100→1000
+    max_items: 10  # 限制数量，避免模型占比过高
+    tasks:
+      - text-generation
+      - image-generation
+      - text-to-image
+
+  twitter:
+    enabled: true  # 启用 Twitter 数据源（通过 RSS Bridge，完全免费）
+    opml_path: "/app/BestBlog/BestBlogs_RSS_Twitters.opml"  # OPML 文件路径
+    accounts:  # 关注的 Twitter 账号列表
+      # 中文账号
+      - dotey
+      - Linmiv
+      - foxshuo
+      - imxiaohu
+      - op7418
+      # 英文账号
+      - xai
+      - OpenAI
+      - AndrewYNg
+      - GoogleDeepMind
+      - GoogleAI
+      - lexfridman
+      - sama
+      - karpathy
+      - ylecun
+      - AnthropicAI
+    keywords:  # 推文关键词过滤
+      - AI
+      - LLM
+      - GPT
+      - ML
+      - model
+      - Claude
+      - ChatGPT
+      - OpenAI
+      - Anthropic
+      - transformer
+    max_items_per_account: 3  # 每个账号最多抓取推文数 (15 accounts × 3 = 45 total)
+
+  arxiv:
+    enabled: true  # 启用 ArXiv 数据源（完全免费，无需 API key）
+    categories:  # 关注的论文分类
+      - cs.AI  # Artificial Intelligence
+      - cs.LG  # Machine Learning
+      - cs.CL  # Computation and Language
+      - cs.CV  # Computer Vision
+      - cs.NE  # Neural and Evolutionary Computing
+    keywords:  # 论文关键词过滤（留空则只按分类筛选）
+      []  # 禁用关键词过滤，只根据AI相关分类筛选
+    days_back: 30  # 抓取最近30天的论文
+    max_results: 20  # 最多返回论文数 (降低控制量)
+
+  producthunt:
+    enabled: true  # 启用 Product Hunt 数据源（需要 API key）
+    min_upvotes: 30  # 最少点赞数（从100降到30，更合理）
+    categories:  # 关注的产品分类
+      - AI
+      - Developer Tools
+      - Productivity
+      - Analytics
+      - Design Tools
+      - API
+      - Open Source
+    days_back: 30  # 抓取最近30天的产品
+    max_results: 10  # 最多返回产品数 (降低控制量)
+
+  blog:
+    enabled: true  # 启用博客/文章 RSS 数据源（完全免费，稳定可靠）
+    opml_path: "/app/BestBlog/BestBlogs_RSS_Articles.opml"  # 文章 OPML 文件路径
+    feeds: []  # 使用 OPML 文件
+    keywords:  # 内容关键词过滤
+      - AI
+      - LLM
+      - GPT
+      - 人工智能
+      - 大模型
+      - 机器学习
+      - 深度学习
+    max_items_per_feed: 20  # 每个 feed 最多抓取条数
+
+  podcast:
+    enabled: true  # 启用播客数据源
+    opml_path: "/app/BestBlog/BestBlogs_RSS_Podcasts.opml"  # 播客 OPML 文件路径
+    max_items_per_feed: 2  # 每个 feed 最多抓取条目数
+    max_duration_seconds: 7200  # 最大音频时长（秒），默认 2 小时
+    transcribe_enabled: true  # 启用转写
+    max_daily_items: 5  # 每日最多处理播客数
+
+  video:
+    enabled: true  # 启用视频数据源
+    opml_path: "/app/BestBlog/BestBlogs_RSS_Videos.opml"  # 视频 OPML 文件路径
+    max_items_per_feed: 1  # 每个 feed 最多抓取条目数
+    max_duration_seconds: 7200  # 最大视频时长（秒），默认 2 小时
+    transcribe_enabled: true  # 启用转写
+    max_daily_items: 2  # 每日最多处理视频数
+
+# ❌ LLM配置已迁移至环境变量 (.env 文件)
+# 请在 .env 中配置以下变量:
+#   LLM_PROVIDER=openrouter
+#   LLM_MODEL=anthropic/claude-3.5-sonnet
+#   LLM_BASE_URL=https://openrouter.ai/api/v1
+#   LLM_TIMEOUT=60
+#   LLM_MAX_TOKENS=16000
+#   LLM_TEMPERATURE=0.3
+
+# 输出配置
+output:
+  max_daily_items: 500  # 每日最大输出条数（支持多数据源）
+  summary_max_length: 200  # 摘要最大字数
+  min_score: 3  # 最低展示评分
+
+# 定时任务配置
+schedule:
+  interval_hours: 1  # 每小时抓取一次
+
+# 监控告警配置
+monitoring:
+  alert_on_consecutive_failures: 3  # 连续失败 N 次后告警
+  enable_metrics: false  # 是否启用 Prometheus metrics
+
+# 过滤规则配置
+filter:
+  rule_filter_first: true  # 是否先执行规则过滤
+  llm_filter_enabled: true  # 是否启用 LLM 过滤
+  dedup_enabled: true  # 是否启用去重
+  similarity_threshold: 0.7  # 标题相似度阈值（Jaccard）
+
+# Deep Research 配置
+deep_research:
+  search_provider: tavily  # 搜索提供商: tavily | jina
+  max_questions: 3  # 每个信号生成的研究问题数量
+  max_searches_per_question: 2  # 每个问题的最大搜索次数
+  report_max_tokens: 1500  # 报告生成的最大 Token 数 (减少以提高响应速度)
+  max_cost_per_report: 0.10  # 单篇报告最大成本（美元）
+  max_reports_per_day: 10  # 每日最大生成报告数量
+  cache_duration_hours: 24  # 缓存有效期（小时）
+
+# Redis 缓存配置
+redis:
+  enabled: true  # 是否启用 Redis 缓存（可通过环境变量 REDIS_ENABLED 覆盖）
+  url: "redis://localhost:6379/0"  # Redis 连接 URL（可通过环境变量 REDIS_URL 覆盖）
+  max_connections: 10  # 最大连接数
+  socket_timeout: 5  # Socket 超时（秒）
+  socket_connect_timeout: 5  # Socket 连接超时（秒）
+  # 缓存过期时间（秒）
+  ttl_resources_list: 300  # 资源列表缓存 5 分钟
+  ttl_resource_detail: 600  # 资源详情缓存 10 分钟
+  ttl_stats: 60  # 统计数据缓存 1 分钟
+  ttl_tags: 1800  # 标签列表缓存 30 分钟
+  # 缓存键前缀（避免多环境冲突）
+  key_prefix: "signal:"  # 所有缓存键的前缀

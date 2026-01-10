@@ -1,0 +1,223 @@
+# Signal Hunter Docker Compose 配置
+# 优化版本：包含资源限制、健康检查、监控等
+
+version: "3.8"
+
+services:
+  # ============================================
+  # 后端服务
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: signal-backend
+    hostname: backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # 数据库连接
+      - DATABASE_URL=postgresql://signal_user:signal_pass@db:5432/signal_db
+      # Redis连接
+      - REDIS_URL=redis://redis:6379/0
+      # 应用配置
+      - LOG_LEVEL=INFO
+      # 工作进程数（根据CPU核心数调整）
+      - WEB_CONCURRENCY=4
+    volumes:
+      # 数据持久化
+      - signal-data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+      - ./backend/BestBlog:/app/BestBlog:ro
+      # 开发模式：挂载源码支持热重载
+      - ./backend/app:/app/app
+      # 日志卷（可选，用于日志收集）
+      - signal-logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # 网络配置
+    networks:
+      - signal-network
+
+  # ============================================
+  # 前端服务（开发模式）
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: signal-frontend
+    hostname: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - INTERNAL_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    volumes:
+      # 开发模式：挂载源码支持热重载
+      - ./frontend/app:/app/app
+      - ./frontend/components:/app/components
+      - ./frontend/lib:/app/lib
+      - ./frontend/design-system:/app/design-system
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    networks:
+      - signal-network
+
+  # ============================================
+  # PostgreSQL 数据库
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    container_name: signal-db
+    hostname: db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=signal_user
+      - POSTGRES_PASSWORD=signal_pass
+      - POSTGRES_DB=signal_db
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - signal-db:/var/lib/postgresql/data
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signal_user -d signal_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - signal-network
+
+  # ============================================
+  # Redis 缓存
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: signal-redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --save 900 1
+      --save 300 10
+    volumes:
+      - signal-redis:/data
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - signal-network
+
+  # ============================================
+  # pgAdmin（可选，数据库管理工具）
+  # ============================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: signal-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@signalhunter.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"
+    volumes:
+      - signal-pgadmin:/var/lib/pgadmin
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - signal-network
+    profiles:
+      - tools  # 只在明确指定时启动
+
+# ============================================
+# 网络配置
+# ============================================
+networks:
+  signal-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================
+# 数据卷
+# ============================================
+volumes:
+  signal-data:
+    driver: local
+  signal-db:
+    driver: local
+  signal-redis:
+    driver: local
+  signal-pgadmin:
+    driver: local
+  signal-logs:
+    driver: local
+

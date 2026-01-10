@@ -1,0 +1,157 @@
+/**
+ * [INPUT]: CSS 变量 (--primary, --secondary, --destructive, --accent)
+ * [OUTPUT]: 微拟物设计系统 - 预计算阴影和渐变
+ * [POS]: 设计系统核心层 - 所有组件的视觉效果源
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+
+/* ========================================
+   微拟物设计语言 - Neumorphic Design Tokens
+   ======================================== */
+
+/* 颜色混合工具函数（模拟 color-mix） */
+:root {
+  /* ========================================
+     三段式渐变背景生成器
+     公式：亮色 → 混合85%黑 → 混合70%黑
+     ======================================== */
+
+  --gradient-primary: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in srgb, var(--primary) 85%, black) 50%,
+    color-mix(in srgb, var(--primary) 70%, black) 100%
+  );
+
+  --gradient-secondary: linear-gradient(
+    135deg,
+    var(--secondary) 0%,
+    color-mix(in srgb, var(--secondary) 90%, black) 50%,
+    color-mix(in srgb, var(--secondary) 80%, black) 100%
+  );
+
+  --gradient-destructive: linear-gradient(
+    135deg,
+    var(--destructive) 0%,
+    color-mix(in srgb, var(--destructive) 85%, black) 50%,
+    color-mix(in srgb, var(--destructive) 70%, black) 100%
+  );
+
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 85%, black) 50%,
+    color-mix(in srgb, var(--accent) 70%, black) 100%
+  );
+
+  /* ========================================
+     立体阴影系统 - 三层结构
+     外投影 + 顶部高光 + 底部暗边
+     ======================================== */
+
+  /* 凸起效果（Raised Elements）- 用于按钮、卡片 */
+  --shadow-raised-sm:
+    0 2px 6px color-mix(in srgb, var(--primary) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+
+  --shadow-raised:
+    0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+
+  --shadow-raised-lg:
+    0 8px 24px color-mix(in srgb, var(--primary) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+
+  --shadow-raised-hover:
+    0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+
+  /* 内凹效果（Inset Elements）- 用于输入框、凹陷区域 */
+  --shadow-inset-sm:
+    inset 0 1px 3px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --shadow-inset:
+    inset 0 2px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --shadow-inset-lg:
+    inset 0 3px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  /* ========================================
+     中性阴影（用于次要元素）
+     ======================================== */
+
+  --shadow-neutral:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+
+  --shadow-neutral-hover:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+
+  /* ========================================
+     圆角规范（大圆角设计）
+     ======================================== */
+
+  --radius-sm: 16px;
+  --radius: 20px;
+  --radius-md: 24px;
+  --radius-lg: 32px;
+
+  /* ========================================
+     微交互动画参数
+     ======================================== */
+
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  --scale-hover: 1.02;
+  --scale-active: 0.97;
+}
+
+/* ========================================
+   暗色模式适配
+   ======================================== */
+
+.dark {
+  --shadow-raised-sm:
+    0 2px 6px color-mix(in srgb, var(--primary) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+
+  --shadow-raised:
+    0 4px 12px color-mix(in srgb, var(--primary) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+
+  --shadow-raised-lg:
+    0 8px 24px color-mix(in srgb, var(--primary) 50%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+
+  --shadow-raised-hover:
+    0 6px 20px color-mix(in srgb, var(--primary) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+
+  --shadow-inset-sm:
+    inset 0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+
+  --shadow-inset:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --shadow-inset-lg:
+    inset 0 3px 10px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}

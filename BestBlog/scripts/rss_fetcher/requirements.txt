@@ -1,0 +1,9 @@
+playwright
+feedparser
+sqlalchemy
+pandas
+pyyaml
+trafilatura
+openpyxl
+pymysql
+lxml

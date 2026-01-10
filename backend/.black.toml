@@ -1,0 +1,30 @@
+# Black代码格式化配置
+
+[tool.black]
+# 目标Python版本
+target-version = ['py311']
+
+# 每行最大长度
+line-length = 100
+
+# 包含的文件路径
+include = '\.pyi?$'
+
+# 排除的文件路径
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+# 引号风格（保持原样）
+skip-string-normalization = false

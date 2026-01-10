@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<opml version="2.0">
+	<head>
+		<title>All Podcasts RSS Subscriptions for bestblogs.dev</title>
+	</head>
+	<body>
+		<outline text="What's Next｜科技早知道" title="What's Next｜科技早知道" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/5e74b52c418a84a046ecaceb"/>
+		<outline text="无人知晓" title="无人知晓" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/611719d3cb0b82e1df0ad29e"/>
+		<outline text="硅谷101" title="硅谷101" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/5e5c52c9418a84a04625e6cc"/>
+		<outline text="乱翻书" title="乱翻书" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/61358d971c5d56efe5bcb5d2"/>
+		<outline text="硬地骇客" title="硬地骇客" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/640ee2438be5d40013fe4a87"/>
+		<outline text="AI炼金术" title="AI炼金术" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/63e9ef4de99bdef7d39944c8"/>
+		<outline text="人民公园说AI" title="人民公园说AI" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/65257ff6e8ce9deaf70a65e9"/>
+		<outline text="保持偏见" title="保持偏见" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/663e3c95af1e22bb157dcee3"/>
+		<outline text="枫言枫语" title="枫言枫语" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/5e2864f5418a84a04628e249"/>
+		<outline text="屠龙之术" title="屠龙之术" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/6507bc165c88d2412626b401"/>
+		<outline text="晚点聊 LateTalk" title="晚点聊 LateTalk" type="rss" xmlUrl="https://rsshub.bestblogs.dev/xiaoyuzhou/podcast/61933ace1b4320461e91fd55"/>
+	</body>
+</opml>

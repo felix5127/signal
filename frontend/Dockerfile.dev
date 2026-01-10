@@ -1,0 +1,34 @@
+# Input: Next.js 代码、package.json
+# Output: 可运行的前端 Docker 镜像（开发模式）
+# Position: 前端容器定义，支持本地开发热重载
+# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 复制 package 文件
+COPY package.json package-lock.json* ./
+
+# 安装依赖
+RUN npm install
+
+# 复制所有源码和配置（作为基础，volume 挂载会覆盖）
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY app/globals.css ./app/globals.css
+COPY tsconfig.json ./
+COPY tailwind.config.ts ./
+COPY postcss.config.js ./
+COPY next.config.js ./
+
+# 暴露端口
+EXPOSE 3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget -q --spider http://localhost:3000 || exit 1
+
+# 开发模式启动（支持热重载）
+CMD ["npm", "run", "dev"]

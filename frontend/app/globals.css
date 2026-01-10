@@ -1,0 +1,357 @@
+/* Input: Tailwind 指令 + 设计系统 CSS 变量 */
+/* Output: 全局样式基础 - Web 风格设计系统 */
+/* Position: 全局 CSS 入口 */
+/* 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============ Web 风格设计系统 CSS 变量 ============ */
+@layer base {
+  :root {
+    /* ========== Web 风格设计变量 ========== */
+    --ds-bg: #FFFFFF;
+    --ds-surface: rgba(0, 0, 0, 0.02);
+    --ds-surface-2: rgba(0, 0, 0, 0.04);
+    --ds-border: rgba(0, 0, 0, 0.10);
+    --ds-border-2: rgba(0, 0, 0, 0.16);
+    --ds-fg: #0B1220;
+    --ds-muted: rgba(11, 18, 32, 0.74);
+    --ds-subtle: rgba(11, 18, 32, 0.52);
+    --ds-accent: #6258FF;
+    --ds-accent-2: #CDCBFF;
+    --ds-danger: #E11D48;
+    --ds-ring: rgba(98, 88, 255, 0.35);
+
+    /* ========== 原有 Figma 设计系统（兼容性保留） ========== */
+    --color-white: #FFFFFF;
+    --color-black: #000000;
+
+    --color-gray-50: #F9F9F7;
+    --color-gray-100: #F3F4F2;
+    --color-gray-200: #EBECEB;
+    --color-gray-300: #E1E3E3;
+    --color-gray-400: #BAC4C0;
+    --color-gray-500: #68706F;
+    --color-gray-600: #544A2E;
+    --color-gray-700: #161818;
+    --color-gray-800: #001D21;
+    --color-gray-900: #002B31;
+
+    --color-primary-200: #CDCBFF;
+    --color-primary-300: #BDBBFF;
+    --color-primary-500: #6258FF;
+
+    --color-success-100: #CDEED3;
+
+    /* 语义映射 */
+    --bg-default: #FFFFFF;
+    --bg-secondary: #F9F9F7;
+    --bg-dark: #161818;
+    --bg-darker: #002B31;
+
+    --text-default: #0B1220;
+    --text-primary: #6258FF;
+    --text-secondary: #68706F;
+    --text-muted: #BAC4C0;
+
+    --border-default: rgba(0, 0, 0, 0.10);
+
+    /* 渐变 */
+    --gradient-primary: linear-gradient(181deg, #6258FF 0%, #E06AB2 33%, #FB8569 66%, #FFB1B1 90%);
+    --gradient-subtle: linear-gradient(135deg, #CDCBFF 0%, #BDBBFF 100%);
+
+    /* 间距 */
+    --spacing-1: 4px;
+    --spacing-2: 8px;
+    --spacing-3: 12px;
+    --spacing-4: 16px;
+    --spacing-6: 24px;
+    --spacing-8: 32px;
+    --spacing-12: 48px;
+
+    /* 圆角 */
+    --radius-xs: 3px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 24px;
+    --radius-full: 9999px;
+
+    /* 动效 */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ========== 原有 HSL 变量系统（兼容性保留） ========== */
+    --background: oklch(0.9777 0.0041 301.4256);
+    --foreground: oklch(0.3651 0.0325 287.0807);
+    --card: oklch(1.0000 0 0);
+    --card-foreground: oklch(0.3651 0.0325 287.0807);
+    --popover: oklch(1.0000 0 0);
+    --popover-foreground: oklch(0.3651 0.0325 287.0807);
+    --primary: oklch(0.6104 0.0767 299.7335);
+    --primary-foreground: oklch(0.9777 0.0041 301.4256);
+    --secondary: oklch(0.8957 0.0265 300.2416);
+    --secondary-foreground: oklch(0.3651 0.0325 287.0807);
+    --muted: oklch(0.8906 0.0139 299.7754);
+    --muted-foreground: oklch(0.5288 0.0375 290.7895);
+    --accent: oklch(0.7889 0.0802 359.9375);
+    --accent-foreground: oklch(0.3394 0.0441 1.7583);
+    --destructive: oklch(0.6332 0.1578 22.6734);
+    --destructive-foreground: oklch(0.9777 0.0041 301.4256);
+    --border: oklch(0.8447 0.0226 300.1421);
+    --input: oklch(0.9329 0.0124 301.2783);
+    --ring: oklch(0.6104 0.0767 299.7335);
+    --radius: 0.5rem;
+    --chart-1: oklch(0.6104 0.0767 299.7335);
+    --chart-2: oklch(0.7889 0.0802 359.9375);
+    --chart-3: oklch(0.7321 0.0749 169.8670);
+    --chart-4: oklch(0.8540 0.0882 76.8292);
+    --chart-5: oklch(0.7857 0.0645 258.0839);
+    --sidebar: oklch(0.9554 0.0082 301.3541);
+    --sidebar-foreground: oklch(0.3651 0.0325 287.0807);
+    --sidebar-primary: oklch(0.6104 0.0767 299.7335);
+    --sidebar-primary-foreground: oklch(0.9777 0.0041 301.4256);
+    --sidebar-accent: oklch(0.7889 0.0802 359.9375);
+    --sidebar-accent-foreground: oklch(0.3394 0.0441 1.7583);
+    --sidebar-border: oklch(0.8719 0.0198 302.1690);
+    --sidebar-ring: oklch(0.6104 0.0767 299.7335);
+    --font-sans: Geist, sans-serif;
+    --font-serif: "Lora", Georgia, serif;
+    --font-mono: "Fira Code", "Courier New", monospace;
+    --shadow-color: hsl(0 0% 0%);
+    --shadow-opacity: 0.06;
+    --shadow-blur: 5px;
+    --shadow-spread: 1px;
+    --shadow-offset-x: 1px;
+    --shadow-offset-y: 2px;
+    --letter-spacing: 0em;
+    --spacing: 0.25rem;
+    --shadow-2xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+    --shadow-xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+    --shadow-sm: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+    --shadow: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+    --shadow-md: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 2px 4px 0px hsl(0 0% 0% / 0.06);
+    --shadow-lg: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 4px 6px 0px hsl(0 0% 0% / 0.06);
+    --shadow-xl: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 8px 10px 0px hsl(0 0% 0% / 0.06);
+    --shadow-2xl: 1px 2px 5px 1px hsl(0 0% 0% / 0.15);
+    --tracking-normal: 0em;
+  }
+  .dark {
+    --background: oklch(0.2166 0.0215 292.8474);
+    --foreground: oklch(0.9053 0.0245 293.5570);
+    --card: oklch(0.2544 0.0301 292.7315);
+    --card-foreground: oklch(0.9053 0.0245 293.5570);
+    --popover: oklch(0.2544 0.0301 292.7315);
+    --popover-foreground: oklch(0.9053 0.0245 293.5570);
+    --primary: oklch(0.7058 0.0777 302.0489);
+    --primary-foreground: oklch(0.2166 0.0215 292.8474);
+    --secondary: oklch(0.4604 0.0472 295.5578);
+    --secondary-foreground: oklch(0.9053 0.0245 293.5570);
+    --muted: oklch(0.2560 0.0320 294.8380);
+    --muted-foreground: oklch(0.6974 0.0282 300.0614);
+    --accent: oklch(0.3181 0.0321 308.6149);
+    --accent-foreground: oklch(0.8391 0.0692 2.6681);
+    --destructive: oklch(0.6875 0.1420 21.4566);
+    --destructive-foreground: oklch(0.2166 0.0215 292.8474);
+    --border: oklch(0.3063 0.0359 293.3367);
+    --input: oklch(0.2847 0.0346 291.2726);
+    --ring: oklch(0.7058 0.0777 302.0489);
+    --chart-1: oklch(0.7058 0.0777 302.0489);
+    --chart-2: oklch(0.8391 0.0692 2.6681);
+    --chart-3: oklch(0.7321 0.0749 169.8670);
+    --chart-4: oklch(0.8540 0.0882 76.8292);
+    --chart-5: oklch(0.7857 0.0645 258.0839);
+    --radius: 0.5rem;
+    --sidebar: oklch(0.1985 0.0200 293.6639);
+    --sidebar-foreground: oklch(0.9053 0.0245 293.5570);
+    --sidebar-primary: oklch(0.7058 0.0777 302.0489);
+    --sidebar-primary-foreground: oklch(0.2166 0.0215 292.8474);
+    --sidebar-accent: oklch(0.3181 0.0321 308.6149);
+    --sidebar-accent-foreground: oklch(0.8391 0.0692 2.6681);
+    --sidebar-border: oklch(0.2847 0.0346 291.2726);
+    --sidebar-ring: oklch(0.7058 0.0777 302.0489);
+    --font-sans: Geist, sans-serif;
+    --font-serif: "Lora", Georgia, serif;
+    --font-mono: "Fira Code", "Courier New", monospace;
+    --shadow-color: hsl(0 0% 0%);
+    --shadow-opacity: 0.06;
+    --shadow-blur: 5px;
+    --shadow-spread: 1px;
+    --shadow-offset-x: 1px;
+    --shadow-offset-y: 2px;
+    --letter-spacing: 0em;
+    --spacing: 0.25rem;
+    --shadow-2xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+    --shadow-xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+    --shadow-sm: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+    --shadow: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+    --shadow-md: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 2px 4px 0px hsl(0 0% 0% / 0.06);
+    --shadow-lg: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 4px 6px 0px hsl(0 0% 0% / 0.06);
+    --shadow-xl: 1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 8px 10px 0px hsl(0 0% 0% / 0.06);
+    --shadow-2xl: 1px 2px 5px 1px hsl(0 0% 0% / 0.15);
+  }
+  .theme {
+    --font-sans: Geist, sans-serif;
+    --font-mono: "Fira Code", "Courier New", monospace;
+    --font-serif: "Lora", Georgia, serif;
+    --radius: 0.5rem;
+    --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+    --tracking-tight: calc(var(--tracking-normal) - 0.025em);
+    --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+    --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+    --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+  }
+  body {
+    letter-spacing: var(--tracking-normal);
+  }
+}
+
+/* ============ 基础样式 ============ */
+@layer base {
+  * {
+    @apply border-[var(--ds-border)];
+  }
+
+  body {
+    @apply bg-[var(--ds-bg)] text-[var(--ds-fg)];
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* 平滑滚动 */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* 选中文本样式 */
+  ::selection {
+    background-color: rgba(98, 88, 255, 0.3);
+    color: inherit;
+  }
+
+  /* 焦点样式 */
+  *:focus-visible {
+    outline: 2px solid var(--ds-ring);
+    outline-offset: 2px;
+  }
+
+  /* 滚动条样式 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--ds-border);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ds-border-2);
+  }
+}
+
+/* ============ 设计系统工具类 ============ */
+@layer components {
+  /* 品牌渐变背景 */
+  .bg-brand-gradient {
+    background: var(--gradient-primary);
+  }
+
+  /* 品牌文字渐变 */
+  .text-brand-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 卡片阴影 - Web 风格 */
+  .shadow-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .shadow-card-hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 品牌阴影 */
+  .shadow-brand-sm {
+    box-shadow: 0 2px 8px rgba(98, 88, 255, 0.15);
+  }
+
+  .shadow-brand-md {
+    box-shadow: 0 4px 16px rgba(98, 88, 255, 0.2);
+  }
+
+  .shadow-brand-lg {
+    box-shadow: 0 8px 32px rgba(98, 88, 255, 0.25);
+  }
+
+  /* 玻璃态效果 - Web 风格 */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--ds-border);
+  }
+
+  /* Web 风格卡片 */
+  .card-web {
+    @apply rounded-2xl border border-[var(--ds-border)] bg-[var(--ds-surface)] backdrop-blur;
+  }
+
+  /* Web 风格按钮基础 */
+  .btn-web {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-ring)];
+    @apply focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-bg)];
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-web-primary {
+    @apply btn-web bg-[var(--ds-accent)] text-white hover:brightness-95 active:brightness-90;
+  }
+
+  .btn-web-secondary {
+    @apply btn-web border border-[var(--ds-border)] bg-[var(--ds-surface)] text-[var(--ds-fg)] hover:bg-[var(--ds-surface-2)];
+  }
+
+  .btn-web-ghost {
+    @apply btn-web bg-transparent text-[var(--ds-fg)] hover:bg-[var(--ds-surface-2)];
+  }
+
+  /* 动画过渡 */
+  .transition-fast {
+    transition: all var(--transition-fast);
+  }
+
+  .transition-normal {
+    transition: all var(--transition-normal);
+  }
+
+  .transition-slow {
+    transition: all var(--transition-slow);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+/* ========================================
+   微拟物设计系统 - Neumorphic Design
+   引入光影质感设计语言
+   ======================================== */
+
+@import "globals-neumorphic.css";

@@ -1,0 +1,470 @@
+{
+  "info": {
+    "name": "Signal Hunter API",
+    "description": "AI Signal Hunter API Collection - 技术情报分析系统",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "JWT认证令牌"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. 基础",
+      "item": [
+        {
+          "name": "健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "检查API服务健康状态"
+          },
+          "response": []
+        },
+        {
+          "name": "API信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"]
+            },
+            "description": "获取API基本信息"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. 信号",
+      "item": [
+        {
+          "name": "获取信号列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has correct structure\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "每页数量"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "偏移量"
+                }
+              ]
+            },
+            "description": "获取信号列表，支持分页和筛选"
+          },
+          "response": []
+        },
+        {
+          "name": "获取高质量信号",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?min_score=4&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "min_score",
+                  "value": "4",
+                  "description": "最低评分"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "获取评分4分以上的高质量信号"
+          },
+          "response": []
+        },
+        {
+          "name": "搜索信号",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?search=ai&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "ai",
+                  "description": "搜索关键词"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "按关键词搜索信号"
+          },
+          "response": []
+        },
+        {
+          "name": "按数据源筛选",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?sources=github,huggingface",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "sources",
+                  "value": "github,huggingface",
+                  "description": "多个数据源（逗号分隔）"
+                }
+              ]
+            },
+            "description": "从多个数据源获取信号"
+          },
+          "response": []
+        },
+        {
+          "name": "按热门排序",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?sort_by=final_score&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "sort_by",
+                  "value": "final_score",
+                  "description": "排序字段"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "按评分降序获取最热门的信号"
+          },
+          "response": []
+        },
+        {
+          "name": "获取单个信号",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has signal data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('title');",
+                  "    pm.expect(jsonData.data).to.have.property('url');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals", "1"]
+            },
+            "description": "根据ID获取单个信号的详细信息"
+          },
+          "response": []
+        },
+        {
+          "name": "获取不存在的信号（404测试）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Error response format\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success', false);",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals/99999",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals", "99999"]
+            },
+            "description": "测试404错误处理"
+          },
+          "response": []
+        },
+        {
+          "name": "生成深度研究报告",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals/1/deep-research?strategy=lightweight&force=false",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals", "1", "deep-research"],
+              "query": [
+                {
+                  "key": "strategy",
+                  "value": "lightweight",
+                  "description": "研究策略",
+                  "enum": ["lightweight", "full_agent", "auto"]
+                },
+                {
+                  "key": "force",
+                  "value": "false",
+                  "description": "是否强制重新生成"
+                }
+              ]
+            },
+            "description": "生成深度研究报告（后台异步执行）"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. 统计",
+      "item": [
+        {
+          "name": "获取统计信息",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Statistics data present\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('total_signals');",
+                  "    pm.expect(jsonData.data).to.have.property('by_source');",
+                  "    pm.expect(jsonData.data).to.have.property('by_category');",
+                  "    pm.expect(jsonData.data).to.have.property('average_scores');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stats"]
+            },
+            "description": "获取信号统计数据"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. 资源",
+      "item": [
+        {
+          "name": "获取资源列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/resources?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "resources"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "获取资源列表"
+          },
+          "response": []
+        },
+        {
+          "name": "获取单个资源",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/resources/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "resources", "1"]
+            },
+            "description": "根据ID获取单个资源"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. 订阅源",
+      "item": [
+        {
+          "name": "获取所有订阅源",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/feeds",
+              "host": ["{{base_url}}"],
+              "path": ["api", "feeds"]
+            },
+            "description": "获取所有RSS订阅源"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. 测试",
+      "item": [
+        {
+          "name": "测试SQL注入防护",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?search='; DROP TABLE signals; --",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "'; DROP TABLE signals; --"
+                }
+              ]
+            },
+            "description": "测试SQL注入防护（应该被阻止或清理）"
+          },
+          "response": []
+        },
+        {
+          "name": "测试XSS防护",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?search=<script>alert('xss')</script>",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "<script>alert('xss')</script>"
+                }
+              ]
+            },
+            "description": "测试XSS防护"
+          },
+          "response": []
+        },
+        {
+          "name": "测试验证错误",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/signals?limit=invalid",
+              "host": ["{{base_url}}"],
+              "path": ["api", "signals"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "invalid"
+                }
+              ]
+            },
+            "description": "测试参数验证（应该返回422）"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
