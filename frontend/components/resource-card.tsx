@@ -10,7 +10,7 @@ import { Badge, ScoreBadge as DesignScoreBadge } from '@/lib/design-system/compo
 
 export interface Resource {
   id: number
-  source: string
+  source?: string
   title: string
   title_translated?: string
   url: string
@@ -18,7 +18,7 @@ export interface Resource {
   one_sentence_summary?: string
   one_sentence_summary_zh?: string
   summary?: string
-  final_score: number
+  final_score?: number
   score?: number
   is_featured?: boolean
   category?: string
