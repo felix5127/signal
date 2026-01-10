@@ -54,14 +54,14 @@ export default function Navbar() {
           {/* Logo - 左侧 */}
           <motion.div
             className="flex-shrink-0"
-            whileHover={!prefersReducedMotion ? { scale: 1.02 } : false}
-            whileTap={!prefersReducedMotion ? { scale: 0.97 } : false}
+            whileHover={!prefersReducedMotion ? { scale: 1.02 } : undefined}
+            whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
             transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 25 } : { duration: 0 }}
           >
             <Link href="/" className="flex items-center space-x-3 group">
               <motion.div
                 className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center"
-                whileHover={!prefersReducedMotion ? { rotate: 5 } : false}
+                whileHover={!prefersReducedMotion ? { rotate: 5 } : undefined}
                 transition={!prefersReducedMotion ? { type: 'spring', stiffness: 300, damping: 20 } : { duration: 0 }}
               >
                 <span className="text-white font-bold">SH</span>
@@ -81,8 +81,8 @@ export default function Navbar() {
               return (
                 <Link key={item.id} href={item.href}>
                   <motion.div
-                    whileHover={!prefersReducedMotion ? { y: -2 } : false}
-                    whileTap={!prefersReducedMotion ? { scale: 0.97 } : false}
+                    whileHover={!prefersReducedMotion ? { y: -2 } : undefined}
+                    whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
                     transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
                     className={cn(
                       'flex items-center space-x-3 px-6 py-4 rounded-xl font-semibold transition-all duration-200 cursor-pointer text-[22px]',
@@ -105,16 +105,16 @@ export default function Navbar() {
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="inline-flex items-center justify-center p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              whileTap={!prefersReducedMotion ? { scale: 0.97 } : false}
+              whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
               transition={!prefersReducedMotion ? { type: 'spring', stiffness: 500, damping: 30 } : { duration: 0 }}
             >
               <AnimatePresence mode="wait">
                 {mobileMenuOpen ? (
                   <motion.div
                     key="close"
-                    initial={!prefersReducedMotion ? { rotate: -90, opacity: 0 } : false}
-                    animate={!prefersReducedMotion ? { rotate: 0, opacity: 1 } : false}
-                    exit={!prefersReducedMotion ? { rotate: 90, opacity: 0 } : false}
+                    initial={!prefersReducedMotion ? { rotate: -90, opacity: 0 } : undefined}
+                    animate={!prefersReducedMotion ? { rotate: 0, opacity: 1 } : undefined}
+                    exit={!prefersReducedMotion ? { rotate: 90, opacity: 0 } : undefined}
                     transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
                   >
                     <X className="w-6 h-6" />
@@ -122,9 +122,9 @@ export default function Navbar() {
                 ) : (
                   <motion.div
                     key="menu"
-                    initial={!prefersReducedMotion ? { rotate: 90, opacity: 0 } : false}
-                    animate={!prefersReducedMotion ? { rotate: 0, opacity: 1 } : false}
-                    exit={!prefersReducedMotion ? { rotate: -90, opacity: 0 } : false}
+                    initial={!prefersReducedMotion ? { rotate: 90, opacity: 0 } : undefined}
+                    animate={!prefersReducedMotion ? { rotate: 0, opacity: 1 } : undefined}
+                    exit={!prefersReducedMotion ? { rotate: -90, opacity: 0 } : undefined}
                     transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
                   >
                     <Menu className="w-6 h-6" />
@@ -139,9 +139,9 @@ export default function Navbar() {
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
-              initial={!prefersReducedMotion ? { opacity: 0, height: 0 } : false}
-              animate={!prefersReducedMotion ? { opacity: 1, height: 'auto' } : false}
-              exit={!prefersReducedMotion ? { opacity: 0, height: 0 } : false}
+              initial={!prefersReducedMotion ? { opacity: 0, height: 0 } : undefined}
+              animate={!prefersReducedMotion ? { opacity: 1, height: 'auto' } : undefined}
+              exit={!prefersReducedMotion ? { opacity: 0, height: 0 } : undefined}
               transition={!prefersReducedMotion ? { type: 'spring', stiffness: 300, damping: 35 } : { duration: 0 }}
               className="md:hidden border-t border-gray-200 dark:border-gray-800 overflow-hidden"
             >
@@ -153,8 +153,8 @@ export default function Navbar() {
                   return (
                     <motion.div
                       key={item.id}
-                      initial={!prefersReducedMotion ? { opacity: 0, x: -20 } : false}
-                      animate={!prefersReducedMotion ? { opacity: 1, x: 0 } : false}
+                      initial={!prefersReducedMotion ? { opacity: 0, x: -20 } : undefined}
+                      animate={!prefersReducedMotion ? { opacity: 1, x: 0 } : undefined}
                       transition={!prefersReducedMotion ? {
                         type: 'spring',
                         stiffness: 350,
