@@ -185,4 +185,42 @@ def toggle_task_pause(
         task.started_at = datetime.now()
         return {"success": True, "message": "任务已恢复", "new_status": "running"}
     else:
-        raise HTTPException(status_code=400, detail="只能暂停或恢复运行中的任务")
+        raise HTTPException(status_code=400, detail="只能暂停或恢复运行中的任务"}
+
+
+@router.post("/tasks/pipeline/trigger")
+def trigger_pipeline(
+    source: Optional[str] = Query(default=None, description="数据源: hn/twitter/github/huggingface/arxiv/producthunt/blog"),
+):
+    """
+    手动触发数据抓取任务
+
+    Args:
+        source: 指定数据源（可选），不指定则运行全部
+
+    Returns:
+        触发结果
+    """
+    from app.main import scheduled_twitter_pipeline, scheduled_main_pipeline, scheduled_pipeline
+
+    try:
+        if source == "twitter":
+            # 在后台线程运行
+            import threading
+            thread = threading.Thread(target=scheduled_twitter_pipeline)
+            thread.start()
+            return {"success": True, "message": "Twitter pipeline 已触发"}
+        elif source:
+            # 指定单个数据源
+            import threading
+            thread = threading.Thread(target=scheduled_pipeline, args=([source],))
+            thread.start()
+            return {"success": True, "message": f"{source} pipeline 已触发"}
+        else:
+            # 运行主要数据源
+            import threading
+            thread = threading.Thread(target=scheduled_main_pipeline)
+            thread.start()
+            return {"success": True, "message": "主数据源 pipeline 已触发（hn/github/huggingface/arxiv/producthunt/blog）"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"触发失败: {str(e)}")
