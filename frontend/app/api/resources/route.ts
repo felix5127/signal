@@ -1,13 +1,17 @@
 /**
- * [INPUT]: 后端 API (http://backend:8000/api/resources)
+ * [INPUT]: 后端 API (INTERNAL_API_URL/api/resources)
  * [OUTPUT]: 代理到后端 resources API 的 Next.js Route Handler
  * [POS]: app/api/resources/ 的根路由，解决 CORS 问题
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.INTERNAL_API_URL || 'http://localhost:8000'
+
+// 禁用 Next.js 路由缓存
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
@@ -15,18 +19,37 @@ export async function GET(request: NextRequest) {
 
   const backendUrl = `${BACKEND_URL}/api/resources${queryString}`
 
+  // 调试日志
+  console.log('[API Proxy] INTERNAL_API_URL:', BACKEND_URL)
+  console.log('[API Proxy] Backend URL:', backendUrl)
+
   try {
     const response = await fetch(backendUrl, {
       headers: {
         'Content-Type': 'application/json',
       },
+      // 禁用 fetch 缓存，确保每次都从后端获取最新数据
+      cache: 'no-store',
     })
 
+    if (!response.ok) {
+      console.error('[API Proxy] Backend error:', response.status, response.statusText)
+      const errorText = await response.text()
+      console.error('[API Proxy] Error body:', errorText)
+      return NextResponse.json(
+        { success: false, error: `Backend error: ${response.status}`, details: errorText },
+        { status: response.status }
+      )
+    }
+
     const data = await response.json()
-    return Response.json(data, { status: response.status })
+    console.log('[API Proxy] Response items count:', data.items?.length || 0, 'total:', data.total || 0)
+
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    return Response.json(
-      { success: false, error: 'Failed to proxy request' },
+    console.error('[API Proxy] Fetch error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to proxy request', details: String(error) },
       { status: 500 }
     )
   }
