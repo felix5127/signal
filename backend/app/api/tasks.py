@@ -185,7 +185,7 @@ def toggle_task_pause(
         task.started_at = datetime.now()
         return {"success": True, "message": "任务已恢复", "new_status": "running"}
     else:
-        raise HTTPException(status_code=400, detail="只能暂停或恢复运行中的任务"}
+        raise HTTPException(status_code=400, detail="只能暂停或恢复运行中的任务")
 
 
 @router.post("/tasks/pipeline/trigger")
