@@ -116,7 +116,7 @@ export function ResourceListPage({
 
   // 状态管理
   const [filters, setFilters] = useState<FilterState>({
-    timeFilter: '1m',
+    timeFilter: '',  // 默认不限时间，避免 published_at 为空或较旧时数据不显示
     domainFilter: '',
     langFilter: '',
     scoreFilter: '',
