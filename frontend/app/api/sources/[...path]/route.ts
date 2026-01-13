@@ -35,3 +35,28 @@ export async function GET(
     )
   }
 }
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await params
+  const backendUrl = `${BACKEND_URL}/api/sources/${path.join('/')}`
+
+  try {
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await response.json()
+    return Response.json(data, { status: response.status })
+  } catch (error) {
+    return Response.json(
+      { success: false, error: 'Failed to proxy request' },
+      { status: 500 }
+    )
+  }
+}
