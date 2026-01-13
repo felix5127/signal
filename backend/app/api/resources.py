@@ -585,7 +585,7 @@ async def get_resource_deep_research(resource_id: int, db: Session = Depends(get
     if not resource:
         raise HTTPException(status_code=404, detail="资源不存在")
 
-    if not resource.deep_dive:
+    if not resource.deep_research:
         raise HTTPException(status_code=404, detail="深度研究报告不存在")
 
     return {
@@ -593,13 +593,13 @@ async def get_resource_deep_research(resource_id: int, db: Session = Depends(get
         "data": {
             "resource_id": resource.id,
             "title": resource.title,
-            "content": resource.deep_dive,
-            "generated_at": resource.deep_dive_generated_at.isoformat() if resource.deep_dive_generated_at else None,
-            "tokens_used": resource.deep_dive_tokens or 0,
-            "cost_usd": resource.deep_dive_cost or 0.0,
-            "strategy": resource.deep_dive_strategy or "unknown",
-            "sources": resource.deep_dive_sources,
-            "metadata": resource.deep_dive_metadata,
+            "content": resource.deep_research,
+            "generated_at": resource.deep_research_generated_at.isoformat() if resource.deep_research_generated_at else None,
+            "tokens_used": resource.deep_research_tokens or 0,
+            "cost_usd": resource.deep_research_cost or 0.0,
+            "strategy": resource.deep_research_strategy or "unknown",
+            "sources": resource.deep_research_sources,
+            "metadata": resource.deep_research_metadata,
         }
     }
 
@@ -635,8 +635,8 @@ async def generate_resource_deep_research(
         raise HTTPException(status_code=404, detail="资源不存在")
 
     # 检查缓存
-    if not force and resource.deep_dive and resource.deep_dive_generated_at:
-        cache_age = datetime.now() - resource.deep_dive_generated_at
+    if not force and resource.deep_research and resource.deep_research_generated_at:
+        cache_age = datetime.now() - resource.deep_research_generated_at
         cache_hours = getattr(app_config, 'deep_research', type('DeepResearchConfig', (), {'cache_duration_hours': 24})).cache_duration_hours
 
         if cache_age.total_seconds() < cache_hours * 3600:
@@ -646,7 +646,7 @@ async def generate_resource_deep_research(
                     "status": "cached",
                     "message": "报告已存在且仍然新鲜",
                     "resource_id": resource_id,
-                    "generated_at": resource.deep_dive_generated_at.isoformat(),
+                    "generated_at": resource.deep_research_generated_at.isoformat(),
                     "cache_age_hours": cache_age.total_seconds() / 3600,
                 }
             }
@@ -671,8 +671,8 @@ async def generate_resource_deep_research(
     db.commit()
 
     # 启动后台任务（传入 task_id）
-    from app.main import _generate_resource_deep_research_background
-    background_tasks.add_task(_generate_resource_deep_research_background, resource_id, task_id, strategy)
+    from app.background_tasks import run_resource_deep_research
+    background_tasks.add_task(run_resource_deep_research, resource_id, task_id, strategy)
 
     return {
         "success": True,

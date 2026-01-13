@@ -167,26 +167,26 @@ class SignalService:
         if not signal:
             return None
 
-        if not signal.deep_dive:
+        if not signal.deep_research:
             return None
 
         return {
             "signal_id": signal.id,
             "title": signal.title,
-            "content": signal.deep_dive,
+            "content": signal.deep_research,
             "generated_at": (
-                signal.deep_dive_generated_at.isoformat()
-                if signal.deep_dive_generated_at
+                signal.deep_research_generated_at.isoformat()
+                if signal.deep_research_generated_at
                 else None
             ),
-            "tokens_used": signal.deep_dive_tokens,
-            "cost_usd": signal.deep_dive_cost,
-            "strategy": signal.deep_dive_strategy,
+            "tokens_used": signal.deep_research_tokens,
+            "cost_usd": signal.deep_research_cost,
+            "strategy": signal.deep_research_strategy,
             "sources": (
-                json.loads(signal.deep_dive_sources) if signal.deep_dive_sources else []
+                json.loads(signal.deep_research_sources) if signal.deep_research_sources else []
             ),
             "metadata": (
-                json.loads(signal.deep_dive_metadata) if signal.deep_dive_metadata else {}
+                json.loads(signal.deep_research_metadata) if signal.deep_research_metadata else {}
             ),
         }
 

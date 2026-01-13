@@ -24,9 +24,8 @@ from app.processors.deep_research.search_providers import TavilySearchProvider
 class ResearchStrategy(str, Enum):
     """研究策略"""
 
-    LIGHTWEIGHT = "lightweight"  # V1轻量级
-    FULL_AGENT = "full_agent"  # V2完整Multi-Agent (预留)
-    AUTO = "auto"  # 自动选择
+    LIGHTWEIGHT = "lightweight"  # 轻量级研究 (当前实现)
+    AUTO = "auto"  # 自动选择 (当前等同于 lightweight)
 
 
 class DeepResearchService:
@@ -45,7 +44,7 @@ class DeepResearchService:
         self.llm = LLMClient()
         self.search = self._create_search_provider()
 
-        # 初始化不同策略的引擎
+        # 初始化研究引擎
         self.engines = {
             ResearchStrategy.LIGHTWEIGHT: LightweightResearchEngine(
                 llm_client=self.llm,
@@ -56,8 +55,6 @@ class DeepResearchService:
                     "report_max_tokens": config.deep_research.report_max_tokens,
                 },
             ),
-            # V2预留
-            # ResearchStrategy.FULL_AGENT: FullAgentResearchEngine(...)
         }
 
     async def generate_research(
@@ -84,14 +81,14 @@ class DeepResearchService:
         """
 
         # 1. 检查缓存
-        if not force_regenerate and resource.deep_dive:
-            if resource.deep_dive_generated_at:
-                cache_age = datetime.now() - resource.deep_dive_generated_at
+        if not force_regenerate and resource.deep_research:
+            if resource.deep_research_generated_at:
+                cache_age = datetime.now() - resource.deep_research_generated_at
                 cache_hours = config.deep_research.cache_duration_hours
 
                 if cache_age.total_seconds() < cache_hours * 3600:
                     print(
-                        f"[DeepResearch] 使用缓存 (生成于 {resource.deep_dive_generated_at})"
+                        f"[DeepResearch] 使用缓存 (生成于 {resource.deep_research_generated_at})"
                     )
                     return self._load_from_cache(resource)
 
@@ -135,25 +132,7 @@ class DeepResearchService:
         Returns:
             ResearchStrategy: 最终选择的策略
         """
-
-        if requested != ResearchStrategy.AUTO:
-            # 用户显式指定策略
-            if requested == ResearchStrategy.FULL_AGENT:
-                # TODO: V2实现后移除此检查
-                print("[DeepResearch] Full Agent暂未实现,降级为Lightweight")
-                return ResearchStrategy.LIGHTWEIGHT
-            return requested
-
-        # 自动选择逻辑
-        # V1阶段: 总是使用lightweight
-        # V2阶段: 根据资源质量选择
-        #   - 高分资源 → Full Agent (更深入)
-        #   - 普通资源 → Lightweight (快速)
-
-        # TODO: V2时启用
-        # if resource.score >= 85:
-        #     return ResearchStrategy.FULL_AGENT
-
+        # 当前只有 LIGHTWEIGHT 实现，所有策略都映射到它
         return ResearchStrategy.LIGHTWEIGHT
 
     async def _check_daily_limit(self):
@@ -169,7 +148,7 @@ class DeepResearchService:
 
             count = (
                 db.query(Resource)
-                .filter(Resource.deep_dive_generated_at >= today)
+                .filter(Resource.deep_research_generated_at >= today)
                 .count()
             )
 
@@ -204,13 +183,13 @@ class DeepResearchService:
             # 更新resource对象
             db_resource = db.query(Resource).filter(Resource.id == resource.id).first()
             if db_resource:
-                db_resource.deep_dive = result.content
-                db_resource.deep_dive_generated_at = result.generated_at
-                db_resource.deep_dive_tokens = result.tokens_used
-                db_resource.deep_dive_cost = result.cost_usd
-                db_resource.deep_dive_strategy = strategy.value
-                db_resource.deep_dive_sources = json.dumps(result.sources)
-                db_resource.deep_dive_metadata = json.dumps(result.metadata)
+                db_resource.deep_research = result.content
+                db_resource.deep_research_generated_at = result.generated_at
+                db_resource.deep_research_tokens = result.tokens_used
+                db_resource.deep_research_cost = result.cost_usd
+                db_resource.deep_research_strategy = strategy.value
+                db_resource.deep_research_sources = json.dumps(result.sources)
+                db_resource.deep_research_metadata = json.dumps(result.metadata)
 
                 db.commit()
                 print(f"[DeepResearch] 已保存到数据库 (ID: {resource.id})")
@@ -230,27 +209,27 @@ class DeepResearchService:
         import json
 
         sources = []
-        if resource.deep_dive_sources:
+        if resource.deep_research_sources:
             try:
-                sources = json.loads(resource.deep_dive_sources)
+                sources = json.loads(resource.deep_research_sources)
             except json.JSONDecodeError:
                 sources = []
 
         metadata = {}
-        if resource.deep_dive_metadata:
+        if resource.deep_research_metadata:
             try:
-                metadata = json.loads(resource.deep_dive_metadata)
+                metadata = json.loads(resource.deep_research_metadata)
             except json.JSONDecodeError:
                 metadata = {}
 
         return ResearchResult(
-            content=resource.deep_dive,
+            content=resource.deep_research,
             sources=sources,
-            tokens_used=resource.deep_dive_tokens or 0,
-            cost_usd=resource.deep_dive_cost or 0.0,
+            tokens_used=resource.deep_research_tokens or 0,
+            cost_usd=resource.deep_research_cost or 0.0,
             research_steps=[],
             metadata={**metadata, "from_cache": True},
-            generated_at=resource.deep_dive_generated_at,
+            generated_at=resource.deep_research_generated_at,
         )
 
     def _create_search_provider(self):

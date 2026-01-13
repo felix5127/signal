@@ -69,13 +69,13 @@ class Signal(Base):
     due_diligence = Column(Text)  # GitHub 尽调详情
 
     # Deep Research 深度研究报告
-    deep_dive = Column(Text)  # 深度研究报告（Markdown 格式）
-    deep_dive_generated_at = Column(DateTime)  # 报告生成时间
-    deep_dive_tokens = Column(Integer)  # Token 消耗
-    deep_dive_cost = Column(Float)  # 成本（美元）
-    deep_dive_strategy = Column(String(20))  # 使用的策略 (lightweight/full_agent)
-    deep_dive_sources = Column(Text)  # 引用来源（JSON 数组）
-    deep_dive_metadata = Column(Text)  # 扩展元数据（JSON）
+    deep_research = Column(Text)  # 深度研究报告（Markdown 格式）
+    deep_research_generated_at = Column(DateTime)  # 报告生成时间
+    deep_research_tokens = Column(Integer)  # Token 消耗
+    deep_research_cost = Column(Float)  # 成本（美元）
+    deep_research_strategy = Column(String(20))  # 使用的策略 (lightweight/full_agent)
+    deep_research_sources = Column(Text)  # 引用来源（JSON 数组）
+    deep_research_metadata = Column(Text)  # 扩展元数据（JSON）
 
     # 时间戳
     source_created_at = Column(DateTime)  # 原始内容创建时间

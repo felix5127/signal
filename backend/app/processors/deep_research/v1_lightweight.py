@@ -200,6 +200,9 @@ class LightweightResearchEngine(BaseResearchEngine):
             for i, r in enumerate(search_results[:10])  # 最多使用10个搜索结果
         ])
 
+        # 构建问题列表 (避免 f-string 内使用反斜杠)
+        questions_text = "\n".join(f"{i+1}. {q}" for i, q in enumerate(questions))
+
         user_prompt = f"""## 研究对象
 {resource.title}
 
@@ -207,7 +210,7 @@ class LightweightResearchEngine(BaseResearchEngine):
 {resource.summary}
 
 ## 研究问题
-{'\n'.join(f"{i+1}. {q}" for i, q in enumerate(questions))}
+{questions_text}
 
 ## 搜索到的信息
 {search_context}

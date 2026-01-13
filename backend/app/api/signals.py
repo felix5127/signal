@@ -126,8 +126,8 @@ async def generate_deep_research(
     from app.models.signal import Signal as SignalModel
     signal_model = db.query(SignalModel).filter(SignalModel.id == signal_id).first()
 
-    if signal_model and not force and signal_model.deep_dive and signal_model.deep_dive_generated_at:
-        cache_age = datetime.now() - signal_model.deep_dive_generated_at
+    if signal_model and not force and signal_model.deep_research and signal_model.deep_research_generated_at:
+        cache_age = datetime.now() - signal_model.deep_research_generated_at
         cache_hours = config.deep_research.cache_duration_hours
 
         if cache_age.total_seconds() < cache_hours * 3600:
@@ -137,14 +137,14 @@ async def generate_deep_research(
                     "status": "cached",
                     "message": "Report already exists and is still fresh",
                     "signal_id": signal_id,
-                    "generated_at": signal_model.deep_dive_generated_at.isoformat(),
+                    "generated_at": signal_model.deep_research_generated_at.isoformat(),
                     "cache_age_hours": cache_age.total_seconds() / 3600,
                 }
             }
 
     # 添加后台任务
-    from app.main import _generate_deep_research_background
-    background_tasks.add_task(_generate_deep_research_background, signal_id, strategy)
+    from app.background_tasks import run_signal_deep_research
+    background_tasks.add_task(run_signal_deep_research, signal_id, strategy)
 
     return {
         "success": True,
