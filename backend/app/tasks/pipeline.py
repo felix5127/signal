@@ -108,7 +108,9 @@ async def run_article_pipeline(
     # ========== 1. RSS 采集 ==========
     print("[ArticlePipeline] Step 1: Scraping RSS feeds...")
 
-    rss_scraper = RSSScraper(opml_path=opml_path)
+    # 从配置获取每个 feed 的最大条目数
+    max_items = config.blog.max_items_per_feed if hasattr(config, 'blog') else 3
+    rss_scraper = RSSScraper(opml_path=opml_path, max_items_per_feed=max_items)
     raw_signals = await rss_scraper.scrape()
     stats.scraped_count = len(raw_signals)
 
@@ -522,7 +524,8 @@ async def run_full_pipeline(sources: list[str] | None = None) -> PipelineStats:
     if should_run('blog') and hasattr(config, 'blog') and config.blog.enabled:
         # 使用支持 OPML 的 RSSScraper
         opml_path = config.blog.opml_path if hasattr(config.blog, 'opml_path') else None
-        rss_scraper = RSSScraper(opml_path=opml_path)
+        max_items = config.blog.max_items_per_feed if hasattr(config.blog, 'max_items_per_feed') else 3
+        rss_scraper = RSSScraper(opml_path=opml_path, max_items_per_feed=max_items)
         rss_signals = await rss_scraper.scrape()
         raw_signals.extend(rss_signals)
         print(f"[Blog] Scraped {len(rss_signals)} signals")

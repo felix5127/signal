@@ -94,7 +94,7 @@ class BlogConfig(BaseSettings):
     keywords: List[str] = Field(
         default_factory=lambda: ["AI", "LLM", "GPT"]
     )
-    max_items_per_feed: int = 20
+    max_items_per_feed: int = 3  # 每个 feed 最多 3 条，16 源 × 3 = 48 篇/次
 
     class Config:
         env_file = ".env"

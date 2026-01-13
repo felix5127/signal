@@ -69,15 +69,17 @@ class RSSScraper(BaseScraper):
     MAX_CONCURRENT_REQUESTS = 10  # 最大并发数
     REQUEST_TIMEOUT = 30.0  # 单个请求超时（秒）
 
-    def __init__(self, opml_path: Optional[str] = None):
+    def __init__(self, opml_path: Optional[str] = None, max_items_per_feed: int = 3):
         """
         初始化 RSS 爬虫
 
         Args:
             opml_path: OPML 文件路径，默认使用 BestBlogs 文章源
+            max_items_per_feed: 每个 feed 最多抓取条目数，默认 3
         """
         super().__init__(source_name="rss")
         self.opml_path = opml_path or self.DEFAULT_OPML_PATH
+        self.max_items_per_feed = max_items_per_feed
         self.feeds: List[Dict[str, str]] = []
         self._seen_urls: set = set()  # 用于 URL 去重
 
@@ -290,6 +292,8 @@ class RSSScraper(BaseScraper):
                     feed["url"],
                     feed["name"]
                 )
+                # 限制每个 feed 的条目数
+                entries = entries[:self.max_items_per_feed]
                 feed_signals = []
                 for entry in entries:
                     signal = self._to_raw_signal(entry, feed["name"])
