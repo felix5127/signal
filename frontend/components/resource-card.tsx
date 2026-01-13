@@ -1,7 +1,9 @@
-// Input: resource 资源数据对象
-// Output: 资源卡片组件（Web 风格设计系统）
-// Position: 首页网格中的资源卡片展示
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+/**
+ * [INPUT]: 依赖 @/lib/utils 的 cn, @/lib/design-system 的 Badge/ScoreBadge
+ * [OUTPUT]: 对外提供 ResourceCard 组件, Resource 类型
+ * [POS]: components/ 的通用资源卡片，被 /podcasts, /videos 页面消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 
 'use client'
 

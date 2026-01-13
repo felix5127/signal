@@ -192,7 +192,7 @@ filter:
 
 # Deep Research 配置
 deep_research:
-  search_provider: tavily  # 搜索提供商: tavily | jina
+  search_provider: tavily  # 搜索提供商 (当前仅支持 tavily)
   max_questions: 3  # 每个信号生成的研究问题数量
   max_searches_per_question: 2  # 每个问题的最大搜索次数
   report_max_tokens: 1500  # 报告生成的最大 Token 数 (减少以提高响应速度)

@@ -1,7 +1,9 @@
-// Input: article 文章类型资源数据
-// Output: Newsletter 风格的文章列表卡片（单栏布局，使用设计系统）
-// Position: 首页文章列表，类似 Morning Brew / Newsletter 风格
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+/**
+ * [INPUT]: 依赖 @/lib/utils 的 cn, @/lib/design-system 的 Badge/ScoreBadge
+ * [OUTPUT]: 对外提供 ArticleListCard 组件, ArticleResource 类型
+ * [POS]: components/ 的文章列表卡片，被 /articles 页面消费，Newsletter 风格单栏布局
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 
 'use client'
 

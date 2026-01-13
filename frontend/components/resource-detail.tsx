@@ -1,7 +1,9 @@
-// Input: resource 资源数据对象（包含来源、评分、摘要、观点、金句等完整信息）
-// Output: 资源详情页面组件（展示来源图标、评分徽章、标签列表、主要观点、金句、完整内容）
-// Position: 客户端组件，负责资源详情的完整展示，包含元数据、AI分析结果和原文内容
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+/**
+ * [INPUT]: 依赖 @/lib/utils, lucide-react, 本地组件 (ScoreBadge/MainPoints/KeyQuotes/TagList)
+ * [OUTPUT]: 对外提供 ResourceDetail 组件
+ * [POS]: components/ 的资源详情组件，被 /resources/[id] 页面消费，展示 AI 分析结果
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 
 'use client'
 

@@ -1,7 +1,9 @@
-// Input: tweet 推文类型资源数据
-// Output: Twitter 原生风格的推文卡片
-// Position: 首页推文列表，模拟 Twitter 原生样式
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+/**
+ * [INPUT]: 依赖 @/lib/utils 的 cn, lucide-react 图标组件
+ * [OUTPUT]: 对外提供 TweetCard 组件, TweetResource 类型
+ * [POS]: components/ 的推文卡片，被 /tweets 页面消费，Twitter 原生风格
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 
 'use client'
 

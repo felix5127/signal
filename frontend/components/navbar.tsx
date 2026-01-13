@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-// 导航项配置 - 精简版（6项，移除首页）
+// 导航项配置 - 6项（信号源移至 /admin，需密码访问）
 const NAV_ITEMS = [
   { id: 'articles', label: '文章', href: '/articles', icon: FileText },
   { id: 'podcasts', label: '播客', href: '/podcasts', icon: Mic },
