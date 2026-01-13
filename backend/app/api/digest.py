@@ -1,5 +1,5 @@
 """
-[INPUT]: 依赖 database 的 get_db, models/digest 的 DailyDigest/WeeklyDigest, models/signal 的 Signal
+[INPUT]: 依赖 database 的 get_db, models/digest 的 DailyDigest/WeeklyDigest, models/resource 的 Resource
 [OUTPUT]: 对外提供 /digest/today, /digest/week, /digest/weeks 端点
 [POS]: API 路由层，日周精选汇总查询接口
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -13,7 +13,7 @@ import logging
 
 from app.database import get_db
 from app.models.digest import DailyDigest, WeeklyDigest
-from app.models.signal import Signal
+from app.models.resource import Resource
 from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
@@ -24,13 +24,13 @@ router = APIRouter()
 # ========== 响应模型 ==========
 
 class SignalBrief(BaseModel):
-    """信号简要信息"""
+    """信号简要信息 (内部使用 Resource 模型，保持 API 兼容)"""
     id: int
     title: str
     url: str
-    source: str
-    category: Optional[str] = None
-    final_score: int
+    source: str  # 值来自 Resource.source_name
+    category: Optional[str] = None  # 值来自 Resource.domain
+    final_score: int  # 值来自 Resource.score / 20
     created_at: str
 
     @field_validator('created_at', mode='before')
@@ -42,6 +42,19 @@ class SignalBrief(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_resource(cls, r: Resource) -> "SignalBrief":
+        """从 Resource 构造 SignalBrief，保持 API 响应格式兼容"""
+        return cls(
+            id=r.id,
+            title=r.title or "",
+            url=r.url or "",
+            source=r.source_name or "",
+            category=r.domain,
+            final_score=max(1, r.score // 20) if r.score else 0,  # 100→5, 80→4, 60→3
+            created_at=r.created_at.isoformat() if r.created_at else ""
+        )
 
 
 class DailyDigestResponse(BaseModel):
@@ -102,19 +115,19 @@ def get_today_digest(db: Session = Depends(get_db)):
         )
 
     # 获取信号详情
-    top_hn = db.query(Signal).filter(Signal.id.in_(digest.top_hn_ids)).all() if digest.top_hn_ids else []
-    top_github = db.query(Signal).filter(Signal.id.in_(digest.top_github_ids)).all() if digest.top_github_ids else []
-    top_hf = db.query(Signal).filter(Signal.id.in_(digest.top_hf_ids)).all() if digest.top_hf_ids else []
-    top_other = db.query(Signal).filter(Signal.id.in_(digest.top_other_ids)).all() if digest.top_other_ids else []
+    top_hn = db.query(Resource).filter(Resource.id.in_(digest.top_hn_ids)).all() if digest.top_hn_ids else []
+    top_github = db.query(Resource).filter(Resource.id.in_(digest.top_github_ids)).all() if digest.top_github_ids else []
+    top_hf = db.query(Resource).filter(Resource.id.in_(digest.top_hf_ids)).all() if digest.top_hf_ids else []
+    top_other = db.query(Resource).filter(Resource.id.in_(digest.top_other_ids)).all() if digest.top_other_ids else []
 
     return DailyDigestResponse(
         date=digest.date,
         total_signals=digest.total_signals,
         sources_breakdown=digest.sources_breakdown,
-        top_hn=[SignalBrief.from_orm(s) for s in top_hn],
-        top_github=[SignalBrief.from_orm(s) for s in top_github],
-        top_hf=[SignalBrief.from_orm(s) for s in top_hf],
-        top_other=[SignalBrief.from_orm(s) for s in top_other],
+        top_hn=[SignalBrief.from_resource(r) for r in top_hn],
+        top_github=[SignalBrief.from_resource(r) for r in top_github],
+        top_hf=[SignalBrief.from_resource(r) for r in top_hf],
+        top_other=[SignalBrief.from_resource(r) for r in top_other],
         summary=digest.summary or "",
         trending_topics=digest.trending_topics or [],
         created_at=digest.created_at.isoformat()
@@ -134,19 +147,19 @@ def get_digest_by_date(date: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=f"未找到 {date} 的每日精选")
 
     # 获取信号详情
-    top_hn = db.query(Signal).filter(Signal.id.in_(digest.top_hn_ids)).all() if digest.top_hn_ids else []
-    top_github = db.query(Signal).filter(Signal.id.in_(digest.top_github_ids)).all() if digest.top_github_ids else []
-    top_hf = db.query(Signal).filter(Signal.id.in_(digest.top_hf_ids)).all() if digest.top_hf_ids else []
-    top_other = db.query(Signal).filter(Signal.id.in_(digest.top_other_ids)).all() if digest.top_other_ids else []
+    top_hn = db.query(Resource).filter(Resource.id.in_(digest.top_hn_ids)).all() if digest.top_hn_ids else []
+    top_github = db.query(Resource).filter(Resource.id.in_(digest.top_github_ids)).all() if digest.top_github_ids else []
+    top_hf = db.query(Resource).filter(Resource.id.in_(digest.top_hf_ids)).all() if digest.top_hf_ids else []
+    top_other = db.query(Resource).filter(Resource.id.in_(digest.top_other_ids)).all() if digest.top_other_ids else []
 
     return DailyDigestResponse(
         date=digest.date,
         total_signals=digest.total_signals,
         sources_breakdown=digest.sources_breakdown,
-        top_hn=[SignalBrief.from_orm(s) for s in top_hn],
-        top_github=[SignalBrief.from_orm(s) for s in top_github],
-        top_hf=[SignalBrief.from_orm(s) for s in top_hf],
-        top_other=[SignalBrief.from_orm(s) for s in top_other],
+        top_hn=[SignalBrief.from_resource(r) for r in top_hn],
+        top_github=[SignalBrief.from_resource(r) for r in top_github],
+        top_hf=[SignalBrief.from_resource(r) for r in top_hf],
+        top_other=[SignalBrief.from_resource(r) for r in top_other],
         summary=digest.summary or "",
         trending_topics=digest.trending_topics or [],
         created_at=digest.created_at.isoformat()
@@ -175,22 +188,22 @@ def get_this_week_digest(db: Session = Depends(get_db)):
         )
 
     # 获取信号详情
-    top_10 = db.query(Signal).filter(Signal.id.in_(digest.top_10_ids)).all() if digest.top_10_ids else []
-    top_breakthroughs = db.query(Signal).filter(Signal.id.in_(digest.top_breakthroughs)).all() if digest.top_breakthroughs else []
-    top_tools = db.query(Signal).filter(Signal.id.in_(digest.top_tools)).all() if digest.top_tools else []
-    top_papers = db.query(Signal).filter(Signal.id.in_(digest.top_papers)).all() if digest.top_papers else []
-    top_news = db.query(Signal).filter(Signal.id.in_(digest.top_news)).all() if digest.top_news else []
+    top_10 = db.query(Resource).filter(Resource.id.in_(digest.top_10_ids)).all() if digest.top_10_ids else []
+    top_breakthroughs = db.query(Resource).filter(Resource.id.in_(digest.top_breakthroughs)).all() if digest.top_breakthroughs else []
+    top_tools = db.query(Resource).filter(Resource.id.in_(digest.top_tools)).all() if digest.top_tools else []
+    top_papers = db.query(Resource).filter(Resource.id.in_(digest.top_papers)).all() if digest.top_papers else []
+    top_news = db.query(Resource).filter(Resource.id.in_(digest.top_news)).all() if digest.top_news else []
 
     return WeeklyDigestResponse(
         week_start=digest.week_start,
         week_end=digest.week_end,
         total_signals=digest.total_signals,
         sources_breakdown=digest.sources_breakdown,
-        top_10=[SignalBrief.from_orm(s) for s in top_10],
-        top_breakthroughs=[SignalBrief.from_orm(s) for s in top_breakthroughs],
-        top_tools=[SignalBrief.from_orm(s) for s in top_tools],
-        top_papers=[SignalBrief.from_orm(s) for s in top_papers],
-        top_news=[SignalBrief.from_orm(s) for s in top_news],
+        top_10=[SignalBrief.from_resource(r) for r in top_10],
+        top_breakthroughs=[SignalBrief.from_resource(r) for r in top_breakthroughs],
+        top_tools=[SignalBrief.from_resource(r) for r in top_tools],
+        top_papers=[SignalBrief.from_resource(r) for r in top_papers],
+        top_news=[SignalBrief.from_resource(r) for r in top_news],
         summary=digest.summary or "",
         trending_topics=digest.trending_topics or [],
         hot_keywords=digest.hot_keywords or [],
@@ -209,22 +222,22 @@ def get_recent_weeks(limit: int = 4, db: Session = Depends(get_db)):
 
     results = []
     for digest in digests:
-        top_10 = db.query(Signal).filter(Signal.id.in_(digest.top_10_ids)).all() if digest.top_10_ids else []
-        top_breakthroughs = db.query(Signal).filter(Signal.id.in_(digest.top_breakthroughs)).all() if digest.top_breakthroughs else []
-        top_tools = db.query(Signal).filter(Signal.id.in_(digest.top_tools)).all() if digest.top_tools else []
-        top_papers = db.query(Signal).filter(Signal.id.in_(digest.top_papers)).all() if digest.top_papers else []
-        top_news = db.query(Signal).filter(Signal.id.in_(digest.top_news)).all() if digest.top_news else []
+        top_10 = db.query(Resource).filter(Resource.id.in_(digest.top_10_ids)).all() if digest.top_10_ids else []
+        top_breakthroughs = db.query(Resource).filter(Resource.id.in_(digest.top_breakthroughs)).all() if digest.top_breakthroughs else []
+        top_tools = db.query(Resource).filter(Resource.id.in_(digest.top_tools)).all() if digest.top_tools else []
+        top_papers = db.query(Resource).filter(Resource.id.in_(digest.top_papers)).all() if digest.top_papers else []
+        top_news = db.query(Resource).filter(Resource.id.in_(digest.top_news)).all() if digest.top_news else []
 
         results.append(WeeklyDigestResponse(
             week_start=digest.week_start,
             week_end=digest.week_end,
             total_signals=digest.total_signals,
             sources_breakdown=digest.sources_breakdown,
-            top_10=[SignalBrief.from_orm(s) for s in top_10],
-            top_breakthroughs=[SignalBrief.from_orm(s) for s in top_breakthroughs],
-            top_tools=[SignalBrief.from_orm(s) for s in top_tools],
-            top_papers=[SignalBrief.from_orm(s) for s in top_papers],
-            top_news=[SignalBrief.from_orm(s) for s in top_news],
+            top_10=[SignalBrief.from_resource(r) for r in top_10],
+            top_breakthroughs=[SignalBrief.from_resource(r) for r in top_breakthroughs],
+            top_tools=[SignalBrief.from_resource(r) for r in top_tools],
+            top_papers=[SignalBrief.from_resource(r) for r in top_papers],
+            top_news=[SignalBrief.from_resource(r) for r in top_news],
             summary=digest.summary or "",
             trending_topics=digest.trending_topics or [],
             hot_keywords=digest.hot_keywords or [],

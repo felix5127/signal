@@ -1,7 +1,9 @@
-# Input: 依赖 FastAPI、database.py (get_db)、models/task.py (TaskStatus)
-# Output: 任务状态查询 API 端点（列表/详情）
-# Position: API 路由层，任务状态对外接口
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 FastAPI, database.py (get_db), models/task.py (TaskStatus), scheduler_jobs.py (pipeline 触发)
+[OUTPUT]: 对外提供 /tasks (列表), /tasks/{id} (详情), /tasks/{id}/toggle-pause, /tasks/pipeline/trigger
+[POS]: API 路由层，任务状态查询与 Pipeline 手动触发
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 from datetime import datetime
 from typing import List, Optional
@@ -179,10 +181,12 @@ def toggle_task_pause(
 
     if task.status == "running":
         task.status = "pending"
+        db.commit()
         return {"success": True, "message": "任务已暂停", "new_status": "pending"}
     elif task.status == "pending":
         task.status = "running"
         task.started_at = datetime.now()
+        db.commit()
         return {"success": True, "message": "任务已恢复", "new_status": "running"}
     else:
         raise HTTPException(status_code=400, detail="只能暂停或恢复运行中的任务")
@@ -201,24 +205,19 @@ def trigger_pipeline(
     Returns:
         触发结果
     """
-    from app.main import scheduled_twitter_pipeline, scheduled_main_pipeline, scheduled_pipeline
+    import threading
+    from app.scheduler_jobs import scheduled_twitter_pipeline, scheduled_main_pipeline, scheduled_pipeline
 
     try:
         if source == "twitter":
-            # 在后台线程运行
-            import threading
             thread = threading.Thread(target=scheduled_twitter_pipeline)
             thread.start()
             return {"success": True, "message": "Twitter pipeline 已触发"}
         elif source:
-            # 指定单个数据源
-            import threading
             thread = threading.Thread(target=scheduled_pipeline, args=([source],))
             thread.start()
             return {"success": True, "message": f"{source} pipeline 已触发"}
         else:
-            # 运行主要数据源
-            import threading
             thread = threading.Thread(target=scheduled_main_pipeline)
             thread.start()
             return {"success": True, "message": "主数据源 pipeline 已触发（hn/github/huggingface/arxiv/producthunt/blog）"}

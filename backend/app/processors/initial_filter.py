@@ -85,44 +85,39 @@ class InitialFilter:
     ]
 
     # 明确排除的领域（命中则直接过滤）
+    # 注意：移除了可能误伤 AI 相关内容的关键词
     EXCLUDED_DOMAINS = [
-        # ========== 生物医学 ==========
+        # ========== 生物医学（非 AI 核心）==========
         "Greenland shark", "DNA repair", "longevity", "anti-aging",
         "格陵兰鲨", "抗衰老", "长寿", "基因修复",
         "biology", "生物学", "医学研究", "临床试验",
         "protein folding", "gene therapy", "基因治疗",
 
-        # ========== 图形学/视觉艺术 ==========
+        # ========== 图形学/视觉艺术（非 AI 核心）==========
         "WebGL", "fluid simulation", "particle system", "ray tracing",
         "流体模拟", "粒子系统", "光线追踪",
         "visual art", "视觉艺术",
-        "Mermaid", "diagram rendering", "图表渲染",
 
-        # ========== 通用开发工具（非 AI） ==========
+        # ========== 通用开发工具（非 AI）==========
         "Markdown editor", "Markdown 编辑器",
-        "text editor", "文本编辑器",
-        "code editor", "代码编辑器",
         "Ferrite",  # Rust Markdown editor
         "Tailscale", "VPN", "WireGuard",
-        "state file", "状态文件",
-        "encryption", "加密",  # 通用加密话题
-        "network security", "网络安全",
+        # 移除: "encryption", "加密" - 可能误伤 AI 安全相关
+        # 移除: "text editor", "code editor" - 可能误伤 AI 编辑器
 
         # ========== 垂直行业 AI（非核心 AI/LLM）==========
         "CAD", "SolidWorks", "AutoCAD", "Fusion 360",
         "mechanical engineering", "机械工程",
         "civil engineering", "土木工程",
         "architecture design", "建筑设计",
-        "industrial design", "工业设计",
-        "3D modeling", "3D 建模",
+        # 移除: "3D modeling", "3D 建模" - 可能误伤 AI 生成相关
 
         # ========== 硬件/物理 ==========
         "quantum computing", "量子计算",
-        "robotics", "机器人",
-        "embedded system", "嵌入式",
+        # 移除: "robotics", "机器人" - AI 机器人研究相关
         "FPGA", "ASIC",
 
-        # ========== 游戏 ==========
+        # ========== 游戏开发 ==========
         "game engine", "游戏引擎", "Unity", "Unreal",
         "game development", "游戏开发",
 
@@ -175,6 +170,8 @@ class InitialFilter:
    - AI 编程工具：Cursor、Copilot、Claude Code、Windsurf 等 AI 辅助编程
    - AI 商业：AI 创业、AI 融资、AI 产品发布、OpenAI/Anthropic/Google 等公司动态
    - AI 行业分析：AI 趋势、AI 应用场景、AI 产品设计方法论
+   - **技术教程**：有代码实现的 AI 技术教程（如"用 N 行代码实现 X"、从零实现某算法）
+   - **AI 安全事件**：AI 产品重大安全漏洞、大公司 AI 功能下线/调整、AI 监管政策变化
 
 4. **明确排除的领域**（不相关，必须忽略，即使包含 AI 字样）：
    - 通用开发工具：Markdown 编辑器、文本编辑器、VPN、IDE（非 AI 驱动的）
@@ -183,15 +180,14 @@ class InitialFilter:
    - 图形学/视觉艺术：WebGL、流体模拟、粒子系统、光线追踪
    - 游戏开发：Unity、Unreal、游戏引擎
    - 加密货币/Web3：区块链、NFT、DeFi
-   - 硬件/嵌入式：量子计算、FPGA、机器人（非 AI 核心）
 
 评分标准：
 - 0：应被忽略的文章（非中英文、与 AI 完全无关、或属于排除领域）
 - 1：与 AI 关联很弱，不推荐阅读
 - 2：有一定 AI 相关性，但价值较低
 - 3：AI 相关内容，有一定深度，值得一读
-- 4：高质量 AI 内容，提供了有价值的见解，推荐阅读
-- 5：极高质量，提供了深度分析、创新思路或重要解决方案，强烈推荐阅读
+- 4：高质量 AI 内容，提供有价值的见解或技术教程，推荐阅读
+- 5：极高质量，提供深度分析、代码实现、创新思路或重要 AI 安全事件，强烈推荐阅读
 
 请注意，即使对于建议忽略的文章，也要提供 value、summary 和 language 字段。value 应该反映文章对目标受众的潜在价值，即使这个值很低或为0。summary 应该简要概括文章的主要内容，无论是否相关。language 字段应始终指明文章的语言类型。"""
 
@@ -223,6 +219,8 @@ Please analyze articles based on the following criteria:
    - AI Coding Tools: Cursor, Copilot, Claude Code, Windsurf, and other AI-assisted programming
    - AI Business: AI startups, AI funding, AI product launches, OpenAI/Anthropic/Google news
    - AI Industry Analysis: AI trends, AI use cases, AI product design methodology
+   - **Technical Tutorials**: AI tutorials with code implementation (e.g., "implement X in N lines of code", building from scratch)
+   - **AI Security Events**: Major AI product vulnerabilities, big company AI feature shutdowns/changes, AI regulatory changes
 
 4. **Explicitly Excluded Domains** (Not relevant, MUST be ignored, even if they contain "AI"):
    - General Dev Tools: Markdown editors, text editors, VPN, IDE (non-AI-driven)
@@ -231,15 +229,14 @@ Please analyze articles based on the following criteria:
    - Graphics/Visual Art: WebGL, fluid simulation, particle systems, ray tracing
    - Game Development: Unity, Unreal, game engines
    - Cryptocurrency/Web3: Blockchain, NFT, DeFi
-   - Hardware/Embedded: Quantum computing, FPGA, robotics (non-AI core)
 
 Scoring criteria:
 - 0: Articles that should be ignored (non-Chinese/English, completely unrelated to AI, or in excluded domains)
 - 1: Very weak AI relevance, not recommended for reading
 - 2: Some AI relevance, but low value
 - 3: AI-related content with some depth, worth reading
-- 4: High-quality AI content, providing valuable insights, recommended reading
-- 5: Exceptionally high quality, providing in-depth analysis, innovative ideas, or important solutions. Strongly recommended reading.
+- 4: High-quality AI content, providing valuable insights or technical tutorials, recommended reading
+- 5: Exceptionally high quality, providing in-depth analysis, code implementation, innovative ideas, or important AI security events. Strongly recommended reading.
 
 Please note that even for articles suggested to be ignored, you should still provide the value, summary, and language fields. The value should reflect the potential value of the article to the target audience, even if this value is very low or 0. The summary should briefly outline the main content of the article, regardless of its relevance. The language field should always indicate the language of the article."""
 
@@ -408,22 +405,43 @@ Please note that even for articles suggested to be ignored, you should still pro
                 "keyword_score_adj": 0,
             }
 
-        # 2. 内容长度检查
+        # 2. 内容长度检查 - 短内容不再直接拒绝，而是标记为短内容模式
+        # 微信公众号等来源只能获取摘要，需要根据标题+摘要判断相关性
         content_length = len(content)
-        if content_length < 100:  # 内容太短
-            return {
-                "should_skip_llm": True,
-                "preliminary_result": InitialFilterResult(
-                    ignore=True,
-                    reason="内容过短，缺乏实质性信息",
-                    value=0,
-                    summary=title if title else "内容过短",
-                    language=language,
-                ),
-                "language": language,
-                "is_whitelist": False,
-                "keyword_score_adj": 0,
-            }
+        is_short_content = content_length < 100
+
+        # 对于短内容，检查标题是否包含 AI 相关关键词
+        # 如果标题明显与 AI 相关，让 LLM 进一步判断
+        if is_short_content:
+            title_lower = title.lower() if title else ""
+            ai_keywords = [
+                # 英文
+                "ai", "llm", "gpt", "claude", "gemini", "deepseek", "agent",
+                "transformer", "langchain", "openai", "anthropic", "cursor",
+                "copilot", "chatgpt", "kimi", "minimax", "siri",
+                # 中文
+                "机器学习", "深度学习", "人工智能", "大模型", "大语言模型",
+                "智能", "算法", "神经网络", "训练", "推理", "模型",
+                "融资", "创业", "估值", "投资",  # AI 创业/投资相关
+            ]
+            has_ai_keyword = any(kw in title_lower for kw in ai_keywords)
+
+            # 如果标题完全没有 AI 相关词，且内容极短，直接跳过
+            if not has_ai_keyword and content_length < 50:
+                return {
+                    "should_skip_llm": True,
+                    "preliminary_result": InitialFilterResult(
+                        ignore=True,
+                        reason="内容过短且标题无 AI 相关词",
+                        value=0,
+                        summary=title if title else "内容过短",
+                        language=language,
+                    ),
+                    "language": language,
+                    "is_whitelist": False,
+                    "keyword_score_adj": 0,
+                }
+            # 否则继续走 LLM 评估流程，让 LLM 根据标题+摘要判断
 
         # 3. 排除领域检查（硬过滤：生物医学/图形学/游戏/加密货币等非 AI 核心领域）
         should_exclude, excluded_keyword = self._check_excluded_domain(title, content)

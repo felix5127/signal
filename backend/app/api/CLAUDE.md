@@ -12,7 +12,7 @@ newsletters.py: 周刊 CRUD，GET/POST /newsletters/{id}
 feeds.py: RSS 订阅源，GET /feeds/{type} (返回 XML)
 stats.py: 统计与健康检查，GET /stats, /health
 sources.py: 热门来源 + 信号源管理，/sources/hot, /status, /funnel, /toggle, /runs, /feeds
-tasks.py: 异步任务状态查询，GET /tasks/{task_id}
+tasks.py: 任务状态查询 + Pipeline 触发，GET /tasks, POST /tasks/pipeline/trigger
 video.py: 视频相关端点
 
 ## 端点概览
@@ -25,7 +25,7 @@ video.py: 视频相关端点
 | /api/feeds | feeds.py | RSS 订阅源输出 |
 | /api/stats | stats.py | 系统统计 |
 | /api/sources | sources.py | 热门来源 + 信号源状态/配置/采集记录 |
-| /api/tasks | tasks.py | 任务状态 |
+| /api/tasks | tasks.py | 任务状态 + Pipeline 触发 |
 
 ## 缓存策略
 - 资源列表: 5min TTL

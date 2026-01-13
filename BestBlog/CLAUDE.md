@@ -19,10 +19,11 @@ This repository contains documentation and configuration files for the BestBlogs
 
 - **Documentation**: Main README.md provides comprehensive project overview
 - **RSS Sources**: OPML files containing subscription source lists
-  - `BestBlogs_RSS_ALL.opml` - All 380 RSS sources
-  - `BestBlogs_RSS_Articles.opml` - Article sources (200)
-  - `BestBlogs_RSS_Podcasts.opml` - Podcast sources (30)
-  - `BestBlogs_RSS_Twitters.opml` - Twitter sources (150)
+  - `BestBlogs_RSS_ALL.opml` - All RSS sources (汇总)
+  - `BestBlogs_RSS_Articles.opml` - Article sources (16)
+  - `BestBlogs_RSS_Podcasts.opml` - Podcast sources (9)
+  - `BestBlogs_RSS_Videos.opml` - Video sources (18)
+  - `BestBlogs_RSS_Twitters.opml` - Twitter sources
 - **API Documentation**: `BestBlogs_OpenAPI_Doc.md` - Complete OpenAPI specification
 - **RSS Guide**: `BestBlogs_RSS_Doc.md` - RSS subscription parameters and usage
 - **Implementation Details**: `/flows/Dify/` - Detailed analysis workflows and DSL files
