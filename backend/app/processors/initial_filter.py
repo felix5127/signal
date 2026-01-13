@@ -84,6 +84,53 @@ class InitialFilter:
         "Retweet", "Like", "Follow", "Bookmark",
     ]
 
+    # 明确排除的领域（命中则直接过滤）
+    EXCLUDED_DOMAINS = [
+        # ========== 生物医学 ==========
+        "Greenland shark", "DNA repair", "longevity", "anti-aging",
+        "格陵兰鲨", "抗衰老", "长寿", "基因修复",
+        "biology", "生物学", "医学研究", "临床试验",
+        "protein folding", "gene therapy", "基因治疗",
+
+        # ========== 图形学/视觉艺术 ==========
+        "WebGL", "fluid simulation", "particle system", "ray tracing",
+        "流体模拟", "粒子系统", "光线追踪",
+        "visual art", "视觉艺术",
+        "Mermaid", "diagram rendering", "图表渲染",
+
+        # ========== 通用开发工具（非 AI） ==========
+        "Markdown editor", "Markdown 编辑器",
+        "text editor", "文本编辑器",
+        "code editor", "代码编辑器",
+        "Ferrite",  # Rust Markdown editor
+        "Tailscale", "VPN", "WireGuard",
+        "state file", "状态文件",
+        "encryption", "加密",  # 通用加密话题
+        "network security", "网络安全",
+
+        # ========== 垂直行业 AI（非核心 AI/LLM）==========
+        "CAD", "SolidWorks", "AutoCAD", "Fusion 360",
+        "mechanical engineering", "机械工程",
+        "civil engineering", "土木工程",
+        "architecture design", "建筑设计",
+        "industrial design", "工业设计",
+        "3D modeling", "3D 建模",
+
+        # ========== 硬件/物理 ==========
+        "quantum computing", "量子计算",
+        "robotics", "机器人",
+        "embedded system", "嵌入式",
+        "FPGA", "ASIC",
+
+        # ========== 游戏 ==========
+        "game engine", "游戏引擎", "Unity", "Unreal",
+        "game development", "游戏开发",
+
+        # ========== 加密货币/Web3 ==========
+        "cryptocurrency", "加密货币", "blockchain", "区块链",
+        "NFT", "DeFi", "Web3", "Solana", "Ethereum",
+    ]
+
     # 来源白名单（这些来源的内容默认高质量）
     SOURCE_WHITELIST = [
         # 知名技术博客
@@ -101,15 +148,15 @@ class InitialFilter:
     # ================== LLM Prompts ==================
 
     # 中文文章初评 System Prompt
-    SYSTEM_PROMPT_ZH = """(C) 上下文：你是一个高级内容分析助手，为一个面向技术从业者、创业者和产品经理的网站筛选文章。这个网站主要收集和分享有关软件开发、人工智能、产品管理、营销、设计、商业、科技和个人成长等领域的高质量内容。
+    SYSTEM_PROMPT_ZH = """(C) 上下文：你是一个高级内容分析助手，为一个 **AI/LLM 技术情报平台** 筛选文章。这个平台专注于人工智能、大语言模型、AI 应用开发、AI 创业投资等核心领域。
 
-(O) 目标：你的任务是快速分析给定的文章，并决定是否应该忽略这篇文章。你需要识别出低价值、不相关或质量较差的内容，同时确保不会错过潜在的高价值文章。
+(O) 目标：你的任务是快速分析给定的文章，判断是否与 AI/LLM 核心领域相关。你需要**严格过滤**非 AI 相关内容，确保只有真正有价值的 AI 相关文章进入系统。
 
-(S) 风格：请以一个经验丰富的内容策展人的风格来分析和评判文章。你应该简洁明了，直击要点，并能够快速识别出文章的核心价值。
+(S) 风格：请以一个 AI 领域资深从业者的视角来分析文章。你应该简洁明了，直击要点，重点关注文章是否对 AI 从业者有实际价值。
 
 (T) 语气：保持专业、客观的语气。你的分析应该基于事实和明确的标准，而不是主观感受。
 
-(A) 受众：你的分析结果将被网站的内容管理团队使用，他们需要快速决策是否将文章纳入网站的内容库。
+(A) 受众：你的分析结果将被 AI 技术情报平台使用，目标受众是 AI 工程师、AI 产品经理、AI 创业者和 AI 投资人。
 
 (R) 响应：请使用中文以JSON格式输出你的分析结果，包括以下字段：
 - ignore: 布尔值，表示是否应该忽略这篇文章
@@ -122,32 +169,42 @@ class InitialFilter:
 
 1. 语言：是否为中文或英文。如果不是，直接忽略。
 2. 内容类型：是否为实质性内容，而非简单的公告、活动预热、广告、产品推荐或闲聊。
-3. 主题相关性：是否与目标领域相关（软件开发、人工智能、产品管理、营销、设计、商业、科技和个人成长等）。
-4. 质量和价值：
-   - 内容深度：是否提供深入见解、独特观点或有价值信息
-   - 技术深度：对于技术文章，评估其专业程度和技术细节
-   - 实用性：是否能启发思考或提供实用解决方案
+3. **核心相关性**（重要）：文章必须与以下 **AI/LLM 核心领域** 直接相关：
+   - AI/LLM 技术：LLM、GPT、Claude、Gemini、Transformer、RAG、Agent、Fine-tuning、RLHF 等
+   - AI 开发框架：LangChain、LlamaIndex、Dify、Prompt Engineering
+   - AI 编程工具：Cursor、Copilot、Claude Code、Windsurf 等 AI 辅助编程
+   - AI 商业：AI 创业、AI 融资、AI 产品发布、OpenAI/Anthropic/Google 等公司动态
+   - AI 行业分析：AI 趋势、AI 应用场景、AI 产品设计方法论
+
+4. **明确排除的领域**（不相关，必须忽略，即使包含 AI 字样）：
+   - 通用开发工具：Markdown 编辑器、文本编辑器、VPN、IDE（非 AI 驱动的）
+   - 垂直行业 AI 应用：CAD/SolidWorks AI、机械工程 AI、建筑设计 AI、工业设计 AI
+   - 纯生物医学研究：DNA 修复、基因治疗、抗衰老研究
+   - 图形学/视觉艺术：WebGL、流体模拟、粒子系统、光线追踪
+   - 游戏开发：Unity、Unreal、游戏引擎
+   - 加密货币/Web3：区块链、NFT、DeFi
+   - 硬件/嵌入式：量子计算、FPGA、机器人（非 AI 核心）
 
 评分标准：
-- 0：应被忽略的文章（非中英文或完全不相关）
-- 1：低质量或基本不相关，不推荐阅读
-- 2：质量较低或相关性较弱，但可能有少量参考价值
-- 3：一般质量，内容相关且有一定深度，但缺乏独特见解或创新性，值得一读
-- 4：高质量，提供了有价值的见解或实用信息，推荐阅读
+- 0：应被忽略的文章（非中英文、与 AI 完全无关、或属于排除领域）
+- 1：与 AI 关联很弱，不推荐阅读
+- 2：有一定 AI 相关性，但价值较低
+- 3：AI 相关内容，有一定深度，值得一读
+- 4：高质量 AI 内容，提供了有价值的见解，推荐阅读
 - 5：极高质量，提供了深度分析、创新思路或重要解决方案，强烈推荐阅读
 
 请注意，即使对于建议忽略的文章，也要提供 value、summary 和 language 字段。value 应该反映文章对目标受众的潜在价值，即使这个值很低或为0。summary 应该简要概括文章的主要内容，无论是否相关。language 字段应始终指明文章的语言类型。"""
 
     # 英文文章初评 System Prompt
-    SYSTEM_PROMPT_EN = """(C) Context: You are an advanced content analysis assistant, screening articles for a website targeting technology professionals, entrepreneurs, and product managers. This website primarily collects and shares high-quality content related to software development, artificial intelligence, product management, marketing, design, business, technology, and personal growth.
+    SYSTEM_PROMPT_EN = """(C) Context: You are an advanced content analysis assistant, screening articles for an **AI/LLM Intelligence Platform**. This platform focuses on artificial intelligence, large language models, AI application development, and AI startup/investment news.
 
-(O) Objective: Your task is to quickly analyze given articles and decide whether they should be ignored. You need to identify low-value, irrelevant, or poor-quality content while ensuring that potentially high-value articles are not overlooked.
+(O) Objective: Your task is to quickly analyze given articles and determine if they are relevant to the AI/LLM core domain. You need to **strictly filter out** non-AI-related content, ensuring only truly valuable AI-related articles enter the system.
 
-(S) Style: Please analyze and evaluate articles in the style of an experienced content curator. Be concise, get straight to the point, and quickly identify the core value of each article.
+(S) Style: Please analyze articles from the perspective of a senior AI practitioner. Be concise, get straight to the point, and focus on whether the article has practical value for AI professionals.
 
 (T) Tone: Maintain a professional and objective tone. Your analysis should be based on facts and clear criteria, not subjective feelings.
 
-(A) Audience: Your analysis results will be used by the website's content management team, who need to make quick decisions on whether to include articles in the website's content library.
+(A) Audience: Your analysis results will be used by an AI Intelligence Platform. The target audience is AI engineers, AI product managers, AI entrepreneurs, and AI investors.
 
 (R) Response: Please output your analysis results in JSON format using Chinese, including the following fields:
 - ignore: Boolean value indicating whether this article should be ignored
@@ -160,18 +217,28 @@ Please analyze articles based on the following criteria:
 
 1. Language: Is it in Chinese or English? If not, ignore it directly.
 2. Content type: Is it substantial content, rather than simple announcements, event teasers, advertisements, product recommendations, or casual chat?
-3. Topic relevance: Is it related to the target areas (software development, artificial intelligence, product management, marketing, design, business, technology, and personal growth, etc.)?
-4. Quality and value:
-   - Content depth: Does it provide in-depth insights, unique perspectives, or valuable information?
-   - Technical depth: For technical articles, assess their professionalism and technical details
-   - Practicality: Can it inspire thinking or provide practical solutions?
+3. **Core Relevance** (Important): Articles MUST be directly related to **AI/LLM core domains**:
+   - AI/LLM Technology: LLM, GPT, Claude, Gemini, Transformer, RAG, Agent, Fine-tuning, RLHF, etc.
+   - AI Development Frameworks: LangChain, LlamaIndex, Dify, Prompt Engineering
+   - AI Coding Tools: Cursor, Copilot, Claude Code, Windsurf, and other AI-assisted programming
+   - AI Business: AI startups, AI funding, AI product launches, OpenAI/Anthropic/Google news
+   - AI Industry Analysis: AI trends, AI use cases, AI product design methodology
+
+4. **Explicitly Excluded Domains** (Not relevant, MUST be ignored, even if they contain "AI"):
+   - General Dev Tools: Markdown editors, text editors, VPN, IDE (non-AI-driven)
+   - Vertical Industry AI: CAD/SolidWorks AI, mechanical engineering AI, architecture AI, industrial design AI
+   - Pure Biomedical Research: DNA repair, gene therapy, anti-aging research
+   - Graphics/Visual Art: WebGL, fluid simulation, particle systems, ray tracing
+   - Game Development: Unity, Unreal, game engines
+   - Cryptocurrency/Web3: Blockchain, NFT, DeFi
+   - Hardware/Embedded: Quantum computing, FPGA, robotics (non-AI core)
 
 Scoring criteria:
-- 0: Articles that should be ignored (non-Chinese/English or completely irrelevant)
-- 1: Low quality or barely relevant, not recommended for reading
-- 2: Relatively low quality or weak relevance, but may have some reference value
-- 3: Average quality, relevant content with some depth, but lacking unique insights or innovation. Worth reading.
-- 4: High quality, providing valuable insights or practical information, recommended reading
+- 0: Articles that should be ignored (non-Chinese/English, completely unrelated to AI, or in excluded domains)
+- 1: Very weak AI relevance, not recommended for reading
+- 2: Some AI relevance, but low value
+- 3: AI-related content with some depth, worth reading
+- 4: High-quality AI content, providing valuable insights, recommended reading
 - 5: Exceptionally high quality, providing in-depth analysis, innovative ideas, or important solutions. Strongly recommended reading.
 
 Please note that even for articles suggested to be ignored, you should still provide the value, summary, and language fields. The value should reflect the potential value of the article to the target audience, even if this value is very low or 0. The summary should briefly outline the main content of the article, regardless of its relevance. The language field should always indicate the language of the article."""
@@ -283,6 +350,24 @@ Please note that even for articles suggested to be ignored, you should still pro
                 return True
         return False
 
+    def _check_excluded_domain(self, title: str, content: str) -> tuple[bool, str]:
+        """
+        检查是否命中排除领域
+
+        Args:
+            title: 文章标题
+            content: 文章内容
+
+        Returns:
+            (should_exclude, matched_keyword) - 是否应排除，匹配的关键词
+        """
+        text = f"{title} {content[:1000]}".lower()
+
+        for keyword in self.EXCLUDED_DOMAINS:
+            if keyword.lower() in text:
+                return True, keyword
+        return False, ""
+
     def rule_filter(self, title: str, content: str, source: str = "") -> dict:
         """
         规则预筛
@@ -340,10 +425,27 @@ Please note that even for articles suggested to be ignored, you should still pro
                 "keyword_score_adj": 0,
             }
 
-        # 3. 关键词检查
+        # 3. 排除领域检查（硬过滤：生物医学/图形学/游戏/加密货币等非 AI 核心领域）
+        should_exclude, excluded_keyword = self._check_excluded_domain(title, content)
+        if should_exclude:
+            return {
+                "should_skip_llm": True,
+                "preliminary_result": InitialFilterResult(
+                    ignore=True,
+                    reason=f"非核心领域：{excluded_keyword}",
+                    value=0,
+                    summary=title if title else "内容与 AI/软件开发无关",
+                    language=language,
+                ),
+                "language": language,
+                "is_whitelist": False,
+                "keyword_score_adj": 0,
+            }
+
+        # 4. 关键词检查
         keyword_score_adj, matched_keywords = self._check_keywords(title, content)
 
-        # 4. 白名单来源检查
+        # 5. 白名单来源检查
         is_whitelist = self._is_whitelist_source(source)
 
         # 返回规则预筛结果（需要 LLM 进一步评估）
