@@ -177,18 +177,20 @@ class Resource(Base):
 @event.listens_for(Resource, 'after_insert')
 def invalidate_resource_cache(mapper, connection, target):
     """Resource 数据更新时自动失效缓存"""
+    import asyncio
+
+    async def _invalidate():
+        try:
+            from app.utils.cache import redis_cache
+            await redis_cache.delete(f"resource:detail:{target.id}")
+            await redis_cache.delete_pattern("resources:list*")
+            await redis_cache.delete("resources:stats")
+        except Exception:
+            pass
+
     try:
-        from app.utils.cache import redis_cache
-
-        # 失效详情页缓存
-        redis_cache.delete(f"resource:detail:{target.id}")
-
-        # 失效列表页缓存（模糊匹配）
-        redis_cache.delete_pattern("resources:list*")
-
-        # 失效统计缓存
-        redis_cache.delete("resources:stats")
-
-    except Exception:
-        # 缓存失效失败不影响业务
+        loop = asyncio.get_running_loop()
+        loop.create_task(_invalidate())
+    except RuntimeError:
+        # 没有运行中的事件循环，跳过缓存失效
         pass
