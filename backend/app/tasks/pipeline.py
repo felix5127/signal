@@ -1,7 +1,18 @@
-# Input: RSSScraper, ContentExtractor, InitialFilter, Analyzer, Translator, Resource 模型, XGoingScraper, FaviconFetcher
-# Output: 数据库中的 Resource 记录
-# Position: 核心流水线，串联 RSS采集 → 全文提取 → 初评过滤 → 深度分析 → 翻译 → 存储
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 scrapers/* 的各类采集器, processors/* 的过滤/分析/翻译器, models/resource 的 Resource
+[OUTPUT]: 对外提供 run_article_pipeline, run_full_pipeline, run_twitter_pipeline, run_podcast_pipeline, run_video_pipeline
+[POS]: 核心流水线模块，包含 5 种内容类型的处理流程
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+
+流水线概览:
+- ArticlePipeline: RSS采集 → 全文提取 → 初评过滤 → 深度分析 → 翻译 → 存储
+- FullPipeline: 多源采集 (HN/GitHub/arXiv/HF/PH) → 过滤 → 摘要生成 → 存储
+- TwitterPipeline: XGoing采集 → 去重 → 直接存储 (跳过LLM)
+- PodcastPipeline: RSS采集 → 去重 → 可选转写 → 存储
+- VideoPipeline: RSS采集 → 去重 → 可选转写 → 存储
+
+TODO: 未来版本考虑使用 base_pipeline.py 的 BasePipeline 基类重构，提取公共逻辑
+"""
 
 from datetime import datetime
 from typing import List, Optional
@@ -32,6 +43,7 @@ from app.scrapers.content_extractor import ContentExtractor, ExtractedContent
 from app.scrapers.base import RawSignal
 from app.scrapers.favicon import FaviconFetcher
 from app.utils.llm import llm_client
+from app.services.source_service import SourceService
 
 
 class PipelineStats:
@@ -406,6 +418,24 @@ async def run_article_pipeline(
     # 重置 Token 计数器
     llm_client.reset_token_counter()
 
+    # ========== 9. 记录采集结果 ==========
+    try:
+        record_db = SessionLocal()
+        source_service = SourceService(record_db)
+        source_service.record_run(
+            source_type="blog",
+            status="success" if stats.failed_count == 0 else "partial",
+            fetched_count=stats.scraped_count,
+            rule_filtered_count=stats.extracted_count,
+            dedup_filtered_count=stats.filter_passed_count,
+            llm_filtered_count=stats.analyzed_count,
+            saved_count=stats.saved_count,
+            error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
+        )
+        record_db.close()
+    except Exception as e:
+        print(f"[ArticlePipeline] Failed to record run: {e}")
+
     return stats
 
 
@@ -651,7 +681,7 @@ async def run_full_pipeline(sources: list[str] | None = None) -> PipelineStats:
     print(f"{'='*60}")
     print("[Pipeline] Summary:")
     print(f"  - Scraped: {stats.scraped_count}")
-    print(f"  - Filtered: {stats.filtered_count} ({stats.filtered_count/stats.scraped_count*100:.1f}%)")
+    print(f"  - Filtered: {stats.filtered_count} ({stats.filtered_count/stats.scraped_count*100:.1f}%)" if stats.scraped_count > 0 else "  - Filtered: 0")
     print(f"  - Generated: {stats.generated_count}")
     print(f"  - Saved: {stats.saved_count}")
     print(f"  - Failed: {stats.failed_count}")
@@ -662,6 +692,23 @@ async def run_full_pipeline(sources: list[str] | None = None) -> PipelineStats:
 
     # 重置 Token 计数器（下次运行重新计算）
     llm_client.reset_token_counter()
+
+    # ========== 记录采集结果（多源聚合记录到 hackernews） ==========
+    try:
+        record_db = SessionLocal()
+        source_service = SourceService(record_db)
+        # FullPipeline 主要是 HN/GitHub/arXiv 等，记录为 hackernews
+        source_service.record_run(
+            source_type="hackernews",
+            status="success" if stats.failed_count == 0 else "partial",
+            fetched_count=stats.scraped_count,
+            llm_filtered_count=stats.filtered_count,
+            saved_count=stats.saved_count,
+            error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
+        )
+        record_db.close()
+    except Exception as e:
+        print(f"[Pipeline] Failed to record run: {e}")
 
     return stats
 
@@ -807,6 +854,22 @@ async def run_twitter_pipeline(
     print(f"  - Failed: {stats.failed_count}")
     print(f"  - LLM tokens: 0 (skipped)")
     print(f"{'='*60}\n")
+
+    # ========== 记录采集结果 ==========
+    try:
+        record_db = SessionLocal()
+        source_service = SourceService(record_db)
+        source_service.record_run(
+            source_type="twitter",
+            status="success" if stats.failed_count == 0 else "partial",
+            fetched_count=stats.scraped_count,
+            dedup_filtered_count=len(raw_signals),
+            saved_count=stats.saved_count,
+            error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
+        )
+        record_db.close()
+    except Exception as e:
+        print(f"[TwitterPipeline] Failed to record run: {e}")
 
     return stats
 
@@ -1010,6 +1073,22 @@ async def run_podcast_pipeline(
     print(f"  - Failed: {stats.failed_count}")
     print(f"{'='*60}\n")
 
+    # ========== 记录采集结果 ==========
+    try:
+        record_db = SessionLocal()
+        source_service = SourceService(record_db)
+        source_service.record_run(
+            source_type="podcast",
+            status="success" if stats.failed_count == 0 else "partial",
+            fetched_count=stats.scraped_count,
+            dedup_filtered_count=len(raw_signals),
+            saved_count=stats.saved_count,
+            error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
+        )
+        record_db.close()
+    except Exception as e:
+        print(f"[PodcastPipeline] Failed to record run: {e}")
+
     return stats
 
 
@@ -1212,5 +1291,21 @@ async def run_video_pipeline(
     print(f"  - Saved: {stats.saved_count}")
     print(f"  - Failed: {stats.failed_count}")
     print(f"{'='*60}\n")
+
+    # ========== 记录采集结果 ==========
+    try:
+        record_db = SessionLocal()
+        source_service = SourceService(record_db)
+        source_service.record_run(
+            source_type="video",
+            status="success" if stats.failed_count == 0 else "partial",
+            fetched_count=stats.scraped_count,
+            dedup_filtered_count=len(raw_signals),
+            saved_count=stats.saved_count,
+            error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
+        )
+        record_db.close()
+    except Exception as e:
+        print(f"[VideoPipeline] Failed to record run: {e}")
 
     return stats

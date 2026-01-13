@@ -1,15 +1,8 @@
-# Input: 数据库 Session, 筛选参数
-# Output: 资源列表、详情、搜索结果
-# Position: Resource Service 层，封装资源相关业务逻辑
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
-
 """
-Resource 业务逻辑层
-
-封装资源相关的所有业务操作：
-- 查询与筛选
-- 搜索
-- 统计
+[INPUT]: 依赖 models/resource 的 Resource, utils/cache 的缓存装饰器
+[OUTPUT]: 对外提供 ResourceService 类 (get_resources, search, get_stats)
+[POS]: 业务逻辑层，封装资源 CRUD、筛选、搜索功能
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
 from typing import List, Optional, Dict, Any

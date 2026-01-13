@@ -1,6 +1,9 @@
-# File Input: 依赖 SQLAlchemy 基类和关系
-# File Output: 提供 DailyDigest 和 WeeklyDigest 数据模型
-# File Pos: 数据库模型层，支持时间维度的信号聚合
+"""
+[INPUT]: 依赖 database 的 Base (SQLAlchemy 基类)
+[OUTPUT]: 对外提供 DailyDigest, WeeklyDigest 模型
+[POS]: 数据模型层，日周精选汇总的 ORM 定义
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 from sqlalchemy import Column, Integer, String, DateTime, JSON, ForeignKey, Text
 from sqlalchemy.orm import relationship

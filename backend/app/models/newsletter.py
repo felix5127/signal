@@ -1,7 +1,9 @@
-# Input: database.py (Base)
-# Output: Newsletter 表 ORM 模型，用于存储自动生成的周刊
-# Position: 数据持久化层，v2.0 周刊功能支持
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 database 的 Base (SQLAlchemy 基类)
+[OUTPUT]: 对外提供 Newsletter 模型
+[POS]: 数据模型层，周刊记录的 ORM 定义，year+week_number 唯一索引
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 from datetime import datetime
 

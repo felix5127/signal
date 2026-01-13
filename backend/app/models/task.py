@@ -1,7 +1,9 @@
-# Input: 无
-# Output: TaskStatus ORM 模型
-# Position: 任务状态持久化层，跟踪异步任务执行状态和进度
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 database 的 Base (SQLAlchemy 基类)
+[OUTPUT]: 对外提供 TaskStatus 模型
+[POS]: 数据模型层，异步任务状态追踪的 ORM 定义
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 from datetime import datetime
 from sqlalchemy import Column, DateTime, Integer, String, Text, Float, JSON

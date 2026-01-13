@@ -1,7 +1,9 @@
-# Input: 依赖 FastAPI、database.py (get_db)、models/newsletter.py (Newsletter)、tasks/newsletter.py (generate_newsletter_for_week)
-# Output: 周刊 CRUD API 端点 (列表/详情/手动生成)
-# Position: API 路由层，周刊功能对外接口
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 database 的 get_db, models/newsletter 的 Newsletter, tasks/newsletter 的 generate_newsletter_for_week
+[OUTPUT]: 对外提供 /newsletters 列表/详情/手动生成端点
+[POS]: API 路由层，周刊 CRUD 功能对外接口
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 import logging
 from datetime import datetime

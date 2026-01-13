@@ -4,7 +4,7 @@
 # ============================================
 # 构建阶段
 # ============================================
-FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy AS builder
+FROM mcr.microsoft.com/playwright/python:v1.57.0-jammy AS builder
 
 WORKDIR /build
 
@@ -21,7 +21,7 @@ RUN python -m playwright install chromium
 # ============================================
 # 运行阶段
 # ============================================
-FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
+FROM mcr.microsoft.com/playwright/python:v1.57.0-jammy
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \

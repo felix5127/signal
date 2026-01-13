@@ -1,6 +1,6 @@
 # Input: 搜索查询
 # Output: SearchResult列表
-# Position: 搜索提供商实现,支持Tavily/Jina切换
+# Position: 搜索提供商实现 (Tavily)
 
 import os
 import httpx
@@ -92,22 +92,3 @@ class TavilySearchProvider(BaseSearchProvider):
     async def close(self):
         """关闭HTTP客户端"""
         await self.client.aclose()
-
-
-class JinaSearchProvider(BaseSearchProvider):
-    """
-    Jina Reader实现 - 备用方案
-
-    使用Google搜索 + Jina Reader解析内容
-    适用于Tavily不可用或成本敏感的场景
-    """
-
-    async def search(
-        self, query: str, max_results: int = 3
-    ) -> List[SearchResult]:
-        """TODO: 实现Google + Jina方案"""
-        raise NotImplementedError("Jina search provider coming soon...")
-
-    async def health_check(self) -> bool:
-        """TODO: 实现健康检查"""
-        return False

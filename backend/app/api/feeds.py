@@ -1,7 +1,9 @@
-# Input: database.py (get_db), models/resource.py (Resource)
-# Output: RSS XML 格式的 feed
-# Position: RSS Feed API，提供多种订阅源
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 database 的 get_db, models/resource 的 Resource
+[OUTPUT]: 对外提供 /feeds/{type} 端点，返回 RSS 2.0 XML 格式
+[POS]: API 路由层，RSS 订阅源输出接口
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 from datetime import datetime, timedelta
 from typing import List, Literal, Optional

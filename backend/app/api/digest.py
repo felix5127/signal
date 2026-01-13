@@ -1,6 +1,9 @@
-# File Input: 依赖 FastAPI、数据库会话、DailyDigest/WeeklyDigest 模型
-# File Output: 提供每日/每周精选的API端点
-# File Pos: API路由层，对外暴露汇总查询接口
+"""
+[INPUT]: 依赖 database 的 get_db, models/digest 的 DailyDigest/WeeklyDigest, models/signal 的 Signal
+[OUTPUT]: 对外提供 /digest/today, /digest/week, /digest/weeks 端点
+[POS]: API 路由层，日周精选汇总查询接口
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
