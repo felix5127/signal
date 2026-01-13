@@ -55,6 +55,14 @@
 - 数据源: GET /api/digest/today, GET /api/digest/week
 - 功能: 同格式展示当日和上周精选内容
 
+### Admin 后台管理 (详见 admin/CLAUDE.md)
+
+**admin/**: 密码保护的运维监控面板
+- 路由前缀: /admin/*
+- 保护机制: Cookie 认证 (middleware.ts)
+- 密码: 环境变量 ADMIN_PASSWORD
+- 页面: login, sources, scheduler, system, logs
+
 ### 详情页面 (1个)
 
 **resources/[id]/page.tsx**: 资源详情页
@@ -144,6 +152,18 @@
 - Lucide React
 
 ## 变更日志
+
+### 2026-01-12 - Admin 后台管理系统
+- ✅ 创建 middleware.ts 路由保护（/admin/* 密码保护）
+- ✅ 创建 admin/login 登录页面
+- ✅ 创建 admin/layout.tsx 侧边栏布局
+- ✅ 迁移 sources 页面到 admin/sources（增强版）
+- ✅ 创建 admin/scheduler 调度器状态页面
+- ✅ 创建 admin/system 系统健康页面
+- ✅ 创建 admin/logs 采集日志页面
+- ✅ 从导航栏移除"信号源"入口
+- ✅ 添加手动触发采集功能
+- ✅ 后端新增 /api/sources/trigger, /api/stats/scheduler, /api/stats/system 端点
 
 ### 2025-01-10 - 删除 Signals 模块
 - ✅ 删除 app/signals/ 目录（信号详情页）

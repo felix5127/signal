@@ -7,7 +7,7 @@
 - 技术细节: 使用 Next.js Link/usePathname + Lucide React 图标 + Framer Motion Spring 物理引擎
 - 导出: default function Navbar()
 - 核心功能: 页面路由导航、Logo展示、桌面/移动端响应式菜单、Apple级Spring交互动画
-- 导航项: 6项（首页/文章/播客/推文/视频/精选）
+- 导航项: 6项（文章/播客/推文/视频/精选/研究）- 信号源移至 /admin
 - 动画配置: 下滑进场(stiffness:300,damping:30) + hover提升 + tap缩放 + 图标旋转
 
 **page-transition.tsx**: 全局页面路由过渡组件
@@ -94,6 +94,10 @@
 - 语义化 HTML（nav, button, link）
 
 ## 变更日志
+
+### 2026-01-12 - Admin 后台管理系统
+- ✅ navbar.tsx 移除"信号源"导航入口（移至 /admin/sources）
+- ✅ 导航项从 7 项减至 6 项
 
 ### 2025-01-10 - 页面过渡优化
 - ✅ 创建 page-transition.tsx 组件
