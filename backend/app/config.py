@@ -88,7 +88,7 @@ class ProductHuntConfig(BaseSettings):
 
 class BlogConfig(BaseSettings):
     """博客/文章 RSS 数据源配置"""
-    enabled: bool = False
+    enabled: bool = True
     opml_path: str = "/app/BestBlog/BestBlogs_RSS_Articles.opml"  # OPML 文件路径
     feeds: List[str] = Field(default_factory=list)  # RSS feed URL 列表（可选，OPML优先）
     keywords: List[str] = Field(
