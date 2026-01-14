@@ -6,8 +6,23 @@
  */
 
 import type { Metadata } from 'next'
+import dynamic from 'next/dynamic'
 import './globals.css'
-import { ClientLayout } from '@/components/ClientLayout'
+
+// 强制动态渲染，禁用静态生成（layout 中不支持 dynamic，需要在每个页面中设置）
+
+// 使用 dynamic import 禁用 SSR，避免 framer-motion 在服务端渲染时出错
+const ClientLayout = dynamic(
+  () => import('@/components/ClientLayout').then(mod => mod.ClientLayout),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    ),
+  }
+)
 
 export const metadata: Metadata = {
   title: 'Signal Hunter - 技术情报聚合',

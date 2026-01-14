@@ -1,3 +1,5 @@
+// 强制动态渲染，禁用静态生成
+export const dynamic = 'force-dynamic'
 /**
  * [INPUT]: 依赖 Next.js not-found 边界、lucide-react 图标、Button 组件
  * [OUTPUT]: 自定义 404 错误页面

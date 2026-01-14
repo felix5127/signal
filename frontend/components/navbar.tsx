@@ -27,9 +27,11 @@ const NAV_ITEMS = [
 export default function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(true) // 默认禁用动画
+  const [isMounted, setIsMounted] = useState(false) // 客户端挂载检测
 
   useEffect(() => {
+    setIsMounted(true) // 标记已挂载到客户端
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     setPrefersReducedMotion(mediaQuery.matches)
 
@@ -41,12 +43,15 @@ export default function Navbar() {
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
+  // 在服务端渲染或未挂载时禁用动画
+  const shouldAnimate = isMounted && !prefersReducedMotion
+
   return (
     <motion.nav
       key={pathname}
-      initial={prefersReducedMotion ? false : { y: -100 }}
-      animate={prefersReducedMotion ? false : { y: 0 }}
-      transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
+      initial={!shouldAnimate ? false : { y: -100 }}
+      animate={!shouldAnimate ? false : { y: 0 }}
+      transition={!shouldAnimate ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
       className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-lg"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -54,15 +59,15 @@ export default function Navbar() {
           {/* Logo - 左侧 */}
           <motion.div
             className="flex-shrink-0"
-            whileHover={!prefersReducedMotion ? { scale: 1.02 } : undefined}
-            whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
-            transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 25 } : { duration: 0 }}
+            whileHover={shouldAnimate ? { scale: 1.02 } : undefined}
+            whileTap={shouldAnimate ? { scale: 0.97 } : undefined}
+            transition={shouldAnimate ? { type: 'spring', stiffness: 400, damping: 25 } : { duration: 0 }}
           >
             <Link href="/" className="flex items-center space-x-3 group">
               <motion.div
                 className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center"
-                whileHover={!prefersReducedMotion ? { rotate: 5 } : undefined}
-                transition={!prefersReducedMotion ? { type: 'spring', stiffness: 300, damping: 20 } : { duration: 0 }}
+                whileHover={shouldAnimate ? { rotate: 5 } : undefined}
+                transition={shouldAnimate ? { type: 'spring', stiffness: 300, damping: 20 } : { duration: 0 }}
               >
                 <span className="text-white font-bold">SH</span>
               </motion.div>
@@ -76,14 +81,14 @@ export default function Navbar() {
           <div className="hidden md:flex flex-1 items-center justify-center md:space-x-3">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href || pathname.startsWith(item.href)
+              const isActive = pathname === item.href || pathname?.startsWith(item.href)
 
               return (
                 <Link key={item.id} href={item.href}>
                   <motion.div
-                    whileHover={!prefersReducedMotion ? { y: -2 } : undefined}
-                    whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
-                    transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
+                    whileHover={shouldAnimate ? { y: -2 } : undefined}
+                    whileTap={shouldAnimate ? { scale: 0.97 } : undefined}
+                    transition={shouldAnimate ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
                     className={cn(
                       'flex items-center space-x-3 px-6 py-4 rounded-xl font-semibold transition-all duration-200 cursor-pointer text-[22px]',
                       isActive
@@ -105,27 +110,27 @@ export default function Navbar() {
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="inline-flex items-center justify-center p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
-              transition={!prefersReducedMotion ? { type: 'spring', stiffness: 500, damping: 30 } : { duration: 0 }}
+              whileTap={shouldAnimate ? { scale: 0.97 } : undefined}
+              transition={shouldAnimate ? { type: 'spring', stiffness: 500, damping: 30 } : { duration: 0 }}
             >
               <AnimatePresence mode="wait">
                 {mobileMenuOpen ? (
                   <motion.div
                     key="close"
-                    initial={!prefersReducedMotion ? { rotate: -90, opacity: 0 } : undefined}
-                    animate={!prefersReducedMotion ? { rotate: 0, opacity: 1 } : undefined}
-                    exit={!prefersReducedMotion ? { rotate: 90, opacity: 0 } : undefined}
-                    transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
+                    initial={shouldAnimate ? { rotate: -90, opacity: 0 } : undefined}
+                    animate={shouldAnimate ? { rotate: 0, opacity: 1 } : undefined}
+                    exit={shouldAnimate ? { rotate: 90, opacity: 0 } : undefined}
+                    transition={shouldAnimate ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
                   >
                     <X className="w-6 h-6" />
                   </motion.div>
                 ) : (
                   <motion.div
                     key="menu"
-                    initial={!prefersReducedMotion ? { rotate: 90, opacity: 0 } : undefined}
-                    animate={!prefersReducedMotion ? { rotate: 0, opacity: 1 } : undefined}
-                    exit={!prefersReducedMotion ? { rotate: -90, opacity: 0 } : undefined}
-                    transition={!prefersReducedMotion ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
+                    initial={shouldAnimate ? { rotate: 90, opacity: 0 } : undefined}
+                    animate={shouldAnimate ? { rotate: 0, opacity: 1 } : undefined}
+                    exit={shouldAnimate ? { rotate: -90, opacity: 0 } : undefined}
+                    transition={shouldAnimate ? { type: 'spring', stiffness: 400, damping: 30 } : { duration: 0 }}
                   >
                     <Menu className="w-6 h-6" />
                   </motion.div>
@@ -139,23 +144,23 @@ export default function Navbar() {
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
-              initial={!prefersReducedMotion ? { opacity: 0, height: 0 } : undefined}
-              animate={!prefersReducedMotion ? { opacity: 1, height: 'auto' } : undefined}
-              exit={!prefersReducedMotion ? { opacity: 0, height: 0 } : undefined}
-              transition={!prefersReducedMotion ? { type: 'spring', stiffness: 300, damping: 35 } : { duration: 0 }}
+              initial={shouldAnimate ? { opacity: 0, height: 0 } : undefined}
+              animate={shouldAnimate ? { opacity: 1, height: 'auto' } : undefined}
+              exit={shouldAnimate ? { opacity: 0, height: 0 } : undefined}
+              transition={shouldAnimate ? { type: 'spring', stiffness: 300, damping: 35 } : { duration: 0 }}
               className="md:hidden border-t border-gray-200 dark:border-gray-800 overflow-hidden"
             >
               <div className="py-4 space-y-1">
                 {NAV_ITEMS.map((item, index) => {
                   const Icon = item.icon
-                  const isActive = pathname === item.href || pathname.startsWith(item.href)
+                  const isActive = pathname === item.href || pathname?.startsWith(item.href)
 
                   return (
                     <motion.div
                       key={item.id}
-                      initial={!prefersReducedMotion ? { opacity: 0, x: -20 } : undefined}
-                      animate={!prefersReducedMotion ? { opacity: 1, x: 0 } : undefined}
-                      transition={!prefersReducedMotion ? {
+                      initial={shouldAnimate ? { opacity: 0, x: -20 } : undefined}
+                      animate={shouldAnimate ? { opacity: 1, x: 0 } : undefined}
+                      transition={shouldAnimate ? {
                         type: 'spring',
                         stiffness: 350,
                         damping: 30,

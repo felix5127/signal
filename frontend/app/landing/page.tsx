@@ -1,3 +1,5 @@
+// 强制动态渲染，禁用静态生成
+export const dynamic = 'force-dynamic'
 /**
  * [INPUT]: 依赖 components/landing 的所有 Section 组件，依赖 @/lib/motion 的动画预设
  * [OUTPUT]: 对外提供完整的 Landing Page 页面，整合所有营销区域

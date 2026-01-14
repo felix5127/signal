@@ -1,3 +1,5 @@
+// 强制动态渲染，禁用静态生成
+export const dynamic = 'force-dynamic'
 /**
  * [INPUT]: ResourceListPage基础组件, ResourceCard卡片组件
  * [OUTPUT]: 播客列表页面（展示所有播客类型资源，支持筛选和搜索）

@@ -21,15 +21,15 @@ export function FilterBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [source, setSource] = useState(searchParams.get("source") || "");
-  const [minScore, setMinScore] = useState(searchParams.get("min_score") || "");
-  const [category, setCategory] = useState(searchParams.get("category") || "");
-  const [sortBy, setSortBy] = useState(searchParams.get("sort_by") || "created_at");
+  const [search, setSearch] = useState(searchParams?.get("search") || "");
+  const [source, setSource] = useState(searchParams?.get("source") || "");
+  const [minScore, setMinScore] = useState(searchParams?.get("min_score") || "");
+  const [category, setCategory] = useState(searchParams?.get("category") || "");
+  const [sortBy, setSortBy] = useState(searchParams?.get("sort_by") || "created_at");
 
   // 更新 URL 参数
   const updateFilters = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || "");
 
     if (value) {
       params.set(key, value);

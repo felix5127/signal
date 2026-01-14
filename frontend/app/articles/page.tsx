@@ -1,3 +1,5 @@
+// 强制动态渲染，禁用静态生成
+export const dynamic = 'force-dynamic'
 /**
  * [INPUT]: ResourceListPage基础组件, ArticleListCard卡片组件
  * [OUTPUT]: 文章列表页面（展示所有文章类型资源，支持筛选和搜索）
