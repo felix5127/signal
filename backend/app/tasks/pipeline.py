@@ -5,7 +5,7 @@
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 
 流水线概览:
-- ArticlePipeline: RSS采集 → 全文提取 → 初评过滤 → 深度分析 → 翻译 → 存储
+- ArticlePipeline: RSS采集 → 去重(Deduper) → 全文提取 → 统一过滤(UnifiedFilter) → 深度分析 → 翻译 → 存储
 - FullPipeline: 多源采集 (HN/GitHub/arXiv/HF/PH) → 过滤 → 摘要生成 → 存储
 - TwitterPipeline: XGoing采集 → 去重 → 直接存储 (跳过LLM)
 - PodcastPipeline: RSS采集 → 去重 → 可选转写 → 存储
@@ -23,9 +23,12 @@ from app.config import config
 from app.database import SessionLocal
 from app.models.signal import Signal
 from app.models.resource import Resource
-from app.processors.filter import SignalFilter
+from app.processors.filter import SignalFilter  # 保留，FullPipeline 仍在使用
 from app.processors.generator import SummaryGenerator
-from app.processors.initial_filter import InitialFilter, InitialFilterResult
+from app.processors.initial_filter import InitialFilter, InitialFilterResult  # 保留，向后兼容
+from app.processors.unified_filter import UnifiedFilter, FilterResult
+from app.processors.deduper import Deduper
+from app.services.prompt_service import prompt_service
 from app.processors.analyzer import Analyzer, AnalysisResult
 from app.processors.translator import Translator
 from app.scrapers.hackernews import HackerNewsScraper
@@ -86,15 +89,16 @@ async def run_article_pipeline(
 
     流程：
     1. RSS 采集 - 使用 RSSScraper 获取 RSS 源的文章列表
-    2. 全文提取 - 使用 ContentExtractor 提取文章全文 (Playwright)
-    3. 初评过滤 - 使用 InitialFilter 进行规则+LLM初评，过滤低价值内容
-    4. 深度分析 - 使用 Analyzer 进行三步深度分析
-    5. 翻译 - 英文内容使用 Translator 翻译分析结果
-    6. 存储 - 保存到 Resource 表
+    2. URL 去重 - 使用 Deduper 进行三层去重（URL + 标题相似度 + 内容指纹）
+    3. 全文提取 - 使用 ContentExtractor 提取文章全文 (Playwright)
+    4. 统一过滤 - 使用 UnifiedFilter 进行规则+LLM过滤，>=3 分通过
+    5. 深度分析 - 使用 Analyzer 进行三步深度分析
+    6. 翻译 - 英文内容使用 Translator 翻译分析结果
+    7. 存储 - 保存到 Resource 表
 
     Args:
         opml_path: OPML 文件路径（可选，默认使用 BestBlogs OPML）
-        min_value_score: 初评最低通过分数（0-5），默认 3 分
+        min_value_score: [DEPRECATED] 已弃用，UnifiedFilter 使用 PASS_THRESHOLD=3
         use_full_analysis: 是否使用完整三步分析，False 则使用快速单步分析
 
     Returns:
@@ -123,30 +127,22 @@ async def run_article_pipeline(
     # ========== 2. URL 去重检查 ==========
     print("[ArticlePipeline] Step 2: Checking for duplicates...")
 
-    db: Session = SessionLocal()
-    try:
-        # 获取已存在的 URL hash
-        existing_hashes = set()
-        for signal in raw_signals:
-            url_hash = Resource.generate_url_hash(signal.url)
-            existing = db.query(Resource).filter(Resource.url_hash == url_hash).first()
-            if existing:
-                existing_hashes.add(signal.url)
+    deduper = Deduper()
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_hashes]
-        duplicate_count = len(raw_signals) - len(new_signals)
+    # 批量去重
+    items_for_dedup = [{"url": s.url, "title": s.title, "signal": s} for s in raw_signals]
+    deduped_items = deduper.dedupe_batch(items_for_dedup)
 
-        print(f"[ArticlePipeline] Found {duplicate_count} duplicates, {len(new_signals)} new articles\n")
+    new_signals = [item["signal"] for item in deduped_items]
+    duplicate_count = len(raw_signals) - len(new_signals)
 
-        if not new_signals:
-            print("[ArticlePipeline] All articles already exist, exiting.\n")
-            return stats
+    print(f"[ArticlePipeline] Found {duplicate_count} duplicates, {len(new_signals)} new articles\n")
 
-        raw_signals = new_signals
+    if not new_signals:
+        print("[ArticlePipeline] All articles already exist, exiting.\n")
+        return stats
 
-    finally:
-        db.close()
+    raw_signals = new_signals
 
     # ========== 3. 全文提取 ==========
     print("[ArticlePipeline] Step 3: Extracting full content...")
@@ -177,11 +173,11 @@ async def run_article_pipeline(
         print("[ArticlePipeline] No content extracted, exiting.\n")
         return stats
 
-    # ========== 4. 初评过滤 ==========
-    print("[ArticlePipeline] Step 4: Initial filtering (Rule + LLM)...")
+    # ========== 4. 统一过滤 ==========
+    print("[ArticlePipeline] Step 4: Unified filtering (Rule + LLM)...")
 
-    initial_filter = InitialFilter()
-    filtered_items: List[tuple[RawSignal, ExtractedContent, InitialFilterResult]] = []
+    unified_filter = UnifiedFilter(prompt_service=prompt_service)
+    filtered_items: List[tuple[RawSignal, ExtractedContent, FilterResult]] = []
 
     for i, (signal, content) in enumerate(extracted_contents):
         try:
@@ -190,21 +186,24 @@ async def run_article_pipeline(
             # 获取来源名称
             source_name = signal.metadata.get("source_name", "") if signal.metadata else ""
 
-            # 进行初评
-            filter_result = await initial_filter.filter(
+            # 检查是否白名单源（暂时都不是白名单，后续从 Source 表获取）
+            source_is_whitelist = False
+
+            filter_result = await unified_filter.filter(
                 title=signal.title,
                 content=content.markdown,
                 url=signal.url,
-                source=source_name,
+                source_name=source_name,
+                source_is_whitelist=source_is_whitelist,
             )
 
-            if filter_result.ignore or filter_result.value < min_value_score:
+            if not filter_result.passed:
                 stats.filter_rejected_count += 1
-                print(f"    -> Rejected: {filter_result.reason} (value={filter_result.value})")
+                print(f"    -> Rejected: {filter_result.reason} (score={filter_result.score})")
             else:
                 filtered_items.append((signal, content, filter_result))
                 stats.filter_passed_count += 1
-                print(f"    -> Passed: value={filter_result.value}, lang={filter_result.language}")
+                print(f"    -> Passed: score={filter_result.score}, lang={filter_result.language}")
 
         except Exception as e:
             stats.failed_count += 1
@@ -212,7 +211,7 @@ async def run_article_pipeline(
 
     print(
         f"\n[ArticlePipeline] {stats.filter_passed_count}/{len(extracted_contents)} passed filter "
-        f"(min_value={min_value_score})\n"
+        f"(threshold={unified_filter.PASS_THRESHOLD})\n"
     )
 
     if not filtered_items:
@@ -223,7 +222,7 @@ async def run_article_pipeline(
     print("[ArticlePipeline] Step 5: Deep analysis (3-step LLM)...")
 
     analyzer = Analyzer()
-    analyzed_items: List[tuple[RawSignal, ExtractedContent, InitialFilterResult, AnalysisResult]] = []
+    analyzed_items: List[tuple[RawSignal, ExtractedContent, FilterResult, AnalysisResult]] = []
 
     for i, (signal, content, filter_result) in enumerate(filtered_items):
         try:
@@ -268,7 +267,7 @@ async def run_article_pipeline(
     print("[ArticlePipeline] Step 6: Translating English content...")
 
     translator = Translator()
-    final_items: List[tuple[RawSignal, ExtractedContent, InitialFilterResult, AnalysisResult, Optional[dict]]] = []
+    final_items: List[tuple[RawSignal, ExtractedContent, FilterResult, AnalysisResult, Optional[dict]]] = []
 
     for i, (signal, content, filter_result, analysis) in enumerate(analyzed_items):
         translated_analysis = None
@@ -357,6 +356,11 @@ async def run_article_pipeline(
                     score=analysis.score,
                     is_featured=Resource.should_be_featured(analysis.score),
 
+                    # LLM 过滤结果（新增）
+                    llm_score=filter_result.score,
+                    llm_reason=filter_result.reason,
+                    llm_prompt_version=filter_result.prompt_version,
+
                     # 状态
                     language=filter_result.language,
                     status="published",
@@ -366,11 +370,12 @@ async def run_article_pipeline(
                     analyzed_at=datetime.now(),
 
                     # 元数据
-                    metadata={
-                        "initial_filter": {
-                            "value": filter_result.value,
-                            "summary": filter_result.summary,
+                    extra_metadata={
+                        "unified_filter": {
+                            "score": filter_result.score,
                             "reason": filter_result.reason,
+                            "is_whitelist": filter_result.is_whitelist,
+                            "prompt_version": filter_result.prompt_version,
                         },
                         "rss_metadata": signal.metadata,
                     },

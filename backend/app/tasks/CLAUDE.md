@@ -15,7 +15,7 @@ queue.py: 任务队列管理 (APScheduler 配置)
 ## 流水线概览
 | 流水线 | 数据源 | 采集频率 | 特点 |
 |--------|--------|---------|------|
-| ArticlePipeline | RSS/OPML | 按需 | 完整 6 步处理 |
+| ArticlePipeline | RSS/OPML | 按需 | 完整 8 步处理 (Deduper + UnifiedFilter) |
 | FullPipeline | HN/GitHub/arXiv/HF/PH | 每12小时 | 多源混合 |
 | TwitterPipeline | XGoing | 每小时 | 跳过 LLM 分析，直接存储 |
 | PodcastPipeline | Podcast RSS | 按需 | 支持转写，成本高 |
@@ -24,13 +24,13 @@ queue.py: 任务队列管理 (APScheduler 配置)
 ## ArticlePipeline 流程
 ```
 1. RSS 采集 → RawSignal[]
-2. URL 去重检查 → 过滤已存在
+2. 三层去重 (Deduper) → URL精确 + 标题Jaccard + 内容指纹
 3. 全文提取 (ContentExtractor) → ExtractedContent[]
-4. 初评过滤 (InitialFilter) → score >= 3 通过
+4. 统一过滤 (UnifiedFilter) → score >= 3 通过 + llm_score/llm_reason/llm_prompt_version
 5. 深度分析 (Analyzer) → 三步分析
 6. 翻译分流 (Translator) → 英文翻译，中文保留
 7. Favicon 获取 → source_icon_url
-8. 数据库持久化 → Resource 表
+8. 数据库持久化 → Resource 表 (含 llm_* 字段)
 ```
 
 ## 定时任务配置

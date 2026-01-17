@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 framer-motion MotionConfig, sonner Toaster, Navbar, Footer
+ * [INPUT]: 依赖 framer-motion MotionConfig, sonner Toaster, Navbar, Footer, usePathname
  * [OUTPUT]: 对外提供客户端布局包装器，包含所有客户端组件
  * [POS]: components/ 的布局组件，被 app/layout.tsx 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -9,6 +9,7 @@
 
 import { MotionConfig } from 'framer-motion'
 import { Toaster } from 'sonner'
+import { usePathname } from 'next/navigation'
 import Navbar from '@/components/navbar'
 import { Footer } from '@/components/Footer'
 
@@ -17,11 +18,14 @@ interface ClientLayoutProps {
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
+  const pathname = usePathname()
+  const isAdminRoute = pathname?.startsWith('/admin')
+
   return (
     <MotionConfig reducedMotion="user" transition={{ duration: 0.2 }}>
-      <Navbar />
+      {!isAdminRoute && <Navbar />}
       {children}
-      <Footer />
+      {!isAdminRoute && <Footer />}
       <Toaster position="top-right" richColors />
     </MotionConfig>
   )

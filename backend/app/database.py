@@ -76,6 +76,9 @@ def init_db():
     # 导入所有模型，确保它们被注册到 Base.metadata
     from app.models import signal  # noqa: F401
     from app.models import resource  # noqa: F401
+    from app.models import source  # noqa: F401
+    from app.models import prompt  # noqa: F401
+    from app.models import review  # noqa: F401
 
     # 创建所有表
     Base.metadata.create_all(bind=engine)

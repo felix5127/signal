@@ -14,6 +14,11 @@ stats.py: 统计与健康检查，GET /stats, /health
 sources.py: 热门来源 + 信号源管理，/sources/hot, /status, /funnel, /toggle, /runs, /feeds
 tasks.py: 任务状态查询 + Pipeline 触发，GET /tasks, POST /tasks/pipeline/trigger
 video.py: 视频相关端点
+admin/: Admin 管理端点子模块
+admin/sources.py: Admin 数据源管理 API，GET/POST/PUT/DELETE /sources, /sources/{id}/stats
+admin/stats.py: Admin 统计 API，/overview, /daily, /sources, /score-distribution
+admin/review.py: Admin 审核 API，/list, /action, /{resource_id}/action, /stats
+admin/prompts.py: Admin Prompt 管理 API
 
 ## 端点概览
 | 路由前缀 | 模块 | 核心功能 |
@@ -26,6 +31,10 @@ video.py: 视频相关端点
 | /api/stats | stats.py | 系统统计 |
 | /api/sources | sources.py | 热门来源 + 信号源状态/配置/采集记录 |
 | /api/tasks | tasks.py | 任务状态 + Pipeline 触发 |
+| /api/admin/sources | admin/sources.py | Admin 数据源 CRUD / 详情统计 |
+| /api/admin/stats | admin/stats.py | Admin 统计概览/每日/数据源/评分分布 |
+| /api/admin/review | admin/review.py | Admin 审核列表/批量审核/单个审核/审核统计 |
+| /api/admin/prompts | admin/prompts.py | Prompt 列表/活跃版本/创建/激活 |
 
 ## 缓存策略
 - 资源列表: 5min TTL

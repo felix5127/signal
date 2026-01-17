@@ -18,13 +18,19 @@ import {
   Menu,
   X,
   Home,
+  ClipboardCheck,
+  FileText,
+  BarChart3,
 } from 'lucide-react'
 import { useState } from 'react'
 
 // ========== 侧边栏导航配置 ==========
 
 const NAV_ITEMS = [
+  { id: 'dashboard', label: '数据统计', href: '/admin/dashboard', icon: BarChart3 },
   { id: 'sources', label: '信号源', href: '/admin/sources', icon: Database },
+  { id: 'review', label: '内容审核', href: '/admin/review', icon: ClipboardCheck },
+  { id: 'prompts', label: 'Prompt 管理', href: '/admin/prompts', icon: FileText },
   { id: 'scheduler', label: '调度器', href: '/admin/scheduler', icon: Calendar },
   { id: 'system', label: '系统状态', href: '/admin/system', icon: Activity },
   { id: 'logs', label: '采集日志', href: '/admin/logs', icon: FileWarning },

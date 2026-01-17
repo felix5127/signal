@@ -14,13 +14,31 @@ Admin 后台管理系统，密码保护的运维监控面板。
 **layout.tsx**: Admin 布局
 - 技术细节: 客户端组件，侧边栏导航
 - 功能: 统一布局，侧边栏导航，响应式设计
-- 导航项: 信号源/调度器/系统状态/采集日志
+- 导航项: 数据统计/信号源/内容审核/Prompt管理/调度器/系统状态/采集日志
+
+**dashboard/page.tsx**: 数据统计仪表板
+- 技术细节: 客户端组件，动态导入
+- 路由: /admin/dashboard
+- 功能: 资源总览、状态分布、近7日趋势、LLM评分分布
+- 组件: MetricCard, StatusCard, DailyChart, ScoreDistributionChart
 
 **sources/page.tsx**: 信号源控制台
 - 技术细节: 客户端组件，信号源状态管理
 - 路由: /admin/sources
 - 功能: 9种信号源状态、采集漏斗、手动触发、启用/禁用
 - 组件: SourceCard, FunnelChart, RunsTable
+
+**review/page.tsx**: 内容审核
+- 技术细节: 客户端组件，人工审核 LLM 筛选结果
+- 路由: /admin/review
+- 功能: 审核列表、通过/拒绝操作、筛选标签、审核统计
+- 组件: ReviewItemCard, FilterTabs, StatsCard, Pagination
+
+**prompts/page.tsx**: Prompt 版本管理
+- 技术细节: 客户端组件，Prompt 版本 CRUD
+- 路由: /admin/prompts
+- 功能: Prompt 列表、版本激活、创建新版本、效果统计（使用次数/平均评分/通过率）
+- 组件: PromptCard, CreatePromptDialog
 
 **scheduler/page.tsx**: 调度器状态
 - 技术细节: 客户端组件，APScheduler 状态展示
@@ -55,8 +73,14 @@ Admin 后台管理系统，密码保护的运维监控面板。
 
 | 前端路由 | 后端 API |
 |---------|---------|
+| /admin/dashboard | GET /api/admin/stats/overview, /daily, /score-distribution |
 | /admin/sources | GET /api/sources/status, /funnel, /runs |
 | /admin/sources | POST /api/sources/toggle/{type}, /trigger/{type} |
+| /admin/review | GET /api/admin/review/list, /stats |
+| /admin/review | POST /api/admin/review/{id}/action |
+| /admin/prompts | GET /api/admin/prompts |
+| /admin/prompts | POST /api/admin/prompts |
+| /admin/prompts | POST /api/admin/prompts/{id}/activate |
 | /admin/scheduler | GET /api/stats/scheduler |
 | /admin/system | GET /api/stats/system |
 | /admin/logs | GET /api/sources/runs |

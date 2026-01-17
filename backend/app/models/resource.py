@@ -1,7 +1,9 @@
-# Input: database.py (Base), hashlib
-# Output: Resource 表 ORM 模型，用于存储文章/播客/推文/视频资源
-# Position: 数据持久化层，v2.0 核心数据模型，替代 Signal 用于内容聚合
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+"""
+[INPUT]: 依赖 database.py (Base), hashlib, sqlalchemy (Column, ForeignKey, Index, JSON 等)
+[OUTPUT]: 对外提供 Resource ORM 模型，支持 article/podcast/tweet/video 四类内容
+[POS]: models/ 的核心数据模型，v2.0 架构，被 api/processors/tasks 消费
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+"""
 
 import hashlib
 from datetime import datetime
@@ -12,6 +14,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -42,9 +45,11 @@ class Resource(Base):
     - score >= 85 自动标记为精选
 
     处理状态：
-    - pending: 待处理
-    - analyzing: LLM分析中
-    - published: 已发布
+    - pending: 待处理（待 LLM 评分）
+    - approved: LLM 通过，待人工审核
+    - rejected: LLM 拒绝，待人工确认
+    - published: 已发布，对外可见
+    - archived: 已归档
     - failed: 处理失败
     """
 
@@ -91,6 +96,20 @@ class Resource(Base):
     language = Column(String(10))
     status = Column(String(20), default="pending", index=True)
 
+    # ========== LLM 过滤结果 ==========
+    llm_score = Column(Integer, nullable=True, index=True)  # 0-5 分
+    llm_reason = Column(Text, nullable=True)                # LLM 判断理由
+    llm_prompt_version = Column(Integer, nullable=True)     # 使用的 Prompt 版本
+
+    # ========== 人工审核 ==========
+    review_status = Column(String(20), nullable=True)       # approved/rejected (人工)
+    review_comment = Column(Text, nullable=True)            # 人工批注
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(String(100), nullable=True)
+
+    # ========== 来源关联 ==========
+    source_id = Column(Integer, ForeignKey("sources.id"), nullable=True, index=True)
+
     # ========== 播客/视频专用 ==========
     audio_url = Column(Text)
     duration = Column(Integer)
@@ -124,6 +143,8 @@ class Resource(Base):
         Index("idx_resources_language", "language"),
         Index("idx_resources_source_name", "source_name"),
         Index("idx_resources_published_at_desc", "published_at"),
+        Index("idx_resources_llm_score", "llm_score"),
+        Index("idx_resources_source_id", "source_id"),
     )
 
     @staticmethod
@@ -142,6 +163,7 @@ class Resource(Base):
             "id": self.id,
             "type": self.type,
             "source_name": self.source_name,
+            "source_id": self.source_id,
             "url": self.url,
             "title": self.title,
             "title_translated": self.title_translated,
@@ -157,6 +179,18 @@ class Resource(Base):
             "is_featured": self.is_featured,
             "language": self.language,
             "status": self.status,
+            # LLM 过滤结果
+            "llm_score": self.llm_score,
+            "llm_reason": self.llm_reason,
+            "llm_prompt_version": self.llm_prompt_version,
+            # 人工审核
+            "review_status": self.review_status,
+            "review_comment": self.review_comment,
+            "reviewed_at": (
+                self.reviewed_at.isoformat() if self.reviewed_at else None
+            ),
+            "reviewed_by": self.reviewed_by,
+            # 时间戳
             "published_at": (
                 self.published_at.isoformat() if self.published_at else None
             ),
