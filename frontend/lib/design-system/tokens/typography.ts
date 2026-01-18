@@ -188,4 +188,6 @@ const tailwindTypography = {
 
 // ============ 导出 ============
 export { fontFamilies, fontSizes, fontWeights, lineHeights, letterSpacings, textStyles, cssVariables }
-export default { ...tailwindTypography, textStyles }
+
+const typography = { ...tailwindTypography, textStyles }
+export default typography

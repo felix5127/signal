@@ -19,11 +19,12 @@ export async function POST(request: NextRequest) {
 
     if (password === adminPassword) {
       // 设置认证 Cookie（7天有效期）
+      // sameSite: 'strict' 提供 CSRF 防护，仅同站请求携带 Cookie
       const cookieStore = await cookies()
       cookieStore.set('admin_auth', 'authenticated', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict', // 严格模式防止 CSRF 攻击
         maxAge: 60 * 60 * 24 * 7, // 7 days
         path: '/',
       })

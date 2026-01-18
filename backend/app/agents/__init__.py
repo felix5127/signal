@@ -12,6 +12,9 @@ from app.agents.embeddings.bailian_embedding import BailianEmbeddingService, emb
 from app.agents.multimodal.tingwu_client import TingwuClient, tingwu_client
 from app.agents.multimodal.source_processor import SourceProcessor, source_processor
 from app.agents.research.agent import ResearchAgent
+from app.agents.podcast.synthesizer import PodcastSynthesizer, podcast_synthesizer
+from app.agents.podcast.cosyvoice_client import CosyVoiceClient, cosyvoice_client
+from app.agents.mindmap.agent import MindmapAgent, mindmap_agent
 
 __all__ = [
     # LLM 客户端
@@ -30,4 +33,12 @@ __all__ = [
     "source_processor",
     # Agent
     "ResearchAgent",
+    # 播客生成
+    "PodcastSynthesizer",
+    "podcast_synthesizer",
+    "CosyVoiceClient",
+    "cosyvoice_client",
+    # 概念图
+    "MindmapAgent",
+    "mindmap_agent",
 ]

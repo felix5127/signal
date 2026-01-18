@@ -1,7 +1,7 @@
 """
-[INPUT]: 依赖 api/* 的所有路由 (含 admin/*, research), middlewares 的错误处理, startup 的事件注册
+[INPUT]: 依赖 api/* 的所有路由 (含 admin/*, research, podcast, mindmap, search, export, auth), middlewares 的错误处理, startup 的事件注册
 [OUTPUT]: 对外提供 app (FastAPI 应用实例)
-[POS]: FastAPI 应用入口，负责创建应用、注册路由 (13 路由模块)、配置中间件
+[POS]: FastAPI 应用入口，负责创建应用、注册路由 (20 路由模块)、配置中间件
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
@@ -23,6 +23,11 @@ from app.api.stats import router as stats_router
 from app.api.newsletters import router as newsletters_router
 from app.api.tasks import router as tasks_router
 from app.api.research import router as research_router
+from app.api.podcast import router as podcast_router
+from app.api.mindmap import router as mindmap_router
+from app.api.search import router as search_router
+from app.api.export import router as export_router
+from app.api.auth import router as auth_router
 
 # 导入 Admin API 路由
 from app.api.admin.review import router as admin_review_router
@@ -65,6 +70,11 @@ app.include_router(stats_router, prefix="/api", tags=["stats"])
 app.include_router(newsletters_router, prefix="/api", tags=["newsletters"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
 app.include_router(research_router, prefix="/api", tags=["research"])
+app.include_router(podcast_router, prefix="/api", tags=["podcast"])
+app.include_router(mindmap_router, prefix="/api", tags=["mindmap"])
+app.include_router(search_router, prefix="/api", tags=["search"])
+app.include_router(export_router, prefix="/api", tags=["export"])
+app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 # Admin API 路由
 app.include_router(admin_review_router, prefix="/api/admin/review", tags=["admin-review"])

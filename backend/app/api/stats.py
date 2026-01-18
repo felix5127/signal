@@ -100,7 +100,7 @@ async def health_check():
 # ========== 调度器状态 API ==========
 
 
-@router.get("/scheduler")
+@router.get("/stats/scheduler")
 async def get_scheduler_status(
     user: str = Depends(get_current_user_optional),
 ):
@@ -184,7 +184,7 @@ def _format_time_human(dt: datetime) -> str:
 # ========== 系统健康 API ==========
 
 
-@router.get("/system")
+@router.get("/stats/system")
 async def get_system_health(
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user_optional),

@@ -181,6 +181,7 @@ export function DailyNewsTab() {
 
   // 无限滚动观察器
   useEffect(() => {
+    const currentTarget = observerTarget.current
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting && hasMore && !loading) {
@@ -190,16 +191,17 @@ export function DailyNewsTab() {
       { threshold: 1.0 }
     )
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current)
+    if (currentTarget) {
+      observer.observe(currentTarget)
     }
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current)
+      if (currentTarget) {
+        observer.unobserve(currentTarget)
       }
       observer.disconnect()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMore, loading])
 
   const dateGroups = groupByDate(signals)

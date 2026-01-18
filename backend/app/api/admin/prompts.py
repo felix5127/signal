@@ -49,7 +49,7 @@ class PromptResponse(BaseModel):
 
 # ========== API 端点 ==========
 
-@router.get("", response_model=List[PromptResponse])
+@router.get("")
 async def get_prompts(
     type: Optional[str] = Query(None, description="类型筛选: filter/analyzer/translator"),
     db: Session = Depends(get_db),
@@ -67,7 +67,7 @@ async def get_prompts(
     else:
         prompts = service.get_all_prompts()
 
-    return [
+    data = [
         {
             "id": p.id,
             "name": p.name,
@@ -84,6 +84,8 @@ async def get_prompts(
         }
         for p in prompts
     ]
+
+    return {"success": True, "data": data}
 
 
 @router.get("/active/{prompt_type}", response_model=Optional[PromptResponse])

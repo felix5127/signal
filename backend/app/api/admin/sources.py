@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.source_manage_service import SourceManageService
 from app.services.stats_service import StatsService
+from app.models.resource import Resource
 
 
 router = APIRouter()
@@ -257,8 +258,28 @@ async def get_source_detail_stats(
     # 获取评分分布
     score_distribution = stats_service.get_score_distribution(source_id=source_id)
 
-    # 获取最近内容（简化版，实际可从 Resource 查询）
-    recent_items = []  # TODO: 从 Resource 查询最近 10 条
+    # 获取最近 10 条内容
+    recent_resources = (
+        db.query(Resource)
+        .filter(Resource.source_name == source.name)
+        .order_by(Resource.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    recent_items = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "url": r.url,
+            "score": r.score,
+            "llm_score": r.llm_score,
+            "status": r.status,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "published_at": r.published_at.isoformat() if r.published_at else None,
+        }
+        for r in recent_resources
+    ]
 
     return {
         "source": {

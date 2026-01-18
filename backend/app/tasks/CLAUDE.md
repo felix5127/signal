@@ -6,7 +6,10 @@
 
 ## 成员清单
 pipeline.py: 核心流水线，包含 ArticlePipeline/FullPipeline/TwitterPipeline/PodcastPipeline/VideoPipeline
-base_pipeline.py: 流水线公共基类，提供 PipelineStats/BasePipeline (未来重构用)
+base_pipeline.py: 流水线公共基类 ✅
+  - PipelineStats: 统一统计类 (采集/去重/过滤/分析/翻译/转写/保存/Token)
+  - BasePipeline: 基础流水线类 (去重检查/数据库会话/进度打印/运行记录)
+  - StepBasedPipeline: 结构化流水线 (scrape -> dedupe -> filter -> process -> save)
 pipeline_v2.py: v2 流水线入口 (预留)
 newsletter.py: 周刊自动生成任务 (每周五 17:00)
 digest.py: 日周精选汇总生成任务

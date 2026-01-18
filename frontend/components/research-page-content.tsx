@@ -10,7 +10,7 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2, XCircle, Clock, Loader2, Trash2, Eye, Pause, Play, Search } from 'lucide-react'
 import Link from 'next/link'
@@ -58,7 +58,7 @@ export default function ResearchPage() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const apiUrl = getApiUrl()
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/tasks?task_type=deep_research&limit=20`)
       if (res.ok) {
@@ -70,7 +70,7 @@ export default function ResearchPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiUrl])
 
   // 删除任务
   const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
@@ -127,7 +127,7 @@ export default function ResearchPage() {
     // 5秒轮询刷新
     const interval = setInterval(fetchTasks, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchTasks])
 
   return (
     <div className="min-h-screen bg-gray-50">

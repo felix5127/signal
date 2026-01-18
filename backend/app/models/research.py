@@ -129,7 +129,7 @@ class ResearchSource(Base):
     # ========== 内容 ==========
     full_text = Column(Text)
     summary = Column(Text)
-    metadata = Column(JSONB, default=dict)
+    extra_metadata = Column(JSONB, default=dict)  # 避免与 SQLAlchemy 保留字冲突
 
     # ========== 处理状态 ==========
     processing_status = Column(String(50), default="pending")
@@ -145,10 +145,10 @@ class ResearchSource(Base):
 
     # ========== 索引 ==========
     __table_args__ = (
-        Index("idx_sources_project", "project_id"),
-        Index("idx_sources_resource", "resource_id"),
-        Index("idx_sources_status", "processing_status"),
-        Index("idx_sources_type", "source_type"),
+        Index("idx_rsrc_project", "project_id"),
+        Index("idx_rsrc_resource", "resource_id"),
+        Index("idx_rsrc_status", "processing_status"),
+        Index("idx_rsrc_type", "source_type"),
     )
 
     def __repr__(self):
@@ -245,7 +245,7 @@ class ResearchOutput(Base):
     duration = Column(Integer)  # 秒 (音频/视频)
 
     # ========== 元数据 ==========
-    metadata = Column(JSONB, default=dict)
+    extra_metadata = Column(JSONB, default=dict)  # 避免与 SQLAlchemy 保留字冲突
     source_refs = Column(ARRAY(UUID(as_uuid=True)), default=list)  # 引用的 sources
 
     # ========== 统计 ==========

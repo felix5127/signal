@@ -80,7 +80,7 @@ import { tokens } from './tokens'
 import { Button, Input, Card, Badge, Tag } from './components'
 import { useTheme, useMediaQuery } from './hooks'
 
-export default {
+const designSystem = {
   tokens,
   components: {
     Button,
@@ -94,3 +94,5 @@ export default {
     useMediaQuery,
   },
 }
+
+export default designSystem

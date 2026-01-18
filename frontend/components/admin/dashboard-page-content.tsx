@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   RefreshCw,
   AlertTriangle,
@@ -268,30 +268,68 @@ export default function DashboardPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true)
       setError(null)
 
-      const [overviewRes, dailyRes, scoresRes] = await Promise.all([
+      // 使用 Promise.allSettled 确保单个请求失败不影响其他请求
+      const results = await Promise.allSettled([
         fetch('/api/admin/stats/overview', { cache: 'no-store' }),
         fetch('/api/admin/stats/daily?days=7', { cache: 'no-store' }),
         fetch('/api/admin/stats/score-distribution', { cache: 'no-store' }),
       ])
 
-      const [overviewData, dailyData, scoresData] = await Promise.all([
-        overviewRes.json(),
-        dailyRes.json(),
-        scoresRes.json(),
-      ])
+      const errors: string[] = []
 
-      if (!overviewRes.ok || !dailyRes.ok || !scoresRes.ok) {
-        throw new Error('获取统计数据失败')
+      // 处理 overview 响应
+      if (results[0].status === 'fulfilled') {
+        const res = results[0].value
+        if (res.ok) {
+          const data = await res.json()
+          setOverview(data)
+        } else {
+          errors.push('总览数据加载失败')
+        }
+      } else {
+        errors.push('总览数据请求失败')
+        console.error('Overview API failed:', results[0].reason)
       }
 
-      setOverview(overviewData)
-      setDaily(dailyData)
-      setScores(scoresData)
+      // 处理 daily 响应
+      if (results[1].status === 'fulfilled') {
+        const res = results[1].value
+        if (res.ok) {
+          const data = await res.json()
+          setDaily(data)
+        } else {
+          errors.push('日趋势数据加载失败')
+        }
+      } else {
+        errors.push('日趋势数据请求失败')
+        console.error('Daily API failed:', results[1].reason)
+      }
+
+      // 处理 scores 响应
+      if (results[2].status === 'fulfilled') {
+        const res = results[2].value
+        if (res.ok) {
+          const data = await res.json()
+          setScores(data)
+        } else {
+          errors.push('评分分布数据加载失败')
+        }
+      } else {
+        errors.push('评分分布数据请求失败')
+        console.error('Scores API failed:', results[2].reason)
+      }
+
+      // 只有全部失败时才显示错误
+      if (errors.length === 3) {
+        setError('无法连接到后端 API')
+      } else if (errors.length > 0) {
+        console.warn('部分数据加载失败:', errors)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '无法连接到后端 API')
       console.error('API Error:', e)
@@ -299,13 +337,13 @@ export default function DashboardPageContent() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   // ========== 加载状态 ==========
 

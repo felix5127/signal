@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS research_sources (
     -- 内容
     full_text TEXT,
     summary TEXT,
-    metadata JSONB DEFAULT '{}',
+    extra_metadata JSONB DEFAULT '{}',
 
     -- 处理状态
     processing_status VARCHAR(50) DEFAULT 'pending',  -- pending, processing, completed, failed
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS research_outputs (
     duration INTEGER,  -- 秒（音频/视频）
 
     -- 元数据
-    metadata JSONB DEFAULT '{}',
+    extra_metadata JSONB DEFAULT '{}',
     source_refs UUID[],  -- 引用的 research_sources IDs
 
     -- 统计

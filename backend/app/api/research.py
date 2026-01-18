@@ -23,10 +23,12 @@ from app.models.research import (
     ResearchOutput,
     ChatSession,
     AgentTask,
+    SourceEmbedding,
 )
 from app.agents.research.agent import ResearchAgent, ChatAgent
 from app.agents.embeddings.bailian_embedding import embedding_service, TextSplitter
 from app.services.storage_service import storage_service
+from app.agents.multimodal.source_processor import source_processor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/research", tags=["研究助手"])
@@ -226,8 +228,50 @@ async def add_source(
 
     # 异步处理 (如果是文本，直接生成嵌入)
     if data.content and data.source_type == "text":
-        # TODO: 触发异步任务生成嵌入
-        pass
+        # 使用 BackgroundTasks 异步生成嵌入
+        from fastapi import BackgroundTasks
+        import asyncio
+
+        async def generate_text_embeddings(source_id: UUID, text: str, db_session: Session):
+            """异步生成文本嵌入"""
+            try:
+                if not embedding_service.is_available:
+                    logger.warning("Embedding service not available")
+                    return
+
+                # 分块
+                splitter = TextSplitter()
+                chunks = splitter.split_text(text, chunk_size=1000, overlap=100)
+
+                if not chunks:
+                    return
+
+                # 批量生成嵌入
+                embeddings = await embedding_service.embed_texts(chunks)
+
+                # 存储到数据库
+                for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                    source_embedding = SourceEmbedding(
+                        source_id=source_id,
+                        chunk_index=i,
+                        chunk_text=chunk,
+                        embedding=embedding,
+                    )
+                    db_session.add(source_embedding)
+
+                # 更新源状态
+                src = db_session.query(ResearchSource).filter(ResearchSource.id == source_id).first()
+                if src:
+                    src.processing_status = "completed"
+
+                db_session.commit()
+                logger.info(f"Generated {len(embeddings)} embeddings for source {source_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to generate embeddings for source {source_id}: {e}")
+
+        # 创建新的事件循环任务
+        asyncio.create_task(generate_text_embeddings(source.id, data.content, db))
 
     logger.info(f"Added source to project {project_id}: {source.id}")
 

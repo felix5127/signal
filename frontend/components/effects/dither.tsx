@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, forwardRef, Suspense } from 'react'
+import { useRef, useEffect, forwardRef, Suspense, useMemo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { EffectComposer } from '@react-three/postprocessing'
 import { Effect } from 'postprocessing'
@@ -166,12 +166,12 @@ const RetroEffect = forwardRef<any, { colorNum?: number; pixelSize?: number }>(
   (props, ref) => {
     const { colorNum, pixelSize } = props
 
-    const effect = new RetroEffectImpl()
+    const effect = useMemo(() => new RetroEffectImpl(), [])
 
     useEffect(() => {
       if (colorNum !== undefined) effect.colorNum = colorNum
       if (pixelSize !== undefined) effect.pixelSize = pixelSize
-    }, [colorNum, pixelSize])
+    }, [colorNum, pixelSize, effect])
 
     return <primitive ref={ref} object={effect} />
   },

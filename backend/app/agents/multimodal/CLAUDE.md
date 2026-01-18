@@ -23,9 +23,9 @@ source_processor.py: 源材料处理器，统一处理 URL/音频/视频/PDF/文
 ### source_processor.py
 - **SourceProcessor**: 源材料统一处理器
   - process_source(): 处理任意类型源材料
-  - _process_url(): URL → 抓取内容
+  - _process_url(): URL → Jina Reader 抓取
   - _process_media(): 音频/视频 → 听悟转写
-  - _process_pdf(): PDF → 文本提取 (TODO)
+  - _process_pdf(): PDF → PyPDF2 文本提取 ✅
   - _process_text(): 纯文本 → 直接使用
   - _generate_embeddings(): 生成向量嵌入
 

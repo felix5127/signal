@@ -79,6 +79,7 @@ def init_db():
     from app.models import source  # noqa: F401
     from app.models import prompt  # noqa: F401
     from app.models import review  # noqa: F401
+    from app.models import research  # noqa: F401
 
-    # 创建所有表
-    Base.metadata.create_all(bind=engine)
+    # 创建所有表 (checkfirst=True 避免重复创建错误)
+    Base.metadata.create_all(bind=engine, checkfirst=True)

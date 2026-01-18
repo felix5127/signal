@@ -11,7 +11,13 @@
 - PodcastPipeline: RSS采集 → 去重 → 可选转写 → 存储
 - VideoPipeline: RSS采集 → 去重 → 可选转写 → 存储
 
-TODO: 未来版本考虑使用 base_pipeline.py 的 BasePipeline 基类重构，提取公共逻辑
+重构说明:
+base_pipeline.py 提供了 BasePipeline 和 StepBasedPipeline 基类:
+- BasePipeline: 提供去重检查、数据库会话、进度打印、运行记录等公共功能
+- StepBasedPipeline: 提供结构化的 scrape -> dedupe -> filter -> process -> save 流程
+
+新流水线建议继承 StepBasedPipeline，实现 scrape() 和 save() 抽象方法即可。
+现有流水线保持向后兼容，无需强制迁移。
 """
 
 from datetime import datetime

@@ -10,7 +10,8 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { formatTime } from '@/lib/admin-utils'
 import {
   RefreshCw,
   AlertTriangle,
@@ -62,6 +63,21 @@ interface FunnelStats {
   llm_filtered: number
   saved: number
   hours: number
+}
+
+interface SourceRunFunnel {
+  fetched: number
+  saved: number
+}
+
+interface SourceRun {
+  id: number
+  source_type: string
+  status: 'success' | 'partial' | 'error'
+  started_at: string
+  ended_at: string | null
+  funnel: SourceRunFunnel | null
+  error_message: string | null
 }
 
 // ========== 图标映射 ==========
@@ -214,18 +230,7 @@ function FunnelChart({ funnel }: { funnel: FunnelStats }) {
   )
 }
 
-function RunsTable({ runs }: { runs: any[] }) {
-  const formatTime = (isoString: string) => {
-    if (!isoString) return '-'
-    const date = new Date(isoString)
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
+function RunsTable({ runs }: { runs: SourceRun[] }) {
   return (
     <div className="bg-[var(--ds-bg)] rounded-xl border border-[var(--ds-border)] p-6">
       <h3 className="text-lg font-semibold text-[var(--ds-fg)] mb-4">
@@ -244,8 +249,8 @@ function RunsTable({ runs }: { runs: any[] }) {
             </tr>
           </thead>
           <tbody>
-            {runs.map((run, index) => (
-              <tr key={run.id || index} className="border-b border-[var(--ds-border)] last:border-0">
+            {runs.map((run) => (
+              <tr key={run.id} className="border-b border-[var(--ds-border)] last:border-0">
                 <td className="py-2 text-[var(--ds-fg)]">{formatTime(run.started_at)}</td>
                 <td className="py-2">
                   <span className="px-2 py-1 rounded bg-[var(--ds-surface)] text-[var(--ds-fg)]">
@@ -392,38 +397,59 @@ function FilteringRulesPanel() {
 export default function AdminSourcesPage() {
   const [sources, setSources] = useState<SourceStatus[]>([])
   const [funnel, setFunnel] = useState<FunnelStats | null>(null)
-  const [runs, setRuns] = useState<any[]>([])
+  const [runs, setRuns] = useState<SourceRun[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [triggeringSource, setTriggeringSource] = useState<string | null>(null)
 
-  const fetchData = async () => {
+  // 使用 useRef 追踪正在进行的触发操作，避免 fetchData 覆盖状态
+  const triggeringRef = useRef<string | null>(null)
+
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true)
 
-      // 并行获取所有数据
-      const [statusRes, funnelRes, runsRes] = await Promise.all([
+      // 使用 Promise.allSettled 确保单个请求失败不影响其他请求
+      const results = await Promise.allSettled([
         fetch('/api/sources/status', { cache: 'no-store' }),
         fetch('/api/sources/funnel?hours=24', { cache: 'no-store' }),
         fetch('/api/sources/runs?page=1&page_size=20', { cache: 'no-store' }),
       ])
 
-      const statusData = await statusRes.json()
-      const funnelData = await funnelRes.json()
-      const runsData = await runsRes.json()
-
-      if (statusData.success) {
-        setSources(statusData.data.sources)
-      }
-      if (funnelData.success) {
-        setFunnel(funnelData.data)
-      }
-      if (runsData.success) {
-        setRuns(runsData.data.items || [])
+      // 处理 status 响应
+      if (results[0].status === 'fulfilled' && results[0].value.ok) {
+        const statusData = await results[0].value.json()
+        if (statusData.success) {
+          setSources(statusData.data.sources)
+        }
       }
 
-      setError(null)
+      // 处理 funnel 响应
+      if (results[1].status === 'fulfilled' && results[1].value.ok) {
+        const funnelData = await results[1].value.json()
+        if (funnelData.success) {
+          setFunnel(funnelData.data)
+        }
+      }
+
+      // 处理 runs 响应
+      if (results[2].status === 'fulfilled' && results[2].value.ok) {
+        const runsData = await results[2].value.json()
+        if (runsData.success) {
+          setRuns(runsData.data.items || [])
+        }
+      }
+
+      // 检查是否全部失败
+      const allFailed = results.every(
+        (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok)
+      )
+      if (allFailed) {
+        setError('无法连接到后端 API')
+      } else {
+        setError(null)
+      }
     } catch (e) {
       setError('无法连接到后端 API')
       console.error('API Error:', e)
@@ -431,17 +457,21 @@ export default function AdminSourcesPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [fetchData])
 
   const handleToggle = async (sourceType: string) => {
     try {
       const res = await fetch(`/api/sources/toggle/${sourceType}`, {
         method: 'POST',
       })
+      if (!res.ok) {
+        console.error('Toggle failed:', res.status)
+        return
+      }
       const data = await res.json()
       if (data.success) {
         fetchData()
@@ -453,19 +483,37 @@ export default function AdminSourcesPage() {
 
   const handleTrigger = async (sourceType: string) => {
     try {
+      // 同步更新 ref 和 state
+      triggeringRef.current = sourceType
       setTriggeringSource(sourceType)
+
       const res = await fetch(`/api/sources/trigger/${sourceType}`, {
         method: 'POST',
       })
+
+      if (!res.ok) {
+        console.error('Trigger failed:', res.status)
+        return
+      }
+
       const data = await res.json()
       if (data.success) {
         // 延迟刷新，给后端一点时间处理
-        setTimeout(fetchData, 2000)
+        // 只在当前触发操作仍在进行时刷新
+        setTimeout(() => {
+          if (triggeringRef.current === sourceType) {
+            fetchData()
+          }
+        }, 2000)
       }
     } catch (e) {
       console.error('Trigger error:', e)
     } finally {
-      setTriggeringSource(null)
+      // 只有当当前操作是这个 sourceType 时才清除
+      if (triggeringRef.current === sourceType) {
+        triggeringRef.current = null
+        setTriggeringSource(null)
+      }
     }
   }
 

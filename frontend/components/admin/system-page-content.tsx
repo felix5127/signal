@@ -10,7 +10,8 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { formatNumber } from '@/lib/admin-utils'
 import {
   RefreshCw,
   AlertTriangle,
@@ -105,7 +106,7 @@ function StatCard({
   title,
   children,
 }: {
-  icon: any
+  icon: React.ComponentType<{ className?: string }>
   title: string
   children: React.ReactNode
 }) {
@@ -150,10 +151,16 @@ export default function SystemPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true)
       const res = await fetch('/api/stats/system', { cache: 'no-store' })
+
+      if (!res.ok) {
+        setError(`HTTP ${res.status}`)
+        return
+      }
+
       const data = await res.json()
 
       if (data.success) {
@@ -169,14 +176,14 @@ export default function SystemPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchData()
     // 每 60 秒自动刷新
     const interval = setInterval(fetchData, 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   if (loading) {
     return (
@@ -266,21 +273,29 @@ export default function SystemPage() {
             <p className="text-sm text-[var(--ds-muted)] mb-4">
               {system?.redis.message}
             </p>
-            <div className="space-y-0">
-              <MetricRow
-                label="内存使用"
-                value={system?.redis.used_memory_mb}
-                unit="MB"
-              />
-              <MetricRow
-                label="键数量"
-                value={system?.redis.keys_count}
-              />
-              <MetricRow
-                label="连接客户端"
-                value={system?.redis.connected_clients}
-              />
-            </div>
+            {/* 禁用状态时显示简化信息 */}
+            {system?.redis.status === 'disabled' ? (
+              <div className="py-4 text-center text-[var(--ds-muted)]">
+                <p className="text-sm">Redis 缓存未配置</p>
+                <p className="text-xs mt-1">系统将使用内存缓存作为替代</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                <MetricRow
+                  label="内存使用"
+                  value={system?.redis.used_memory_mb}
+                  unit="MB"
+                />
+                <MetricRow
+                  label="键数量"
+                  value={system?.redis.keys_count}
+                />
+                <MetricRow
+                  label="连接客户端"
+                  value={system?.redis.connected_clients}
+                />
+              </div>
+            )}
           </StatCard>
 
           {/* 存储统计 */}
@@ -288,15 +303,15 @@ export default function SystemPage() {
             <div className="space-y-0">
               <MetricRow
                 label="资源总数"
-                value={system?.storage.resources_total?.toLocaleString()}
+                value={formatNumber(system?.storage.resources_total)}
               />
               <MetricRow
                 label="采集记录"
-                value={system?.storage.source_runs_total?.toLocaleString()}
+                value={formatNumber(system?.storage.source_runs_total)}
               />
               <MetricRow
                 label="7天新增"
-                value={system?.storage.new_resources_7d?.toLocaleString()}
+                value={formatNumber(system?.storage.new_resources_7d)}
               />
             </div>
           </StatCard>

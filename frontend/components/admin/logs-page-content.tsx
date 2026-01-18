@@ -10,7 +10,8 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { formatTime } from '@/lib/admin-utils'
 import {
   RefreshCw,
   AlertTriangle,
@@ -75,18 +76,6 @@ function LogRow({
   isExpanded: boolean
   onToggle: () => void
 }) {
-  const formatTime = (isoString: string) => {
-    if (!isoString) return '-'
-    const date = new Date(isoString)
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-  }
-
   const getStatusIcon = () => {
     switch (run.status) {
       case 'success':
@@ -130,7 +119,7 @@ function LogRow({
       >
         <td className="py-3 px-4">
           <span className="font-mono text-sm text-[var(--ds-fg)]">
-            {formatTime(run.started_at)}
+            {formatTime(run.started_at, { showSeconds: true })}
           </span>
         </td>
         <td className="py-3 px-4">
@@ -202,11 +191,11 @@ function LogRow({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-[var(--ds-muted)]">开始时间</span>
-                    <span className="font-mono">{formatTime(run.started_at)}</span>
+                    <span className="font-mono">{formatTime(run.started_at, { showSeconds: true })}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--ds-muted)]">结束时间</span>
-                    <span className="font-mono">{run.ended_at ? formatTime(run.ended_at) : '-'}</span>
+                    <span className="font-mono">{run.ended_at ? formatTime(run.ended_at, { showSeconds: true }) : '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--ds-muted)]">耗时</span>
@@ -239,7 +228,7 @@ export default function LogsPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
 
-  const fetchData = async (reset = false) => {
+  const fetchData = useCallback(async (reset = false) => {
     try {
       setRefreshing(true)
       const currentPage = reset ? 1 : page
@@ -247,6 +236,12 @@ export default function LogsPage() {
         `/api/sources/runs?page=${currentPage}&page_size=50`,
         { cache: 'no-store' }
       )
+
+      if (!res.ok) {
+        setError(`HTTP ${res.status}`)
+        return
+      }
+
       const data = await res.json()
 
       if (data.success) {
@@ -269,10 +264,11 @@ export default function LogsPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
     fetchData(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const filteredRuns =

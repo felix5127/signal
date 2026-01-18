@@ -14,12 +14,14 @@ stats.py: 统计与健康检查，GET /stats, /health
 sources.py: 热门来源 + 信号源管理，/sources/hot, /status, /funnel, /toggle, /runs, /feeds
 tasks.py: 任务状态查询 + Pipeline 触发，GET /tasks, POST /tasks/pipeline/trigger
 video.py: 视频相关端点
+auth.py: 用户认证 API，注册/登录/刷新/登出/OAuth (GitHub/Google)
 admin/: Admin 管理端点子模块
 admin/sources.py: Admin 数据源管理 API，GET/POST/PUT/DELETE /sources, /sources/{id}/stats
 admin/stats.py: Admin 统计 API，/overview, /daily, /sources, /score-distribution
 admin/review.py: Admin 审核 API，/list, /action, /{resource_id}/action, /stats
 admin/prompts.py: Admin Prompt 管理 API
 research.py: 研究助手 API (项目/源材料/研究任务/对话/输出) - SSE 流式支持
+podcast.py: 播客生成 API (文本转播客/项目转播客/音色列表) - SSE 流式支持
 
 ## 端点概览
 | 路由前缀 | 模块 | 核心功能 |
@@ -37,6 +39,8 @@ research.py: 研究助手 API (项目/源材料/研究任务/对话/输出) - SS
 | /api/admin/review | admin/review.py | Admin 审核列表/批量审核/单个审核/审核统计 |
 | /api/admin/prompts | admin/prompts.py | Prompt 列表/活跃版本/创建/激活 |
 | /api/research | research.py | 研究助手 - 项目/源/研究/对话/输出 |
+| /api/podcast | podcast.py | 播客生成 - 文本转播客/项目转播客/音色列表 |
+| /api/auth | auth.py | 用户认证 - 注册/登录/刷新/登出/OAuth |
 
 ## 缓存策略
 - 资源列表: 5min TTL

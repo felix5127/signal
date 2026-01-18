@@ -10,6 +10,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
+import { formatTime } from '@/lib/admin-utils'
 import {
   RefreshCw,
   AlertTriangle,
@@ -65,17 +66,6 @@ const STATUS_CONFIG: Record<FilterStatus, { label: string; color: string; bgColo
 }
 
 // ========== 工具函数 ==========
-
-function formatTime(isoString: string): string {
-  if (!isoString) return '-'
-  const date = new Date(isoString)
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function getScoreColor(score: number): string {
   if (score >= 80) return 'text-green-600 dark:text-green-400'

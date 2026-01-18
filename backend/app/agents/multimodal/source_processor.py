@@ -285,19 +285,103 @@ class SourceProcessor:
         """
         处理 PDF 类型源材料
 
+        使用 PyPDF2 提取 PDF 文本内容。
+
         Args:
             source: 源材料对象
 
         Returns:
             处理结果
         """
-        # TODO: 实现 PDF 文本提取
-        # 可以使用 PyPDF2 或 pdfplumber
-        return ProcessingResult(
-            source_id=source.id,
-            status=ProcessingStatus.FAILED,
-            error="PDF processing not implemented yet",
-        )
+        if not source.file_path:
+            return ProcessingResult(
+                source_id=source.id,
+                status=ProcessingStatus.FAILED,
+                error="No file path provided",
+            )
+
+        try:
+            # 从 R2 下载 PDF 文件
+            file_bytes = await storage_service.download_file(source.file_path)
+            if not file_bytes:
+                return ProcessingResult(
+                    source_id=source.id,
+                    status=ProcessingStatus.FAILED,
+                    error="Failed to download PDF file",
+                )
+
+            # 使用 PyPDF2 提取文本
+            import io
+            try:
+                from PyPDF2 import PdfReader
+            except ImportError:
+                logger.error("PyPDF2 not installed, falling back to pdfplumber")
+                try:
+                    import pdfplumber
+                    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                        text_parts = []
+                        for page in pdf.pages:
+                            page_text = page.extract_text()
+                            if page_text:
+                                text_parts.append(page_text)
+                        content = "\n\n".join(text_parts)
+                except ImportError:
+                    return ProcessingResult(
+                        source_id=source.id,
+                        status=ProcessingStatus.FAILED,
+                        error="Neither PyPDF2 nor pdfplumber is installed",
+                    )
+            else:
+                # PyPDF2 方式提取
+                pdf_file = io.BytesIO(file_bytes)
+                reader = PdfReader(pdf_file)
+
+                text_parts = []
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+
+                content = "\n\n".join(text_parts)
+
+            if not content or len(content.strip()) < 10:
+                return ProcessingResult(
+                    source_id=source.id,
+                    status=ProcessingStatus.FAILED,
+                    error="No text content extracted from PDF",
+                )
+
+            # 清理文本
+            content = self._clean_text(content)
+
+            # 提取标题 (如果没有)
+            if not source.title:
+                lines = content.split("\n")
+                for line in lines[:10]:
+                    line = line.strip()
+                    if line and len(line) > 5 and len(line) < 200:
+                        source.title = line
+                        break
+
+            # 生成摘要
+            summary = content[:500] + "..." if len(content) > 500 else content
+
+            logger.info(f"Extracted {len(content)} chars from PDF: {source.file_path}")
+
+            return ProcessingResult(
+                source_id=source.id,
+                status=ProcessingStatus.COMPLETED,
+                full_text=content,
+                summary=summary,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to process PDF: {e}")
+            return ProcessingResult(
+                source_id=source.id,
+                status=ProcessingStatus.FAILED,
+                error=str(e),
+            )
 
     async def _process_text(self, source: ResearchSource) -> ProcessingResult:
         """

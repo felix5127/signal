@@ -11,6 +11,7 @@ embeddings/: 嵌入服务模块 (百炼 通用文本向量-v3)
 multimodal/: 多模态处理模块 (听悟转写, 源材料处理)
 research/: 研究 Agent (ResearchAgent, ChatAgent)
 chat/: 对话 Agent (ChatAgent 重导出)
+podcast/: 播客生成模块 (大纲/对话/TTS/合成)
 
 ## 模块详情
 
@@ -49,6 +50,19 @@ chat/: 对话 Agent (ChatAgent 重导出)
 - **ChatAgent**: 对话 Agent
   - chat(): 项目内问答
 
+### podcast/
+- **cosyvoice_client.py**: CosyVoice TTS 客户端
+  - synthesize_text(): 单段文本转语音
+  - synthesize_dialogue(): 多段对话合成
+  - VoicePreset: 预设音色枚举 (10+ 中英文音色)
+- **outline_agent.py**: 播客大纲生成
+  - generate_outline(): 生成 PodcastOutline
+- **dialogue_agent.py**: 播客对话生成
+  - generate_dialogue(): 生成 PodcastDialogue
+- **synthesizer.py**: 完整播客流水线
+  - generate_podcast(): 同步生成
+  - generate_podcast_stream(): 流式生成
+
 ## 数据流
 ```
 用户查询
@@ -60,6 +74,19 @@ KimiClient.chat() + Tools
     └── VectorSearchTool.search() → 项目材料
     ↓
 综合生成研究报告
+```
+
+### 播客生成流
+```
+研究内容
+    ↓
+OutlineAgent.generate_outline()
+    ↓
+DialogueAgent.generate_dialogue()
+    ↓
+CosyVoiceClient.synthesize_dialogue()
+    ↓
+播客音频 (MP3)
 ```
 
 ## 配置

@@ -35,6 +35,12 @@
 - 消费方: 长列表页面
 - 样式: 固定定位右下角、圆形蓝色按钮、Spring动画
 
+**podcast-generator.tsx**: 播客生成组件
+- 技术细节: SSE 流式进度 + 音频播放器 + 音色选择
+- 导出: PodcastGenerator({ content, title, targetDuration, onComplete })
+- 消费方: 研究工作台、资源详情页
+- 功能: 文本转播客、进度展示、音频播放、下载
+
 **README.md**: 组件目录说明文档
 - 内容: 组件使用指南和设计说明
 

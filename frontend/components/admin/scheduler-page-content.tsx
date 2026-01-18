@@ -10,7 +10,7 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   RefreshCw,
   AlertTriangle,
@@ -40,7 +40,7 @@ interface SchedulerStatus {
 
 const JOB_LABELS: Record<string, string> = {
   twitter_pipeline: 'Twitter 采集',
-  main_pipeline: '主流水线采集',
+  main_pipeline: 'RSS 内容采集',
   daily_digest: '每日精选生成',
   weekly_digest: '每周精选生成',
   newsletter_job: '周刊生成',
@@ -48,7 +48,7 @@ const JOB_LABELS: Record<string, string> = {
 
 const JOB_DESCRIPTIONS: Record<string, string> = {
   twitter_pipeline: '从 XGoing 采集 Twitter 推文',
-  main_pipeline: '采集 HN/GitHub/arXiv/HF/PH 数据',
+  main_pipeline: '采集 Blog RSS / Podcast / Video 数据',
   daily_digest: '生成今日精选内容汇总',
   weekly_digest: '生成本周精选内容汇总',
   newsletter_job: '自动生成并发布周刊',
@@ -127,10 +127,16 @@ export default function SchedulerPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [triggeringJob, setTriggeringJob] = useState<string | null>(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true)
       const res = await fetch('/api/stats/scheduler', { cache: 'no-store' })
+
+      if (!res.ok) {
+        setError(`HTTP ${res.status}`)
+        return
+      }
+
       const data = await res.json()
 
       if (data.success) {
@@ -146,33 +152,48 @@ export default function SchedulerPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchData()
     // 每 30 秒自动刷新
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   const handleTrigger = async (jobId: string) => {
-    // 根据任务 ID 映射到信号源类型
-    const sourceTypeMap: Record<string, string> = {
-      twitter_pipeline: 'twitter',
-      main_pipeline: 'hackernews', // 触发整个 main pipeline 的第一个
+    // 根据任务 ID 映射到对应的触发端点
+    // 部分任务直接触发对应的 API 端点，部分任务触发信号源采集
+    const jobTriggerConfig: Record<string, { type: 'source' | 'digest'; target: string }> = {
+      twitter_pipeline: { type: 'source', target: 'twitter' },
+      main_pipeline: { type: 'source', target: 'hackernews' },
+      daily_digest: { type: 'digest', target: 'daily' },
+      weekly_digest: { type: 'digest', target: 'weekly' },
+      newsletter_job: { type: 'digest', target: 'newsletter' },
     }
 
-    const sourceType = sourceTypeMap[jobId]
-    if (!sourceType) {
-      console.warn(`No source type mapping for job: ${jobId}`)
+    const config = jobTriggerConfig[jobId]
+    if (!config) {
+      console.warn(`No trigger config for job: ${jobId}`)
       return
     }
 
+    // 根据任务类型选择不同的 API 端点
+    const apiUrl = config.type === 'source'
+      ? `/api/sources/trigger/${config.target}`
+      : `/api/digest/trigger/${config.target}`
+
     try {
       setTriggeringJob(jobId)
-      const res = await fetch(`/api/sources/trigger/${sourceType}`, {
+      const res = await fetch(apiUrl, {
         method: 'POST',
       })
+
+      if (!res.ok) {
+        console.error('Trigger failed:', res.status)
+        return
+      }
+
       const data = await res.json()
       if (data.success) {
         setTimeout(fetchData, 2000)
