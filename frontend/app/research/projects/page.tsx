@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @/components/research 的项目列表组件
  * [OUTPUT]: 对外提供研究项目列表页面
- * [POS]: /research 路由页面，重定向到项目列表
+ * [POS]: /research/projects 路由页面
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
@@ -15,6 +15,6 @@ const ProjectListContent = dynamicImport(
   { ssr: false }
 )
 
-export default function ResearchPage() {
+export default function ProjectListPage() {
   return <ProjectListContent />
 }
