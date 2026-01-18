@@ -9,6 +9,8 @@ from app.agents.llm.kimi_client import KimiClient, kimi_client
 from app.agents.tools.tavily_search import TavilySearchTool
 from app.agents.tools.vector_search import VectorSearchTool
 from app.agents.embeddings.bailian_embedding import BailianEmbeddingService, embedding_service
+from app.agents.multimodal.tingwu_client import TingwuClient, tingwu_client
+from app.agents.multimodal.source_processor import SourceProcessor, source_processor
 from app.agents.research.agent import ResearchAgent
 
 __all__ = [
@@ -21,6 +23,11 @@ __all__ = [
     # 嵌入服务
     "BailianEmbeddingService",
     "embedding_service",
+    # 多模态处理
+    "TingwuClient",
+    "tingwu_client",
+    "SourceProcessor",
+    "source_processor",
     # Agent
     "ResearchAgent",
 ]

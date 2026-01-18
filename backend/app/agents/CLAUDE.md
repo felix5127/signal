@@ -8,6 +8,7 @@
 llm/: LLM 客户端模块 (Kimi K2)
 tools/: Agent 工具集 (Tavily 搜索, 向量搜索)
 embeddings/: 嵌入服务模块 (百炼 通用文本向量-v3)
+multimodal/: 多模态处理模块 (听悟转写, 源材料处理)
 research/: 研究 Agent (ResearchAgent, ChatAgent)
 chat/: 对话 Agent (ChatAgent 重导出)
 
