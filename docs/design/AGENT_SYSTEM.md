@@ -418,7 +418,7 @@ class SummarizationMiddlewareConfig(BaseModel):
     # 触发条件
     enabled: bool = True
     threshold_ratio: float = 0.85          # 占用比例阈值
-    context_limit: int = 180000            # 上下文限制
+    context_limit: int = 250000            # 256K 上下文 (预留 buffer)
 
     # 压缩策略
     strategy: Literal["truncate", "summarize", "hybrid"] = "hybrid"
@@ -579,8 +579,8 @@ CREATE TABLE agent_memories (
     content TEXT NOT NULL,
     metadata JSONB DEFAULT '{}',
 
-    -- 向量嵌入 (用于相似性搜索)
-    embedding vector(3072),
+    -- 向量嵌入 (用于相似性搜索) - 百炼 通用文本向量-v3
+    embedding vector(512),
 
     -- 重要性和时效性
     importance_score FLOAT DEFAULT 0.5,
@@ -899,17 +899,17 @@ def vector_search(
             top_k=5
         )
     """
-    from openai import OpenAI
+    import dashscope
     from sqlalchemy import text
 
-    # 1. 生成查询向量
-    client = OpenAI(api_key=config.openai_api_key)
-    response = client.embeddings.create(
-        model="text-embedding-3-large",
+    # 1. 生成查询向量 (百炼 通用文本向量-v3)
+    dashscope.api_key = config.dashscope_api_key
+    response = dashscope.TextEmbedding.call(
+        model="text-embedding-v3",
         input=query,
-        dimensions=3072,
+        dimension=512,
     )
-    query_embedding = response.data[0].embedding
+    query_embedding = response.output["embeddings"][0]["embedding"]
 
     # 2. 向量搜索
     sql = text("""

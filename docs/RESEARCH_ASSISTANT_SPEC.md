@@ -251,7 +251,7 @@ Agent 自主规划:
 | **后端框架** | FastAPI | 现有架构 + 异步优先 |
 | **数据库** | PostgreSQL + pgvector | 延续现有 + 向量搜索 |
 | **Agent 框架** | DeepAgents + LangGraph | 规划 + 多轮 + 上下文管理 |
-| **LLM 主模型** | Kimi K2 (kimi-k2-thinking-turbo) | 用户已有账号 + 256K 长上下文 |
+| **LLM 主模型** | Kimi K2 (kimi-k2-thinking-turbo) | 256K 长上下文 + 深度推理 |
 | **对话 LLM** | Kimi K2 (kimi-k2-turbo-preview) | 高速对话场景 |
 | **搜索增强** | Tavily API | 现有集成 |
 | **音视频转写** | 听悟 API | 用户已有账号，中文优化 |
@@ -382,7 +382,7 @@ CREATE TABLE source_embeddings (
     source_id UUID REFERENCES sources(id),
     chunk_index INTEGER,
     chunk_text TEXT,
-    embedding vector(1536),
+    embedding vector(512),  -- 百炼 通用文本向量-v3
     created_at TIMESTAMP DEFAULT NOW()
 );
 

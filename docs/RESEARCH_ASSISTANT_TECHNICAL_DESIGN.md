@@ -1,6 +1,6 @@
 # Signal Hunter 研究助手 - 技术方案
 
-> 版本: 1.1 | 日期: 2026-01-17 | 状态: 设计中
+> 版本: 2.0 | 日期: 2026-01-18 | 状态: 设计中
 
 ---
 
@@ -159,16 +159,16 @@
 
 | 用途 | 模型 | 理由 |
 |------|------|------|
-| **主研究** | Kimi K2 (kimi-k2-thinking-turbo) | 1T参数MoE，256K上下文，原生工具调用，推理模式 |
-| **摘要生成** | Kimi K2 (kimi-k2-turbo-preview) | 高速版，40 t/s |
-| **对话** | Kimi K2 (kimi-k2-turbo-preview) | 快速响应，性价比高 |
-| **长文档** | Kimi K2 | 256K 上下文已足够 |
+| **研究 Agent** | kimi-k2-thinking-turbo | 1T参数MoE，256K上下文，原生工具调用，推理模式 |
+| **对话 Agent** | kimi-k2-turbo-preview | 高速版，40 t/s，快速响应 |
+| **摘要生成** | kimi-k2-turbo-preview | 性价比高 |
+| **长文档** | kimi-k2-thinking-turbo | 256K 上下文已足够 |
 
 ### 2.2 嵌入模型
 
 | 模型 | 维度 | 优势 |
 |------|------|------|
-| 百炼 通用文本向量-v3 | 512/256/128/64 可选 | 阿里云百炼，支持多维度 |
+| 百炼 通用文本向量-v3 | 512 (默认) | 阿里云百炼，中文优化，搜索快速 |
 
 ### 2.3 搜索引擎
 
@@ -181,9 +181,9 @@
 
 | 类型 | 服务 | 理由 |
 |------|------|------|
-| 音频转写 | 听悟 API (阿里云) | 用户已有，支持中文 |
+| 音频转写 | 听悟 API (阿里云) | 用户已有，支持中英文，高精度 |
 | 视频理解 | 通义千问 Omni (可选) | 阿里云全模态模型 |
-| TTS | 百炼 CosyVoice | 多音色支持，成本低 |
+| TTS | 百炼 CosyVoice | 多音色支持，自然度高，成本低 |
 
 ### 2.5 基础设施
 
@@ -339,7 +339,7 @@ CREATE TABLE source_embeddings (
     chunk_text TEXT NOT NULL,
     chunk_tokens INTEGER,
 
-    -- 向量 (百炼 512维，可调整)
+    -- 向量 (百炼 通用文本向量-v3，512维)
     embedding vector(512) NOT NULL,
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -538,7 +538,7 @@ Research Agent (主 Agent)
 ### 5.2 Agent 配置
 
 ```python
-# 主研究 Agent 配置 (Kimi K2 Thinking)
+# 研究 Agent 配置 (kimi-k2-thinking-turbo)
 RESEARCH_AGENT_CONFIG = {
     "model": "kimi-k2-thinking-turbo",
     "max_tokens": 8192,
@@ -549,27 +549,32 @@ RESEARCH_AGENT_CONFIG = {
     "stream": True,  # 必须启用流式
 }
 
-# 子Agent 配置 (Kimi K2 Turbo)
+# 对话 Agent / 子 Agent 配置 (kimi-k2-turbo-preview)
 SUB_AGENT_CONFIGS = {
+    "chat": {
+        "model": "kimi-k2-turbo-preview",
+        "max_tokens": 4096,
+        "temperature": 1.0,
+    },
     "summary": {
         "model": "kimi-k2-turbo-preview",
         "max_tokens": 4096,
-        "temperature": 0.7,
+        "temperature": 1.0,
     },
     "mindmap": {
         "model": "kimi-k2-turbo-preview",
         "max_tokens": 2048,
-        "temperature": 0.7,
+        "temperature": 1.0,
     },
     "podcast": {
         "model": "kimi-k2-turbo-preview",
         "max_tokens": 8192,
-        "temperature": 0.8,
+        "temperature": 1.0,
     },
     "search": {
         "model": "kimi-k2-turbo-preview",
         "max_tokens": 4096,
-        "temperature": 0.7,
+        "temperature": 1.0,
     },
 }
 ```

@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, CheckCircle2, Loader2, AlertCircle, BookOpen, Clock } from 'lucide-react'
 import MarkdownRenderer from './markdown-renderer'
@@ -73,19 +73,15 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
   }
 
   // 使用相对路径
-  const getApiUrl = (path: string) => {
+  const getApiUrl = useCallback((path: string) => {
     // 开发环境直接访问后端，绕过 Next.js 代理
     return process.env.NODE_ENV === 'development'
       ? `http://localhost:8000/api/resources/${resourceId}/deep-research${path}`
       : `/api/resources/${resourceId}/deep-research${path}`
-  }
-
-  // 检查是否已有报告
-  useEffect(() => {
-    checkExistingReport()
   }, [resourceId])
 
-  const checkExistingReport = async () => {
+  // 检查是否已有报告
+  const checkExistingReport = useCallback(async () => {
     try {
       const res = await fetch(getApiUrl(''))
       if (res.ok) {
@@ -112,7 +108,12 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
     } catch (e) {
       // 报告不存在，保持 idle 状态
     }
-  }
+  }, [getApiUrl])
+
+  // 初始化时检查报告
+  useEffect(() => {
+    checkExistingReport()
+  }, [checkExistingReport])
 
   // 轮询检查报告状态
   useEffect(() => {
@@ -137,7 +138,7 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [status, pollingCount, resourceId])
+  }, [status, pollingCount, getApiUrl])
 
   const handleGenerate = async () => {
     setStatus('loading')
@@ -165,13 +166,10 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
         console.log('[DeepResearch] 使用缓存报告')
         await checkExistingReport()
       } else {
-        // 任务已启动 (status: pending)，显示生成中状态，2秒后跳转
-        console.log('[DeepResearch] 任务已启动，准备跳转到研究页面')
+        // 任务已启动 (status: pending)，开始轮询等待结果
+        console.log('[DeepResearch] 任务已启动，开始轮询')
         setStatus('polling')
-        // 设置2秒后自动跳转到研究页面，让用户看到生成状态
-        setTimeout(() => {
-          router.push('/research')
-        }, 2000)
+        // 轮询逻辑会每5秒检查报告是否生成完成
       }
     } catch (e: any) {
       console.error('[DeepResearch] 错误:', e)
