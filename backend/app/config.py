@@ -258,6 +258,10 @@ class AppConfig(BaseSettings):
     r2_bucket_name: str = Field(default="signal-research", alias="R2_BUCKET_NAME")
     r2_public_url: str = Field(default="", alias="R2_PUBLIC_URL")
 
+    # 研究助手 API Keys
+    kimi_api_key: str = Field(default="", alias="KIMI_API_KEY")  # Moonshot Kimi K2
+    dashscope_api_key: str = Field(default="", alias="DASHSCOPE_API_KEY")  # 阿里云百炼
+
     # Redis 缓存配置
     redis: RedisConfig = Field(default_factory=RedisConfig)
 
@@ -289,6 +293,7 @@ class AppConfig(BaseSettings):
         str_keys = [
             "openai_api_key", "github_token", "tavily_api_key", "database_url", "log_level",
             "r2_endpoint_url", "r2_access_key_id", "r2_secret_access_key", "r2_bucket_name", "r2_public_url",
+            "kimi_api_key", "dashscope_api_key",
         ]
         for key in str_keys:
             if key in data and isinstance(data[key], str):

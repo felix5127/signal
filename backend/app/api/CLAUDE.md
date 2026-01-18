@@ -19,6 +19,7 @@ admin/sources.py: Admin 数据源管理 API，GET/POST/PUT/DELETE /sources, /sou
 admin/stats.py: Admin 统计 API，/overview, /daily, /sources, /score-distribution
 admin/review.py: Admin 审核 API，/list, /action, /{resource_id}/action, /stats
 admin/prompts.py: Admin Prompt 管理 API
+research.py: 研究助手 API (项目/源材料/研究任务/对话/输出) - SSE 流式支持
 
 ## 端点概览
 | 路由前缀 | 模块 | 核心功能 |
@@ -35,6 +36,7 @@ admin/prompts.py: Admin Prompt 管理 API
 | /api/admin/stats | admin/stats.py | Admin 统计概览/每日/数据源/评分分布 |
 | /api/admin/review | admin/review.py | Admin 审核列表/批量审核/单个审核/审核统计 |
 | /api/admin/prompts | admin/prompts.py | Prompt 列表/活跃版本/创建/激活 |
+| /api/research | research.py | 研究助手 - 项目/源/研究/对话/输出 |
 
 ## 缓存策略
 - 资源列表: 5min TTL
