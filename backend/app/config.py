@@ -251,6 +251,13 @@ class AppConfig(BaseSettings):
     )
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    # R2/S3 存储配置
+    r2_endpoint_url: str = Field(default="", alias="R2_ENDPOINT_URL")
+    r2_access_key_id: str = Field(default="", alias="R2_ACCESS_KEY_ID")
+    r2_secret_access_key: str = Field(default="", alias="R2_SECRET_ACCESS_KEY")
+    r2_bucket_name: str = Field(default="signal-research", alias="R2_BUCKET_NAME")
+    r2_public_url: str = Field(default="", alias="R2_PUBLIC_URL")
+
     # Redis 缓存配置
     redis: RedisConfig = Field(default_factory=RedisConfig)
 
@@ -279,7 +286,11 @@ class AppConfig(BaseSettings):
     def __init__(self, **data):
         """初始化时自动去除环境变量的前导/尾随空格"""
         # 去除字符串字段的空格
-        for key in ["openai_api_key", "github_token", "tavily_api_key", "database_url", "log_level"]:
+        str_keys = [
+            "openai_api_key", "github_token", "tavily_api_key", "database_url", "log_level",
+            "r2_endpoint_url", "r2_access_key_id", "r2_secret_access_key", "r2_bucket_name", "r2_public_url",
+        ]
+        for key in str_keys:
             if key in data and isinstance(data[key], str):
                 data[key] = data[key].strip()
         super().__init__(**data)

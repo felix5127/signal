@@ -12,6 +12,14 @@ from app.models.newsletter import Newsletter
 from app.models.task import TaskStatus
 from app.models.source_run import SourceRun
 from app.models.source_config import SourceConfig, SOURCE_TYPES
+from app.models.research import (
+    ResearchProject,
+    ResearchSource,
+    SourceEmbedding,
+    ResearchOutput,
+    ChatSession,
+    AgentTask,
+)
 
 __all__ = [
     # v1.0 旧模型（保留兼容）
@@ -27,4 +35,11 @@ __all__ = [
     "SourceRun",
     "SourceConfig",
     "SOURCE_TYPES",
+    # v3.0 研究助手模型
+    "ResearchProject",
+    "ResearchSource",
+    "SourceEmbedding",
+    "ResearchOutput",
+    "ChatSession",
+    "AgentTask",
 ]

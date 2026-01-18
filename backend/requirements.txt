@@ -6,6 +6,7 @@ python-multipart>=0.0.6
 # 数据库
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0  # PostgreSQL 驱动
+pgvector>=0.2.0  # pgvector 向量搜索支持
 
 # 数据验证
 pydantic>=2.5.0
@@ -48,6 +49,9 @@ redis>=5.0.0  # Redis 缓存（原生支持 async，不需要 aioredis）
 
 # 阿里云SDK
 aliyun-python-sdk-core>=2.14.0
+
+# S3/R2 存储
+boto3>=1.34.0  # AWS S3 兼容客户端 (Cloudflare R2)
 
 # 认证和安全
 python-jose[cryptography]>=3.3.0  # JWT处理
