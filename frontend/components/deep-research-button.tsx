@@ -1,40 +1,24 @@
 /**
- * [INPUT]: 依赖 React useState/useEffect、markdown-renderer 组件、lucide-react 图标、Next.js useRouter
- * [OUTPUT]: 对外提供深度研究按钮和报告展示组件，点击后跳转到研究页面
- * [POS]: components/ 的深度研究交互组件，被 resource-detail.tsx 消费
+ * [INPUT]: 依赖 React useState、lucide-react 图标、Next.js useRouter
+ * [OUTPUT]: 对外提供深度研究按钮，点击后创建研究项目并跳转到工作台
+ * [POS]: components/ 的深度研究入口组件，被 resource-detail.tsx 消费
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, CheckCircle2, Loader2, AlertCircle, BookOpen, Clock } from 'lucide-react'
-import MarkdownRenderer from './markdown-renderer'
+import { Search, Loader2, AlertCircle } from 'lucide-react'
 
 interface DeepResearchProps {
   resourceId: number
-  resourceType?: 'signal' | 'resource'
-  inline?: boolean  // 内联模式：只显示按钮，不显示报告
-  reportOnly?: boolean  // 仅报告模式：只显示报告内容（用于独立展示区）
+  resourceTitle: string
+  resourceContent?: string  // 资源内容，用于添加到研究项目
+  resourceUrl?: string      // 资源原始链接
 }
 
-interface ResearchReport {
-  resource_id: number
-  title: string
-  content: string
-  generated_at: string | null
-  tokens_used: number
-  cost_usd: number
-  strategy: string
-  sources: string[]
-  metadata: Record<string, any>
-}
-
-// 预估生成时间（秒）
-const ESTIMATED_SECONDS = 180
-
-// 按钮样式配置 - 统一立体阴影系统
+// 按钮样式配置
 const buttonStyles = {
   default: {
     background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
@@ -45,227 +29,96 @@ const buttonStyles = {
     background: '#9ca3af',
     boxShadow: '0 4px 12px rgba(156, 163, 175, 0.35), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
   },
-  polling: {
-    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-    hoverBoxShadow: '0 6px 20px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-  },
-  success: {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-  },
 }
 
-export default function DeepResearchButton({ resourceId, resourceType = 'resource', inline = false, reportOnly = false }: DeepResearchProps) {
+// API URL helper
+const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+export default function DeepResearchButton({
+  resourceId,
+  resourceTitle,
+  resourceContent,
+  resourceUrl,
+}: DeepResearchProps) {
   const router = useRouter()
-  const [status, setStatus] = useState<'idle' | 'loading' | 'polling' | 'success' | 'error'>('idle')
-  const [report, setReport] = useState<ResearchReport | null>(null)
+  const apiUrl = getApiUrl()
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [pollingCount, setPollingCount] = useState(0)
 
-  // 计算剩余时间
-  const getRemainingTime = () => {
-    const remaining = Math.max(0, ESTIMATED_SECONDS - pollingCount * 5)
-    if (remaining > 60) {
-      return `${Math.ceil(remaining / 60)}分${remaining % 60}秒`
-    }
-    return `${remaining}秒`
-  }
+  // ============================================================
+  // 核心逻辑: 创建项目 → 添加源材料 → 跳转工作台
+  // ============================================================
+  const handleClick = async () => {
+    if (status === 'loading') return
 
-  // 使用相对路径
-  const getApiUrl = useCallback((path: string) => {
-    // 开发环境直接访问后端，绕过 Next.js 代理
-    return process.env.NODE_ENV === 'development'
-      ? `http://localhost:8000/api/resources/${resourceId}/deep-research${path}`
-      : `/api/resources/${resourceId}/deep-research${path}`
-  }, [resourceId])
-
-  // 检查是否已有报告
-  const checkExistingReport = useCallback(async () => {
-    try {
-      const res = await fetch(getApiUrl(''))
-      if (res.ok) {
-        const result = await res.json()
-        const reportData = result.data || result
-
-        // Defensive: Ensure sources is always an array
-        if (reportData.sources && typeof reportData.sources === 'string') {
-          // If it's a string, try to parse it as JSON
-          try {
-            const parsed = JSON.parse(reportData.sources)
-            reportData.sources = Array.isArray(parsed) ? parsed : [parsed]
-          } catch {
-            // If parsing fails, split by comma or create single-item array
-            reportData.sources = reportData.sources.split(',').map((s: string) => s.trim())
-          }
-        } else if (!reportData.sources) {
-          reportData.sources = []
-        }
-
-        setReport(reportData)
-        setStatus('success')
-      }
-    } catch (e) {
-      // 报告不存在，保持 idle 状态
-    }
-  }, [getApiUrl])
-
-  // 初始化时检查报告
-  useEffect(() => {
-    checkExistingReport()
-  }, [checkExistingReport])
-
-  // 轮询检查报告状态
-  useEffect(() => {
-    if (status !== 'polling') return
-
-    const interval = setInterval(async () => {
-      setPollingCount(prev => prev + 1)
-
-      try {
-        const res = await fetch(getApiUrl(''))
-        if (res.ok) {
-          const result = await res.json()
-          const reportData = result.data || result
-          setReport(reportData)
-          setStatus('success')
-          setPollingCount(0)
-        }
-      } catch (e) {
-        // 继续轮询
-      }
-      // 移除120s超时限制，持续轮询直到成功或用户离开页面
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [status, pollingCount, getApiUrl])
-
-  const handleGenerate = async () => {
     setStatus('loading')
     setError(null)
 
     try {
-      const apiUrl = getApiUrl('?strategy=lightweight')
-      console.log('[DeepResearch] 发起请求:', apiUrl)
+      // Step 1: 创建研究项目
+      const projectName = `研究: ${resourceTitle.substring(0, 50)}`
+      const projectRes = await fetch(`${apiUrl}/api/research/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: projectName,
+          description: `基于资源 #${resourceId} 的深度研究`,
+        }),
+      })
 
-      const res = await fetch(apiUrl, { method: 'POST' })
-
-      console.log('[DeepResearch] 响应状态:', res.status)
-
-      if (!res.ok) {
-        const errorText = await res.text()
-        console.error('[DeepResearch] 请求失败:', errorText)
-        throw new Error(`生成请求失败 (${res.status})`)
+      if (!projectRes.ok) {
+        throw new Error('创建研究项目失败')
       }
 
-      const data = await res.json()
-      console.log('[DeepResearch] 响应数据:', data)
+      const project = await projectRes.json()
+      const projectId = project.id
 
-      if (data.data?.status === 'cached') {
-        // 已有缓存报告，直接显示
-        console.log('[DeepResearch] 使用缓存报告')
-        await checkExistingReport()
-      } else {
-        // 任务已启动 (status: pending)，开始轮询等待结果
-        console.log('[DeepResearch] 任务已启动，开始轮询')
-        setStatus('polling')
-        // 轮询逻辑会每5秒检查报告是否生成完成
+      // Step 2: 添加源材料（如果有内容或链接）
+      if (resourceContent || resourceUrl) {
+        const sourceBody: {
+          source_type: string
+          title: string
+          original_url?: string
+          content?: string
+        } = {
+          source_type: resourceUrl ? 'url' : 'text',
+          title: resourceTitle,
+        }
+
+        if (resourceUrl) {
+          sourceBody.original_url = resourceUrl
+        }
+        if (resourceContent) {
+          sourceBody.content = resourceContent
+        }
+
+        await fetch(`${apiUrl}/api/research/projects/${projectId}/sources`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sourceBody),
+        })
+        // 不检查结果，源材料添加失败不影响跳转
       }
+
+      // Step 3: 跳转到研究工作台
+      router.push(`/research/workspace/${projectId}`)
     } catch (e: any) {
-      console.error('[DeepResearch] 错误:', e)
+      console.error('[DeepResearch] Error:', e)
       setStatus('error')
-      setError(e.message || '生成失败，请重试')
+      setError(e.message || '操作失败，请重试')
     }
   }
 
-  // 仅报告模式：只显示报告内容
-  if (reportOnly) {
-    if (status === 'success' && report) {
-      return (
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 border-2 border-gray-200 dark:border-gray-800">
-          <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200 dark:border-gray-800">
-            <div>
-              <div className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                <Search className="w-5 h-5 text-purple-600" />
-                深度研究报告
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                生成于 {report.generated_at ? new Date(report.generated_at).toLocaleString('zh-CN') : '未知'}
-                {' • '}Token: {report.tokens_used}
-                {' • '}成本: ${report.cost_usd?.toFixed(4) || '0.0000'}
-              </div>
-            </div>
-          </div>
+  // ============================================================
+  // 渲染
+  // ============================================================
+  const baseButtonClass = 'inline-flex items-center gap-2 px-6 py-3 rounded-xl border-none font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]'
+  const currentStyle = status === 'loading' ? buttonStyles.loading : buttonStyles.default
 
-          {/* Markdown 内容渲染 */}
-          <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-base">
-            <MarkdownRenderer content={report.content} />
-          </div>
-
-          {/* 来源列表 */}
-          {report.sources && report.sources.length > 0 && (
-            <div className="mt-8 pt-6 border-t-2 border-gray-200 dark:border-gray-800">
-              <div className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                参考来源 ({report.sources.length})
-              </div>
-              <ul className="list-none p-0">
-                {report.sources.slice(0, 5).map((source, idx) => (
-                  <li key={idx} className="mb-2">
-                    <a
-                      href={source}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-purple-600 dark:text-purple-400 text-sm no-underline hover:underline transition-all"
-                    >
-                      [{idx + 1}] {source}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )
-    }
-    return null  // 没有报告时不显示任何内容
-  }
-
-  // 内联模式：只显示按钮
-  if (inline) {
-    const baseButtonClass = "inline-flex items-center gap-2 px-6 py-3 rounded-xl border-none font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
-
-    if (status === 'success' && report) {
-      return (
-        <button
-          disabled
-          className={`${baseButtonClass} text-white opacity-80 cursor-default`}
-          style={buttonStyles.success}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          已生成报告
-        </button>
-      )
-    }
-
-    if (status === 'polling') {
-      return (
-        <button
-          disabled
-          className={`${baseButtonClass} text-white cursor-wait`}
-          style={buttonStyles.polling}
-        >
-          <Loader2 className="w-4 h-4 animate-spin" />
-          剩余 {getRemainingTime()}
-        </button>
-      )
-    }
-
-    const currentStyle = status === 'loading' ? buttonStyles.loading : buttonStyles.default
-
-    return (
+  return (
+    <div>
       <button
-        onClick={handleGenerate}
+        onClick={handleClick}
         disabled={status === 'loading'}
         className={`${baseButtonClass} text-white ${status === 'loading' ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         style={currentStyle}
@@ -281,63 +134,7 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
         {status === 'loading' ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            提交中...
-          </>
-        ) : (
-          <>
-            <Search className="w-4 h-4" />
-            深度研究
-          </>
-        )}
-      </button>
-    )
-  }
-
-  // 完整模式（默认）：显示紧凑按钮和报告
-  const baseButtonClass = "inline-flex items-center gap-2 px-6 py-3 rounded-xl border-none font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
-
-  // 根据状态选择样式
-  const getButtonStyle = () => {
-    if (status === 'polling') return buttonStyles.polling
-    if (status === 'loading') return buttonStyles.loading
-    if (status === 'success' && report) return buttonStyles.success
-    return buttonStyles.default
-  }
-
-  const currentButtonStyle = getButtonStyle()
-  const canHover = status !== 'loading' && status !== 'polling'
-
-  return (
-    <div>
-      {/* 紧凑按钮：始终显示 */}
-      <button
-        onClick={handleGenerate}
-        disabled={status === 'loading' || status === 'polling'}
-        className={`${baseButtonClass} text-white ${status === 'loading' || status === 'polling' ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        style={currentButtonStyle}
-        onMouseEnter={(e) => {
-          if (canHover) {
-            e.currentTarget.style.boxShadow = buttonStyles.default.hoverBoxShadow
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = currentButtonStyle.boxShadow
-        }}
-      >
-        {status === 'success' && report ? (
-          <>
-            <CheckCircle2 className="w-4 h-4" />
-            已生成报告
-          </>
-        ) : status === 'polling' ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            剩余 {getRemainingTime()}
-          </>
-        ) : status === 'loading' ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            提交中...
+            创建研究项目...
           </>
         ) : (
           <>
@@ -352,54 +149,6 @@ export default function DeepResearchButton({ resourceId, resourceType = 'resourc
         <div className="mt-3 text-red-500 text-sm flex items-center gap-1">
           <AlertCircle className="w-4 h-4" />
           {error}
-        </div>
-      )}
-
-      {/* 报告展示 */}
-      {status === 'success' && report && (
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 mt-4 border-2 border-gray-200 dark:border-gray-800">
-          <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200 dark:border-gray-800">
-            <div>
-              <div className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                <Search className="w-5 h-5 text-purple-600" />
-                深度研究报告
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                生成于 {report.generated_at ? new Date(report.generated_at).toLocaleString('zh-CN') : '未知'}
-                {' • '}Token: {report.tokens_used}
-                {' • '}成本: ${report.cost_usd?.toFixed(4) || '0.0000'}
-              </div>
-            </div>
-          </div>
-
-          {/* Markdown 内容渲染 */}
-          <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-base">
-            <MarkdownRenderer content={report.content} />
-          </div>
-
-          {/* 来源列表 */}
-          {report.sources && report.sources.length > 0 && (
-            <div className="mt-8 pt-6 border-t-2 border-gray-200 dark:border-gray-800">
-              <div className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                参考来源 ({report.sources.length})
-              </div>
-              <ul className="list-none p-0">
-                {report.sources.slice(0, 5).map((source, idx) => (
-                  <li key={idx} className="mb-2">
-                    <a
-                      href={source}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-purple-600 dark:text-purple-400 text-sm no-underline hover:underline transition-all"
-                    >
-                      [{idx + 1}] {source}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       )}
     </div>

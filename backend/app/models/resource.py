@@ -114,6 +114,12 @@ class Resource(Base):
     audio_url = Column(Text)
     duration = Column(Integer)
     transcript = Column(Text)
+    chapters = Column(JSON)  # 章节列表 [{time: int, title: str, summary?: str}]
+    qa_pairs = Column(JSON)  # Q&A 对 [{question: str, answer: str, timestamp?: int}]
+
+    # ========== 精选理由 ==========
+    featured_reason = Column(Text)     # 英文精选理由
+    featured_reason_zh = Column(Text)  # 中文精选理由
 
     # ========== 深度研究 (Deep Research) ==========
     deep_research = Column(Text)  # 深度研究报告（Markdown 格式）
@@ -177,6 +183,8 @@ class Resource(Base):
             "tags": self.tags,
             "score": self.score,
             "is_featured": self.is_featured,
+            "featured_reason": self.featured_reason,
+            "featured_reason_zh": self.featured_reason_zh,
             "language": self.language,
             "status": self.status,
             # LLM 过滤结果
@@ -190,6 +198,12 @@ class Resource(Base):
                 self.reviewed_at.isoformat() if self.reviewed_at else None
             ),
             "reviewed_by": self.reviewed_by,
+            # 播客/视频专用
+            "audio_url": self.audio_url,
+            "duration": self.duration,
+            "transcript": self.transcript,
+            "chapters": self.chapters,
+            "qa_pairs": self.qa_pairs,
             # 时间戳
             "published_at": (
                 self.published_at.isoformat() if self.published_at else None

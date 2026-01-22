@@ -349,3 +349,34 @@ def make_search_key(**kwargs) -> str:
 def make_tags_key(**kwargs) -> str:
     """为标签列表生成缓存键"""
     return "tags:list"
+
+
+def make_podcast_detail_key(resource_id: int) -> str:
+    """为播客详情生成缓存键（包含章节、QA等完整数据）"""
+    return f"podcast:detail:{resource_id}"
+
+
+def make_research_project_key(project_id: int) -> str:
+    """为研究项目生成缓存键"""
+    return f"research:project:{project_id}"
+
+
+def make_research_sources_key(project_id: int) -> str:
+    """为研究项目源材料列表生成缓存键"""
+    return f"research:sources:{project_id}"
+
+
+# ============================================================================
+# 缓存 TTL 常量（秒）
+# ============================================================================
+
+CACHE_TTL = {
+    "resources_list": 300,      # 资源列表 5 分钟
+    "resource_detail": 600,     # 资源详情 10 分钟
+    "podcast_detail": 600,      # 播客详情 10 分钟
+    "search_results": 180,      # 搜索结果 3 分钟
+    "stats": 60,                # 统计数据 1 分钟
+    "tags": 3600,               # 标签列表 1 小时
+    "research_project": 300,    # 研究项目 5 分钟
+    "research_sources": 300,    # 研究源 5 分钟
+}

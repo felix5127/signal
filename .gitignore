@@ -84,3 +84,8 @@ htmlcov/
 # BestBlog browser data (保留 OPML 文件)
 BestBlog/browser_data/
 
+# Planning with Files (个人工作记忆)
+task_plan.md
+findings.md
+progress.md
+

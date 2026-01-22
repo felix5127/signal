@@ -1,10 +1,15 @@
-// Input: resource_id (路由参数)
-// Output: 资源详情页面（服务端组件，异步加载数据）
-// Position: 详情页入口，在服务端获取数据后渲染 ResourceDetail 组件
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+/**
+ * [INPUT]: resource_id (路由参数)
+ * [OUTPUT]: 资源详情页面（服务端组件，异步加载数据）
+ * [POS]: 详情页入口，根据资源类型渲染不同的详情组件
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 
 import { notFound } from 'next/navigation'
 import ResourceDetail from '@/components/resource-detail'
+import { PodcastDetail } from '@/components/podcast'
+import type { Chapter } from '@/components/podcast'
+import type { QAPair } from '@/components/podcast'
 
 interface Resource {
   id: number
@@ -25,10 +30,16 @@ interface Resource {
   tags?: string[]
   score?: number
   is_featured?: boolean
+  featured_reason?: string
+  featured_reason_zh?: string
   language?: string
   word_count?: number
   read_time?: number
   duration?: number
+  audio_url?: string
+  transcript?: string
+  chapters?: Chapter[]
+  qa_pairs?: QAPair[]
   published_at?: string
   created_at?: string
   analyzed_at?: string
@@ -57,5 +68,18 @@ export default async function ResourceDetailPage({
 
   const resource: Resource = await res.json()
 
+  // 根据类型渲染不同的详情组件
+  if (resource.type === 'podcast') {
+    return (
+      <PodcastDetail
+        resource={{
+          ...resource,
+          type: 'podcast' as const,
+        }}
+      />
+    )
+  }
+
+  // 默认使用通用详情组件（文章/视频/推文）
   return <ResourceDetail resource={resource} />
 }

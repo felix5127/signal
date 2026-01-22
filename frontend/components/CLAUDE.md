@@ -44,10 +44,18 @@
 **README.md**: 组件目录说明文档
 - 内容: 组件使用指南和设计说明
 
+**resource-detail.tsx**: 资源详情页组件
+- 技术细节: 左右布局（桌面）/ 上下布局（移动端），整合 detail/ 子组件
+- 导出: ResourceDetail({ resource })
+- 消费方: app/resources/[id]/page.tsx（非播客类型）
+- 功能: AI 分析结果展示、Featured Reason、响应式布局
+
 ## 子目录
 
 **landing/** - Landing Page 组件目录
 **effects/** - 特效组件目录
+**detail/** - 详情页子组件目录（见 detail/CLAUDE.md）
+**podcast/** - 播客详情页组件目录（见 podcast/CLAUDE.md）
 
 ## 设计规范
 
@@ -100,6 +108,12 @@
 - 语义化 HTML（nav, button, link）
 
 ## 变更日志
+
+### 2026-01-18 - 详情页体验改进
+- 创建 detail/ 子目录（FeaturedReason, AuthorInfo, AISidebar, ContentArea）
+- 创建 podcast/ 子目录（AudioPlayer, ChapterOverview, TranscriptView, QARecap, ContentTabs, PodcastDetail）
+- 重构 resource-detail.tsx 为左右布局（桌面）+ 上下布局（移动端）
+- 播客详情页特殊设计：4 Tab 结构（Show Notes/Chapters/Transcript/Q&A）
 
 ### 2026-01-12 - Admin 后台管理系统
 - ✅ navbar.tsx 移除"信号源"导航入口（移至 /admin/sources）

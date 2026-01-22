@@ -9,7 +9,7 @@
 ### backend/ - Python 后端 (FastAPI + SQLAlchemy)
 - **app/api/** - REST API 路由 (resources, signals, newsletters, stats, feeds)
 - **app/models/** - 数据库模型 (Resource, Signal, Newsletter, Task)
-- **app/processors/** - 内容处理器 (analyzer, generator, translator)
+- **app/processors/** - 内容处理器 (analyzer, generator, translator, podcast_analyzer)
 - **app/scrapers/** - 数据抓取器 (hackernews, github, arxiv, huggingface)
 - **app/tasks/** - 异步任务队列 (pipeline, digest, newsletter)
 - **app/services/** - 业务服务 (deep_research_service, cache_service)
@@ -19,6 +19,10 @@
 - **components/ui/** - shadcn/ui 组件库 (30个组件，4个已升级微拟物设计)
 - **components/landing/** - Landing Page Sections (10个Section组件)
 - **components/effects/** - 视觉效果组件 (dither, dot-grid, flickering-grid)
+- **components/detail/** - 详情页子组件 (FeaturedReason, AuthorInfo, AISidebar, ContentArea)
+- **components/podcast/** - 播客详情页组件 (AudioPlayer, ChapterOverview, TranscriptView, QARecap, ContentTabs)
+- **components/research/** - 研究工作台 (project-list, workspace)
+- **components/research/panels/** - 工作台面板组件 (SourcesPanel, ChatPanel, ResearchPanel)
 - **lib/design-system/** - 设计系统令牌 (colors, spacing, typography)
 - **lib/motion.ts** - Apple 级 Spring 动画预设库
 

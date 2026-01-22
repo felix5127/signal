@@ -14,6 +14,7 @@ filter.py: [DEPRECATED] 规则过滤器，已被 unified_filter.py 取代
 deduper.py: 三层去重器，URL精确匹配 + 标题Jaccard相似度(>0.8) + 内容指纹(可选)
 batch_processor.py: 批量处理协调器
 transcriber.py: 音频转写器 (播客/视频)
+podcast_analyzer.py: 播客内容分析器，从转录文本提取章节(chapters)和问答对(qa_pairs)
 
 deep_research/: 深度研究引擎子模块
   ├── base.py: BaseResearchEngine 抽象类

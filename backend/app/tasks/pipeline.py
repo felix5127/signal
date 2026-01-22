@@ -53,6 +53,7 @@ from app.scrapers.base import RawSignal
 from app.scrapers.favicon import FaviconFetcher
 from app.utils.llm import llm_client
 from app.services.source_service import SourceService
+from app.processors.podcast_analyzer import podcast_analyzer
 
 
 class PipelineStats:
@@ -1036,6 +1037,28 @@ async def run_podcast_pipeline(
                     except Exception as e:
                         print(f"    -> Transcription error: {e}")
 
+                # ========== 播客内容分析 ==========
+                chapters = None
+                qa_pairs = None
+                if transcribed_text and len(transcribed_text) >= 100:
+                    print(f"    -> Analyzing podcast content...")
+                    try:
+                        analysis = await podcast_analyzer.analyze(
+                            transcript=transcribed_text,
+                            duration=transcribed_duration or metadata.get("duration", 3600),
+                        )
+                        chapters = [
+                            {"time": ch.time, "title": ch.title, "summary": ch.summary}
+                            for ch in analysis.chapters
+                        ]
+                        qa_pairs = [
+                            {"question": qa.question, "answer": qa.answer, "timestamp": qa.timestamp}
+                            for qa in analysis.qa_pairs
+                        ]
+                        print(f"    -> Analysis: {len(chapters)} chapters, {len(qa_pairs)} Q&A pairs")
+                    except Exception as e:
+                        print(f"    -> Analysis error: {e}")
+
                 # 创建 Resource 对象
                 resource = Resource(
                     type="podcast",
@@ -1045,8 +1068,8 @@ async def run_podcast_pipeline(
                     url=signal.url,
                     title=signal.title,
                     one_sentence_summary=signal.title,
-                    content_markdown=transcribed_text,  # 转写文本
-                    content_html=signal.content,  # 原始描述
+                    content_markdown=signal.content,  # 原始描述 (Show Notes)
+                    content_html=signal.content,
                     domain="科技播客",
                     tags=["播客", "科技"],
                     score=3,
@@ -1055,11 +1078,12 @@ async def run_podcast_pipeline(
                     published_at=signal.source_created_at,
                     created_at=datetime.now(),
                     status="published",
-                    metadata={
-                        "audio_url": audio_url,
-                        "duration": transcribed_duration or metadata.get("duration", 0),
-                        "transcribed": transcribed_text is not None,
-                    },
+                    # 播客专用字段
+                    audio_url=audio_url,
+                    duration=transcribed_duration or metadata.get("duration", 0),
+                    transcript=transcribed_text,
+                    chapters=chapters,
+                    qa_pairs=qa_pairs,
                 )
 
                 db.add(resource)
@@ -1254,6 +1278,28 @@ async def run_video_pipeline(
                     except Exception as e:
                         print(f"    -> Transcription error: {e}")
 
+                # ========== 视频内容分析 ==========
+                chapters = None
+                qa_pairs = None
+                if transcribed_text and len(transcribed_text) >= 100:
+                    print(f"    -> Analyzing video content...")
+                    try:
+                        analysis = await podcast_analyzer.analyze(
+                            transcript=transcribed_text,
+                            duration=transcribed_duration or metadata.get("duration", 3600),
+                        )
+                        chapters = [
+                            {"time": ch.time, "title": ch.title, "summary": ch.summary}
+                            for ch in analysis.chapters
+                        ]
+                        qa_pairs = [
+                            {"question": qa.question, "answer": qa.answer, "timestamp": qa.timestamp}
+                            for qa in analysis.qa_pairs
+                        ]
+                        print(f"    -> Analysis: {len(chapters)} chapters, {len(qa_pairs)} Q&A pairs")
+                    except Exception as e:
+                        print(f"    -> Analysis error: {e}")
+
                 # 创建 Resource 对象
                 resource = Resource(
                     type="video",
@@ -1263,8 +1309,8 @@ async def run_video_pipeline(
                     url=signal.url,
                     title=signal.title,
                     one_sentence_summary=signal.title,
-                    content_markdown=transcribed_text,  # 转写文本
-                    content_html=signal.content,  # 原始描述
+                    content_markdown=signal.content,  # 原始描述
+                    content_html=signal.content,
                     domain="科技视频",
                     tags=["视频", "AI", "科技"],
                     score=3,
@@ -1273,11 +1319,14 @@ async def run_video_pipeline(
                     published_at=signal.source_created_at,
                     created_at=datetime.now(),
                     status="published",
-                    metadata={
+                    # 视频专用字段
+                    duration=transcribed_duration or metadata.get("duration", 0),
+                    transcript=transcribed_text,
+                    chapters=chapters,
+                    qa_pairs=qa_pairs,
+                    extra_metadata={
                         "video_id": metadata.get("video_id"),
                         "thumbnail_url": metadata.get("thumbnail_url"),
-                        "duration": transcribed_duration or metadata.get("duration", 0),
-                        "transcribed": transcribed_text is not None,
                     },
                 )
 

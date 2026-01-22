@@ -29,6 +29,8 @@ Resource (v2 核心)
   ├── 人工审核: review_status (approved/rejected), review_comment, reviewed_at, reviewed_by
   ├── 来源关联: source_id → Source
   ├── 状态流转: pending → approved/rejected → published/archived
+  ├── 播客/视频: audio_url, duration, transcript, chapters (JSON), qa_pairs (JSON)
+  ├── 精选理由: featured_reason, featured_reason_zh
   └── 元数据: published_at, created_at, is_featured, language
 
 Signal (v1 Legacy) → 逐步迁移到 Resource
