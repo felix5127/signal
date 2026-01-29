@@ -89,24 +89,36 @@ class RSSScraper(BaseScraper):
 
         Returns:
             RSS 源列表
+
+        Raises:
+            FileNotFoundError: 当 OPML 文件在所有尝试路径中都不存在时
         """
-        # 尝试多个可能的路径
-        possible_paths = [
-            self.opml_path,
-            Path(__file__).parent.parent.parent.parent / self.opml_path,  # 从 backend 目录
-            Path.cwd() / self.opml_path,  # 从当前工作目录
-        ]
+        opml_path = Path(self.opml_path)
+
+        # 根据路径类型构建搜索路径列表
+        if opml_path.is_absolute():
+            # 绝对路径：直接使用
+            possible_paths = [opml_path]
+        else:
+            # 相对路径：从多个基准目录尝试
+            base_dirs = [
+                Path.cwd(),  # 当前工作目录（本地开发/Docker 容器内）
+                Path(__file__).parent.parent.parent.parent,  # 项目根目录 (backend/app/scrapers/rss.py -> signal/)
+                Path("/app"),  # Docker 容器根目录
+            ]
+            possible_paths = [base / opml_path for base in base_dirs]
 
         for path in possible_paths:
-            path = Path(path)
             if path.exists():
                 print(f"[RSS] 加载 OPML 文件: {path}")
                 feeds = parse_opml(str(path))
                 print(f"[RSS] 发现 {len(feeds)} 个 RSS 源")
                 return feeds
 
-        print(f"[RSS] 警告: 未找到 OPML 文件，尝试的路径: {possible_paths}")
-        return []
+        # 改进错误处理：记录详细错误信息
+        error_msg = f"[RSS] OPML 文件未找到，尝试的路径: {[str(p) for p in possible_paths]}"
+        print(error_msg)
+        raise FileNotFoundError(error_msg)
 
     async def _fetch_feed(
         self,
@@ -273,7 +285,12 @@ class RSSScraper(BaseScraper):
         self._seen_urls.clear()
 
         # 加载 RSS 源列表
-        self.feeds = self._load_feeds()
+        try:
+            self.feeds = self._load_feeds()
+        except FileNotFoundError as e:
+            print(f"[RSS] 配置错误: {e}")
+            return []
+
         if not self.feeds:
             print("[RSS] 没有可用的 RSS 源")
             return []

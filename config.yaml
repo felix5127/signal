@@ -70,7 +70,7 @@ sources:
 
   twitter:
     enabled: true  # 启用 Twitter 数据源（通过 RSS Bridge，完全免费）
-    opml_path: "/app/BestBlog/BestBlogs_RSS_Twitters.opml"  # OPML 文件路径
+    opml_path: "BestBlog/BestBlogs_RSS_Twitters.opml"  # OPML 文件路径
     accounts:  # 关注的 Twitter 账号列表
       # 中文账号
       - dotey
@@ -131,7 +131,7 @@ sources:
 
   blog:
     enabled: true  # 启用博客/文章 RSS 数据源（完全免费，稳定可靠）
-    opml_path: "/app/BestBlog/BestBlogs_RSS_Articles.opml"  # 文章 OPML 文件路径
+    opml_path: "BestBlog/BestBlogs_RSS_Articles.opml"  # 文章 OPML 文件路径
     feeds: []  # 使用 OPML 文件
     keywords:  # 内容关键词过滤
       - AI
@@ -145,7 +145,7 @@ sources:
 
   podcast:
     enabled: true  # 启用播客数据源
-    opml_path: "/app/BestBlog/BestBlogs_RSS_Podcasts.opml"  # 播客 OPML 文件路径
+    opml_path: "BestBlog/BestBlogs_RSS_Podcasts.opml"  # 播客 OPML 文件路径
     max_items_per_feed: 2  # 每个 feed 最多抓取条目数
     max_duration_seconds: 7200  # 最大音频时长（秒），默认 2 小时
     transcribe_enabled: true  # 启用转写
@@ -153,7 +153,7 @@ sources:
 
   video:
     enabled: true  # 启用视频数据源
-    opml_path: "/app/BestBlog/BestBlogs_RSS_Videos.opml"  # 视频 OPML 文件路径
+    opml_path: "BestBlog/BestBlogs_RSS_Videos.opml"  # 视频 OPML 文件路径
     max_items_per_feed: 1  # 每个 feed 最多抓取条目数
     max_duration_seconds: 7200  # 最大视频时长（秒），默认 2 小时
     transcribe_enabled: true  # 启用转写

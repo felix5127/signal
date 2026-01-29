@@ -89,7 +89,7 @@ class ProductHuntConfig(BaseSettings):
 class BlogConfig(BaseSettings):
     """博客/文章 RSS 数据源配置"""
     enabled: bool = True
-    opml_path: str = "/app/BestBlog/BestBlogs_RSS_Articles.opml"  # OPML 文件路径
+    opml_path: str = "BestBlog/BestBlogs_RSS_Articles.opml"  # OPML 文件路径（相对路径）
     feeds: List[str] = Field(default_factory=list)  # RSS feed URL 列表（可选，OPML优先）
     keywords: List[str] = Field(
         default_factory=lambda: ["AI", "LLM", "GPT"]
@@ -106,7 +106,7 @@ class BlogConfig(BaseSettings):
 class PodcastConfig(BaseSettings):
     """播客数据源配置"""
     enabled: bool = True  # 启用播客抓取
-    opml_path: str = "/app/BestBlog/BestBlogs_RSS_Podcasts.opml"  # OPML 文件路径
+    opml_path: str = "BestBlog/BestBlogs_RSS_Podcasts.opml"  # OPML 文件路径（相对路径）
     max_items_per_feed: int = 2  # 每个 feed 最多抓取条目数（控制每日总量）
     max_duration_seconds: int = 7200  # 最大音频时长（秒），默认 2 小时
     transcribe_enabled: bool = True  # 是否启用转写
@@ -122,7 +122,7 @@ class PodcastConfig(BaseSettings):
 class VideoConfig(BaseSettings):
     """视频数据源配置"""
     enabled: bool = True  # 启用视频抓取
-    opml_path: str = "/app/BestBlog/BestBlogs_RSS_Videos.opml"  # OPML 文件路径
+    opml_path: str = "BestBlog/BestBlogs_RSS_Videos.opml"  # OPML 文件路径（相对路径）
     max_items_per_feed: int = 1  # 每个 feed 最多抓取条目数（控制每日总量）
     max_duration_seconds: int = 7200  # 最大视频时长（秒），默认 2 小时
     transcribe_enabled: bool = True  # 是否启用转写
@@ -154,6 +154,7 @@ class TingwuConfig(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "allow"  # 允许额外字段（兼容其他环境变量）
 
 
 class LLMConfig(BaseSettings):
@@ -170,6 +171,7 @@ class LLMConfig(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "allow"  # 允许额外字段（兼容其他环境变量）
 
     @classmethod
     def __init_subclass__(cls):
@@ -215,6 +217,21 @@ class DeepResearchConfig(BaseSettings):
 class ScheduleConfig(BaseSettings):
     """定时任务配置"""
     interval_hours: int = 1
+
+
+class FeishuConfig(BaseSettings):
+    """飞书多维表格配置"""
+    app_id: str = Field(default="", alias="FEISHU_APP_ID")
+    app_secret: str = Field(default="", alias="FEISHU_APP_SECRET")
+    app_token: str = Field(default="", alias="FEISHU_APP_TOKEN")  # 多维表格 ID
+    table_id: str = Field(default="", alias="FEISHU_TABLE_ID")    # 数据表 ID
+    enabled: bool = Field(default=True, alias="FEISHU_ENABLED")   # 是否启用
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+        extra = "allow"  # 允许额外字段（兼容其他环境变量）
 
 
 class RedisConfig(BaseSettings):
@@ -265,6 +282,9 @@ class AppConfig(BaseSettings):
     # Redis 缓存配置
     redis: RedisConfig = Field(default_factory=RedisConfig)
 
+    # 飞书配置
+    feishu: FeishuConfig = Field(default_factory=FeishuConfig)
+
     # 子配置（从 config.yaml 加载）
     hackernews: HackerNewsConfig = Field(default_factory=HackerNewsConfig)
     github: GitHubConfig = Field(default_factory=GitHubConfig)
@@ -286,6 +306,7 @@ class AppConfig(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "allow"  # 允许额外字段（兼容其他环境变量）
 
     def __init__(self, **data):
         """初始化时自动去除环境变量的前导/尾随空格"""
