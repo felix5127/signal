@@ -1,15 +1,22 @@
 """
-[INPUT]: 依赖 scrapers/* 的各类采集器, processors/* 的过滤/分析/翻译器, models/resource 的 Resource
+[INPUT]: 依赖 scrapers/* 的各类采集器, processors/* 的过滤/分析/翻译器, models/resource 的 Resource, services/data_tracker 的 DataTracker
 [OUTPUT]: 对外提供 run_article_pipeline, run_full_pipeline, run_twitter_pipeline, run_podcast_pipeline, run_video_pipeline
 [POS]: 核心流水线模块，包含 5 种内容类型的处理流程
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 
 流水线概览:
-- ArticlePipeline: RSS采集 → 去重(Deduper) → 全文提取 → 统一过滤(UnifiedFilter) → 深度分析 → 翻译 → 存储
+- ArticlePipeline: RSS采集 → 去重(Deduper) → 全文提取 → 统一过滤(UnifiedFilter) → 深度分析 → 翻译 → 存储 → 飞书追踪
 - FullPipeline: 多源采集 (HN/GitHub/arXiv/HF/PH) → 过滤 → 摘要生成 → 存储
 - TwitterPipeline: XGoing采集 → 去重 → 直接存储 (跳过LLM)
 - PodcastPipeline: RSS采集 → 去重 → 可选转写 → 存储
 - VideoPipeline: RSS采集 → 去重 → 可选转写 → 存储
+
+数据追踪 (ArticlePipeline):
+- 使用 DataTracker 在各节点记录数据状态
+- 去重阶段: 记录被过滤的重复项
+- 过滤阶段: 记录通过/拒绝的项及 LLM 评分
+- 存储阶段: 记录最终收录的项
+- 批量写入飞书多维表格，便于人工查看分析
 
 重构说明:
 base_pipeline.py 提供了 BasePipeline 和 StepBasedPipeline 基类:
@@ -54,6 +61,7 @@ from app.scrapers.favicon import FaviconFetcher
 from app.utils.llm import llm_client
 from app.services.source_service import SourceService
 from app.processors.podcast_analyzer import podcast_analyzer
+from app.services.data_tracker import DataTracker
 
 
 class PipelineStats:
@@ -112,6 +120,7 @@ async def run_article_pipeline(
         ArticlePipelineStats 统计信息
     """
     stats = ArticlePipelineStats()
+    tracker = DataTracker(pipeline="article")  # 数据追踪器
     print(f"\n{'='*60}")
     print(f"[ArticlePipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*60}\n")
@@ -139,6 +148,21 @@ async def run_article_pipeline(
     # 批量去重
     items_for_dedup = [{"url": s.url, "title": s.title, "signal": s} for s in raw_signals]
     deduped_items = deduper.dedupe_batch(items_for_dedup)
+
+    # 构建去重后的 URL 集合
+    deduped_urls = {item["url"] for item in deduped_items}
+
+    # 追踪被过滤的重复项
+    for signal in raw_signals:
+        if signal.url not in deduped_urls:
+            source_name = signal.metadata.get("source_name", "RSS") if signal.metadata else "RSS"
+            tracker.track_filtered(
+                title=signal.title,
+                url=signal.url,
+                source=source_name,
+                reason="重复内容",
+                stage="dedup",
+            )
 
     new_signals = [item["signal"] for item in deduped_items]
     duplicate_count = len(raw_signals) - len(new_signals)
@@ -207,6 +231,15 @@ async def run_article_pipeline(
             if not filter_result.passed:
                 stats.filter_rejected_count += 1
                 print(f"    -> Rejected: {filter_result.reason} (score={filter_result.score})")
+                # 追踪被过滤的内容
+                tracker.track_filtered(
+                    title=signal.title,
+                    url=signal.url,
+                    source=source_name or "RSS",
+                    reason=filter_result.reason,
+                    stage="llm",
+                    score=filter_result.score,
+                )
             else:
                 filtered_items.append((signal, content, filter_result))
                 stats.filter_passed_count += 1
@@ -395,6 +428,16 @@ async def run_article_pipeline(
                     f"(score={analysis.score}, domain={analysis.domain})"
                 )
 
+                # 追踪收录的内容
+                tracker.track_collected(
+                    title=signal.title,
+                    url=signal.url,
+                    source=source_name or "RSS",
+                    reason=f"LLM 评分 {filter_result.score} 分，深度分析评分 {analysis.score}",
+                    stage="save",
+                    score=analysis.score,
+                )
+
             except Exception as e:
                 stats.failed_count += 1
                 print(f"  -> Save error: {e}")
@@ -449,6 +492,17 @@ async def run_article_pipeline(
         record_db.close()
     except Exception as e:
         print(f"[ArticlePipeline] Failed to record run: {e}")
+
+    # ========== 10. 写入追踪数据到飞书 ==========
+    print("[ArticlePipeline] Step 10: Flushing tracking data to Feishu...")
+    # 保存统计数据（flush 后 records 会被清空）
+    tracking_collected = tracker.collected_count
+    tracking_filtered = tracker.filtered_count
+    try:
+        success_count = await tracker.flush()
+        print(f"[ArticlePipeline] Tracking: {tracking_collected} collected, {tracking_filtered} filtered -> {success_count} written to Feishu")
+    except Exception as e:
+        print(f"[ArticlePipeline] Failed to flush tracking data (non-blocking): {e}")
 
     return stats
 
@@ -1065,6 +1119,7 @@ async def run_podcast_pipeline(
                     url_hash=Resource.generate_url_hash(signal.url),
                     source_name=metadata.get("podcast_name", "podcast"),
                     source_icon_url=FaviconFetcher.get_favicon(signal.url),
+                    thumbnail_url=metadata.get("thumbnail_url"),
                     url=signal.url,
                     title=signal.title,
                     one_sentence_summary=signal.title,
@@ -1306,6 +1361,7 @@ async def run_video_pipeline(
                     url_hash=Resource.generate_url_hash(signal.url),
                     source_name=metadata.get("channel_name", "youtube"),
                     source_icon_url=FaviconFetcher.get_favicon(signal.url),
+                    thumbnail_url=metadata.get("thumbnail_url"),
                     url=signal.url,
                     title=signal.title,
                     one_sentence_summary=signal.title,
@@ -1326,7 +1382,6 @@ async def run_video_pipeline(
                     qa_pairs=qa_pairs,
                     extra_metadata={
                         "video_id": metadata.get("video_id"),
-                        "thumbnail_url": metadata.get("thumbnail_url"),
                     },
                 )
 

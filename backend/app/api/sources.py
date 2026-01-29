@@ -332,6 +332,8 @@ def _run_pipeline_in_background(source_type: str):
         run_article_pipeline,
         run_twitter_pipeline,
         run_full_pipeline,
+        run_podcast_pipeline,
+        run_video_pipeline,
     )
 
     logger = structlog.get_logger()
@@ -349,11 +351,9 @@ def _run_pipeline_in_background(source_type: str):
             opml_path = getattr(config.blog, 'opml_path', None)
             loop.run_until_complete(run_article_pipeline(opml_path=opml_path))
         elif source_type == "podcast":
-            opml_path = getattr(config.podcast, 'opml_path', None)
-            loop.run_until_complete(run_article_pipeline(opml_path=opml_path))
+            loop.run_until_complete(run_podcast_pipeline())
         elif source_type == "video":
-            opml_path = getattr(config.video, 'opml_path', None)
-            loop.run_until_complete(run_article_pipeline(opml_path=opml_path))
+            loop.run_until_complete(run_video_pipeline())
         elif source_type in ["hackernews", "github", "huggingface", "arxiv", "producthunt"]:
             # 这些是 full_pipeline 的子类型
             loop.run_until_complete(run_full_pipeline(source_types=[source_type]))

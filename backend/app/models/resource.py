@@ -61,6 +61,7 @@ class Resource(Base):
     source_name = Column(String(100), nullable=False)
     source_url = Column(Text)
     source_icon_url = Column(Text)
+    thumbnail_url = Column(Text)  # 缩略图/封面 URL (播客/视频)
     url = Column(Text, nullable=False, unique=True)
     url_hash = Column(String(64), nullable=False, unique=True, index=True)
 
@@ -170,6 +171,7 @@ class Resource(Base):
             "type": self.type,
             "source_name": self.source_name,
             "source_id": self.source_id,
+            "thumbnail_url": self.thumbnail_url,
             "url": self.url,
             "title": self.title,
             "title_translated": self.title_translated,

@@ -57,6 +57,7 @@ class ResourceBrief(BaseModel):
     published_at: Optional[str] = None
     created_at: Optional[str] = None
     source_icon_url: Optional[str] = None  # Phase 1.5 新增
+    thumbnail_url: Optional[str] = None  # 缩略图/封面 (播客/视频)
 
     @field_validator("published_at", "created_at", mode="before")
     @classmethod
@@ -282,6 +283,7 @@ def get_resources(
                 published_at=item.published_at,
                 created_at=item.created_at,
                 source_icon_url=item.source_icon_url,
+                thumbnail_url=item.thumbnail_url,
             )
         )
 
@@ -388,6 +390,7 @@ def get_resource(resource_id: int, db: Session = Depends(get_db)):
         source_name=resource.source_name,
         source_url=resource.source_url,
         source_icon_url=resource.source_icon_url,
+        thumbnail_url=resource.thumbnail_url,
         url=resource.url,
         title=resource.title,
         title_translated=resource.title_translated,
@@ -573,6 +576,7 @@ def search_resources(
                 published_at=item.published_at,
                 created_at=item.created_at,
                 source_icon_url=item.source_icon_url,
+                thumbnail_url=item.thumbnail_url,
             )
         )
 

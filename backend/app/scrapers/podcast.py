@@ -128,6 +128,32 @@ class PodcastScraper(BaseScraper):
                     duration_str = entry.itunes_duration
                     duration = self._parse_duration(duration_str)
 
+                # 提取封面图 (优先级: 单集封面 > 频道封面)
+                thumbnail_url = None
+
+                # 1. 尝试获取单集封面 (itunes:image)
+                if hasattr(entry, 'image') and entry.image:
+                    thumbnail_url = entry.image.get('href', '')
+
+                # 2. 尝试获取 media:thumbnail
+                if not thumbnail_url and hasattr(entry, 'media_thumbnail'):
+                    thumbnails = entry.media_thumbnail
+                    if thumbnails:
+                        if isinstance(thumbnails, list) and len(thumbnails) > 0:
+                            thumbnail_url = thumbnails[-1].get('url', '')
+                        elif isinstance(thumbnails, dict):
+                            thumbnail_url = thumbnails.get('url', '')
+
+                # 3. 回退到频道级封面
+                if not thumbnail_url and hasattr(feed.feed, 'image') and feed.feed.image:
+                    thumbnail_url = feed.feed.image.get('href', '')
+
+                # 4. 尝试 itunes:image (频道级)
+                if not thumbnail_url:
+                    itunes_image = feed.feed.get('itunes_image', {})
+                    if itunes_image:
+                        thumbnail_url = itunes_image.get('href', '')
+
                 # 提取发布时间
                 published_at = None
                 if hasattr(entry, "published_parsed") and entry.published_parsed:
@@ -149,6 +175,7 @@ class PodcastScraper(BaseScraper):
                         "podcast_name": feed_name,
                         "audio_url": audio_url,
                         "duration": duration,
+                        "thumbnail_url": thumbnail_url,
                         "type": "podcast",
                     }
                 )
