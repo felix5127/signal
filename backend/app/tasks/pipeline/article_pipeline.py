@@ -40,6 +40,7 @@ async def run_article_pipeline(
     opml_path: Optional[str] = None,
     min_value_score: int = 3,
     use_full_analysis: bool = True,
+    resource_type: str = "article",
 ) -> ArticlePipelineStats:
     """
     运行文章处理流水线
@@ -48,6 +49,7 @@ async def run_article_pipeline(
         opml_path: OPML 文件路径（可选，默认使用 BestBlogs OPML）
         min_value_score: 初评最低通过分数（0-5），默认 3 分
         use_full_analysis: 是否使用完整三步分析，False 则使用快速单步分析
+        resource_type: 资源类型（article/podcast/video），默认 article
 
     Returns:
         ArticlePipelineStats 统计信息
@@ -269,13 +271,17 @@ async def run_article_pipeline(
                 # 获取来源图标
                 source_icon_url = FaviconFetcher.get_favicon(signal.url)
 
+                # 获取缩略图 (从 RSS metadata)
+                thumbnail_url = signal.metadata.get("thumbnail_url") if signal.metadata else None
+
                 # 构建 Resource 记录
                 resource = Resource(
                     # 类型与来源
-                    type="article",
+                    type=resource_type,
                     source_name=source_name,
                     source_url="",  # RSS 源 URL（可从 OPML 获取）
                     source_icon_url=source_icon_url,
+                    thumbnail_url=thumbnail_url,
                     url=signal.url,
                     url_hash=url_hash,
 

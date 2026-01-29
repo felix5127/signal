@@ -257,6 +257,36 @@ class RSSScraper(BaseScraper):
         if entry.get('id'):
             metadata["feed_id"] = entry['id']
 
+        # 提取缩略图 (优先级: media:thumbnail > media:content > enclosure)
+        thumbnail_url = None
+
+        # 1. media:thumbnail
+        if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+            thumbnails = entry.media_thumbnail
+            if isinstance(thumbnails, list) and len(thumbnails) > 0:
+                thumbnail_url = thumbnails[0].get('url', '')
+            elif isinstance(thumbnails, dict):
+                thumbnail_url = thumbnails.get('url', '')
+
+        # 2. media:content (图片类型)
+        if not thumbnail_url and hasattr(entry, 'media_content') and entry.media_content:
+            for media in entry.media_content:
+                media_type = media.get('type', '')
+                if media_type.startswith('image/') or media.get('medium') == 'image':
+                    thumbnail_url = media.get('url', '')
+                    break
+
+        # 3. enclosure (图片类型)
+        if not thumbnail_url and hasattr(entry, 'enclosures') and entry.enclosures:
+            for enc in entry.enclosures:
+                enc_type = enc.get('type', '')
+                if enc_type.startswith('image/'):
+                    thumbnail_url = enc.get('href', enc.get('url', ''))
+                    break
+
+        if thumbnail_url:
+            metadata["thumbnail_url"] = thumbnail_url
+
         return RawSignal(
             source=self.source_name,
             source_id=entry.get('id', url),  # 优先使用 entry id，否则用 URL
