@@ -1,142 +1,138 @@
-// Input: Figma设计稿提取的圆角、阴影和动效
-// Output: 标准化的效果 Tokens
-// Position: 设计系统视觉效果定义，圆角、阴影、动效
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+// Input: Mercury 风格设计规范
+// Output: 统一的 Mercury 风格效果 Tokens
+// Position: 设计系统视觉效果定义
+// Style: Mercury.com - 简洁大气，大圆角，极淡阴影
 
 /**
- * Figma 设计稿效果分析
- * - 圆角: 3px, 4px, 12px, 9999px (胶囊)
- * - 阴影: 微妙的投影系统
- * - 动效: 快速过渡 (150-300ms)
+ * Signal Hunter 设计系统 - Mercury 风格效果
+ * 核心特点: 大圆角 (2rem)、极淡阴影、微妙玻璃效果
  */
 
-// ============ 圆角 ============
-const borderRadius = {
+// ============ 圆角 (Mercury 大圆角风格) ============
+export const borderRadius = {
   none: '0px',
-  xs: '3px',      // 小圆角 - 标签、小按钮
-  sm: '4px',      // 中小圆角 - 输入框
-  md: '8px',      // 中圆角 - 卡片
-  lg: '12px',     // 大圆角 - 容器
-  xl: '16px',     // 超大圆角
-  '2xl': '24px',  // 特大圆角
-  full: '9999px', // 完全圆角/胶囊形
+  xs: '0.25rem',    // 4px - 小元素
+  sm: '0.5rem',     // 8px - 输入框内部
+  md: '1rem',       // 16px - 中等元素
+  lg: '1.5rem',     // 24px - 卡片
+  xl: '2rem',       // 32px - 大卡片、按钮 (Mercury 默认)
+  '2xl': '2.5rem',  // 40px - 特大元素
+  '3xl': '3rem',    // 48px - Hero 元素
+  full: '9999px',   // 胶囊形
 }
 
-// ============ 阴影 ============
-const shadows = {
-  // 微妙阴影 - 小元素
-  xs: '0 1px 2px rgba(0, 0, 0, 0.05)',
+// ============ 阴影 (Mercury 极淡风格) ============
+export const shadows = {
+  // 无阴影
+  none: 'none',
 
-  // 小阴影 - 按钮、标签
-  sm: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
+  // 极淡阴影 - Mercury 风格核心
+  xs: '0 1px 2px rgba(0, 0, 0, 0.03)',
+  sm: '0 2px 4px rgba(0, 0, 0, 0.04)',
+  md: '0 4px 8px rgba(0, 0, 0, 0.05)',
+  lg: '0 8px 16px rgba(0, 0, 0, 0.06)',
+  xl: '0 16px 32px rgba(0, 0, 0, 0.08)',
 
-  // 中阴影 - 卡片
-  md: '0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04)',
+  // 卡片悬浮阴影
+  'card-hover': '0 12px 24px rgba(0, 0, 0, 0.08)',
 
-  // 大阴影 - 浮动卡片
-  lg: '0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04)',
+  // 内阴影 (输入框)
+  inner: 'inset 0 1px 2px rgba(0, 0, 0, 0.04)',
 
-  // 超大阴影 - 弹窗
-  xl: '0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04)',
-
-  // 内阴影
-  inner: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)',
-
-  // 品牌色阴影
+  // 品牌色阴影 (墨绿)
   brand: {
-    sm: '0 2px 8px rgba(98, 88, 255, 0.15)',
-    md: '0 4px 12px rgba(98, 88, 255, 0.2)',
-    lg: '0 8px 24px rgba(98, 88, 255, 0.25)',
+    sm: '0 2px 8px rgba(24, 133, 84, 0.12)',
+    md: '0 4px 16px rgba(24, 133, 84, 0.16)',
+    lg: '0 8px 24px rgba(24, 133, 84, 0.2)',
   },
 
-  // 深色模式阴影
-  dark: {
-    sm: '0 1px 3px rgba(0, 0, 0, 0.3)',
-    md: '0 4px 6px rgba(0, 0, 0, 0.4)',
-    lg: '0 10px 15px rgba(0, 0, 0, 0.5)',
+  // 强调色阴影 (琥珀金)
+  accent: {
+    sm: '0 2px 8px rgba(138, 117, 60, 0.12)',
+    md: '0 4px 16px rgba(138, 117, 60, 0.16)',
+  },
+}
+
+// ============ 玻璃效果 (Mercury 风格) ============
+export const glass = {
+  // 轻度玻璃 - 内容卡片
+  light: {
+    background: 'rgba(255, 255, 255, 0.8)',
+    blur: '8px',
+    border: '1px solid rgba(0, 0, 0, 0.04)',
+  },
+  // 标准玻璃 - 导航栏
+  standard: {
+    background: 'rgba(255, 255, 255, 0.7)',
+    blur: '12px',
+    border: '1px solid rgba(0, 0, 0, 0.06)',
+  },
+  // 深度玻璃 - 弹窗
+  deep: {
+    background: 'rgba(255, 255, 255, 0.6)',
+    blur: '16px',
+    border: '1px solid rgba(0, 0, 0, 0.08)',
   },
 }
 
 // ============ 模糊效果 ============
-const blur = {
+export const blur = {
+  none: '0px',
   sm: '4px',
   md: '8px',
-  lg: '16px',
-  xl: '24px',
-  '2xl': '40px',
-  full: '80px',
+  lg: '12px',
+  xl: '16px',
+  '2xl': '24px',
+  '3xl': '40px',
 }
 
-// ============ 动效时长 ============
-const duration = {
+// ============ 动效时长 (Mercury 简洁风格) ============
+export const duration = {
   instant: '100ms',
   fast: '150ms',
   normal: '200ms',
   slow: '300ms',
-  slower: '500ms',
+  slower: '400ms',
 }
 
 // ============ 动效缓动 ============
-const easing = {
-  // 线性
+export const easing = {
   linear: 'linear',
-
-  // 标准
   ease: 'ease',
   'ease-in': 'ease-in',
   'ease-out': 'ease-out',
   'ease-in-out': 'ease-in-out',
-
-  // 自定义
-  bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  // Mercury 风格缓动
   smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
   sharp: 'cubic-bezier(0.4, 0, 0.6, 1)',
+  // Apple 风格
+  apple: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+  'apple-out': 'cubic-bezier(0.22, 1, 0.36, 1)',
 }
 
 // ============ 过渡组合 ============
-const transitions = {
-  // 快速过渡
+export const transitions = {
   fast: `${duration.fast} ${easing.smooth}`,
-
-  // 标准过渡
   normal: `${duration.normal} ${easing.smooth}`,
-
-  // 慢速过渡
   slow: `${duration.slow} ${easing.smooth}`,
-
-  // 弹跳过渡
-  bounce: `${duration.normal} ${easing.bounce}`,
-
-  // 颜色过渡
-  colors: `color ${duration.normal} ${easing.smooth}`,
-
-  // 背景过渡
-  backgrounds: `background-color ${duration.normal} ${easing.smooth}`,
-
-  // 边框过渡
-  borders: `border-color ${duration.normal} ${easing.smooth}`,
-
-  // 阴影过渡
-  shadows: `box-shadow ${duration.normal} ${easing.smooth}`,
-
-  // 变换过渡
-  transforms: `transform ${duration.fast} ${easing.sharp}`,
-
-  // 全部属性
   all: `all ${duration.normal} ${easing.smooth}`,
+  transform: `transform ${duration.fast} ${easing.sharp}`,
+  colors: `color, background-color, border-color ${duration.normal} ${easing.smooth}`,
+  shadow: `box-shadow ${duration.normal} ${easing.smooth}`,
 }
 
 // ============ CSS 变量 ============
-const cssVariables = {
+export const cssVariables = {
   // 圆角
-  '--radius-none': borderRadius.none,
   '--radius-xs': borderRadius.xs,
   '--radius-sm': borderRadius.sm,
   '--radius-md': borderRadius.md,
   '--radius-lg': borderRadius.lg,
   '--radius-xl': borderRadius.xl,
   '--radius-2xl': borderRadius['2xl'],
+  '--radius-3xl': borderRadius['3xl'],
   '--radius-full': borderRadius.full,
+  '--radius': borderRadius.xl,  // 默认圆角
 
   // 阴影
   '--shadow-xs': shadows.xs,
@@ -144,54 +140,31 @@ const cssVariables = {
   '--shadow-md': shadows.md,
   '--shadow-lg': shadows.lg,
   '--shadow-xl': shadows.xl,
+  '--shadow-card-hover': shadows['card-hover'],
   '--shadow-inner': shadows.inner,
+
+  // 玻璃效果
+  '--glass-bg-light': glass.light.background,
+  '--glass-bg-standard': glass.standard.background,
+  '--glass-bg-deep': glass.deep.background,
+  '--glass-blur-light': glass.light.blur,
+  '--glass-blur-standard': glass.standard.blur,
+  '--glass-blur-deep': glass.deep.blur,
 
   // 模糊
   '--blur-sm': blur.sm,
   '--blur-md': blur.md,
   '--blur-lg': blur.lg,
   '--blur-xl': blur.xl,
-  '--blur-2xl': blur['2xl'],
-  '--blur-full': blur.full,
 
   // 动效
   '--duration-fast': duration.fast,
   '--duration-normal': duration.normal,
   '--duration-slow': duration.slow,
-
   '--transition-fast': transitions.fast,
   '--transition-normal': transitions.normal,
   '--transition-slow': transitions.slow,
 }
 
-// ============ Tailwind 配置导出 ============
-const tailwindEffects = {
-  borderRadius: {
-    none: borderRadius.none,
-    xs: borderRadius.xs,
-    sm: borderRadius.sm,
-    md: borderRadius.md,
-    lg: borderRadius.lg,
-    xl: borderRadius.xl,
-    '2xl': borderRadius['2xl'],
-    full: borderRadius.full,
-  },
-  boxShadow: {
-    xs: shadows.xs,
-    sm: shadows.sm,
-    md: shadows.md,
-    lg: shadows.lg,
-    xl: shadows.xl,
-    inner: shadows.inner,
-    'brand-sm': shadows.brand.sm,
-    'brand-md': shadows.brand.md,
-    'brand-lg': shadows.brand.lg,
-  },
-  backdropBlur: blur,
-  transitionDuration: duration,
-  transitionTimingFunction: easing,
-}
-
-// ============ 导出 ============
-export { borderRadius, shadows, blur, duration, easing, transitions, cssVariables }
-export default tailwindEffects
+// ============ 默认导出 ============
+export default { borderRadius, shadows, glass, blur, duration, easing, transitions, cssVariables }
