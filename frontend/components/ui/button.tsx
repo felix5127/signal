@@ -1,94 +1,88 @@
 /**
- * [INPUT]: variant, size, asChild, className
- * [OUTPUT]: 微拟物设计风格按钮组件（立体渐变效果）
- * [POS]: UI 基础层 - 核心交互原语
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * Button - Mercury 风格按钮组件
+ * 特点: 大圆角 (2rem)、简洁样式、微妙交互
  */
 'use client'
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
-
-/* ========================================
-   按钮样式配置 - 渐变 + 立体效果
-   ======================================== */
-
-const BUTTON_STYLES = {
-  default: {
-    background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
-    boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-    hoverBoxShadow: '0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-  },
-  primary: {
-    background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
-    boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-    hoverBoxShadow: '0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-  },
-  destructive: {
-    background: 'linear-gradient(135deg, var(--destructive) 0%, color-mix(in srgb, var(--destructive) 85%, black) 50%, color-mix(in srgb, var(--destructive) 70%, black) 100%)',
-    boxShadow: '0 4px 12px color-mix(in srgb, var(--destructive) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-    hoverBoxShadow: '0 6px 20px color-mix(in srgb, var(--destructive) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-  },
-  accent: {
-    background: 'linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 85%, black) 50%, color-mix(in srgb, var(--accent) 70%, black) 100%)',
-    boxShadow: '0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-    hoverBoxShadow: '0 6px 20px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
-  },
-  secondary: {
-    background: 'linear-gradient(135deg, var(--secondary) 0%, color-mix(in srgb, var(--secondary) 90%, black) 50%, color-mix(in srgb, var(--secondary) 80%, black) 100%)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.05)',
-    hoverBoxShadow: '0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.08)',
-  },
-  outline: {
-    background: 'transparent',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
-    hoverBoxShadow: '0 2px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)',
-  },
-  ghost: {
-    background: 'transparent',
-    boxShadow: 'none',
-    hoverBoxShadow: 'none',
-  },
-  link: {
-    background: 'transparent',
-    boxShadow: 'none',
-    hoverBoxShadow: 'none',
-  },
-}
 
 const buttonVariants = cva(
   [
+    // 基础样式
     "inline-flex items-center justify-center gap-2",
-    "whitespace-nowrap text-sm font-medium",
-    "rounded-2xl",
+    "whitespace-nowrap font-medium",
+    "rounded-[var(--radius-xl)]",
     "transition-all duration-200",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    // 焦点样式
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2",
+    // 禁用状态
     "disabled:pointer-events-none disabled:opacity-50",
+    // SVG 图标
     "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-    "active:scale-[0.97] hover:scale-[1.02]",
+    // 微交互
+    "active:scale-[0.98]",
   ].join(" "),
   {
     variants: {
       variant: {
-        default: "text-primary-foreground",
-        primary: "text-primary-foreground",
-        destructive: "text-destructive-foreground",
-        accent: "text-accent-foreground",
-        secondary: "text-secondary-foreground",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        // 主按钮 - 墨绿实心
+        default: [
+          "bg-[var(--color-primary)] text-white",
+          "hover:bg-[var(--color-primary-dark)]",
+          "hover:shadow-[var(--shadow-brand-sm)]",
+        ].join(" "),
+        // 主按钮别名
+        primary: [
+          "bg-[var(--color-primary)] text-white",
+          "hover:bg-[var(--color-primary-dark)]",
+          "hover:shadow-[var(--shadow-brand-sm)]",
+        ].join(" "),
+        // 次按钮 - 浅色背景
+        secondary: [
+          "bg-[var(--bg-secondary)] text-[var(--text-primary)]",
+          "border border-[var(--border-default)]",
+          "hover:bg-[var(--bg-input)] hover:border-[var(--border-strong)]",
+        ].join(" "),
+        // 危险按钮
+        destructive: [
+          "bg-[var(--color-error)] text-white",
+          "hover:bg-red-600",
+          "hover:shadow-[0_2px_8px_rgba(239,68,68,0.2)]",
+        ].join(" "),
+        // 边框按钮
+        outline: [
+          "bg-transparent text-[var(--text-primary)]",
+          "border border-[var(--border-strong)]",
+          "hover:bg-[var(--bg-secondary)]",
+        ].join(" "),
+        // 幽灵按钮
+        ghost: [
+          "bg-transparent text-[var(--text-primary)]",
+          "hover:bg-[var(--bg-secondary)]",
+        ].join(" "),
+        // 链接按钮
+        link: [
+          "bg-transparent text-[var(--color-primary)]",
+          "underline-offset-4 hover:underline",
+          "active:scale-100",
+        ].join(" "),
+        // 强调按钮 - 琥珀金
+        accent: [
+          "bg-[var(--color-accent)] text-white",
+          "hover:brightness-110",
+          "hover:shadow-[0_2px_8px_rgba(138,117,60,0.2)]",
+        ].join(" "),
       },
       size: {
-        sm: "h-8 px-4 text-xs rounded-xl",
-        default: "h-9 px-5 py-2 rounded-2xl",
-        md: "h-10 px-6 py-2.5 rounded-2xl",
-        lg: "h-12 px-10 rounded-2xl",
-        xl: "h-14 px-12 py-4 text-lg rounded-3xl",
-        icon: "h-10 w-10 rounded-2xl",
+        sm: "h-8 px-4 text-[var(--text-body-sm)] rounded-[var(--radius-lg)]",
+        default: "h-10 px-5 py-2 text-[var(--text-body-sm)]",
+        md: "h-11 px-6 py-2.5 text-[var(--text-body)]",
+        lg: "h-12 px-8 text-[var(--text-body)]",
+        xl: "h-14 px-10 text-[var(--text-body-lg)]",
+        icon: "h-10 w-10 p-0",
       },
     },
     defaultVariants: {
@@ -106,24 +100,11 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const [isHovered, setIsHovered] = React.useState(false)
     const Comp = asChild ? Slot : "button"
-
-    const styleConfig = BUTTON_STYLES[variant as keyof typeof BUTTON_STYLES] || BUTTON_STYLES.default
-    const needsCustomStyle = !['ghost', 'link'].includes(variant || 'default')
-
-    const combinedStyle = needsCustomStyle ? {
-      background: styleConfig.background,
-      boxShadow: isHovered ? styleConfig.hoverBoxShadow : styleConfig.boxShadow,
-    } : undefined
-
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        style={combinedStyle}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         {...props}
       />
     )

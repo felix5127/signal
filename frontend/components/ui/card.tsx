@@ -1,28 +1,59 @@
 /**
- * [INPUT]: variant (raised/inset/outline), className
- * [OUTPUT]: 微拟物设计风格卡片组件（凸起/内凹/边框变体）
- * [POS]: UI 布局组件 - 内容容器
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * Card - Mercury 风格卡片组件
+ * 特点: 大圆角 (2rem)、极淡阴影、简洁边框
  */
 'use client'
 
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
 
 const cardVariants = cva(
   [
-    "rounded-2xl border bg-card text-card-foreground transition-all duration-200",
-    "active:scale-[0.97] hover:scale-[1.02]",
-  ],
+    "rounded-[var(--radius-xl)]",
+    "bg-[var(--bg-card)]",
+    "border border-[var(--border-default)]",
+    "transition-all duration-200",
+  ].join(" "),
   {
     variants: {
       variant: {
+        // 默认卡片
         default: "",
-        raised: "shadow-[var(--shadow-raised)] hover:shadow-[var(--shadow-raised-hover)]",
-        inset: "shadow-[var(--shadow-inset)]",
-        outline: "shadow-sm",
+        // 可交互卡片 - 带悬浮效果
+        interactive: [
+          "cursor-pointer",
+          "hover:shadow-[var(--shadow-card-hover)]",
+          "hover:-translate-y-0.5",
+          "hover:border-[var(--border-strong)]",
+        ].join(" "),
+        // 凸起卡片 - 带阴影
+        raised: [
+          "shadow-[var(--shadow-md)]",
+          "hover:shadow-[var(--shadow-lg)]",
+          "hover:-translate-y-0.5",
+        ].join(" "),
+        // 边框卡片
+        outline: [
+          "border-[var(--border-strong)]",
+          "bg-transparent",
+        ].join(" "),
+        // 玻璃卡片
+        glass: [
+          "bg-[var(--glass-bg-light)]",
+          "backdrop-blur-[var(--glass-blur-light)]",
+          "border-[var(--border-light)]",
+        ].join(" "),
+        // 强调卡片 - 带品牌色边框
+        elevated: [
+          "shadow-[var(--shadow-md)]",
+          "hover:shadow-[var(--shadow-lg)]",
+        ].join(" "),
+        // 内嵌卡片 - 用于表单区域
+        inset: [
+          "bg-[var(--bg-secondary)]",
+          "border-transparent",
+        ].join(" "),
       },
     },
     defaultVariants: {
@@ -36,26 +67,13 @@ export interface CardProps
     VariantProps<typeof cardVariants> {}
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, ...props }, ref) => {
-    const [isHovered, setIsHovered] = React.useState(false)
-
-    // 动态应用阴影样式
-    const getShadowStyle = () => {
-      if (variant === 'default' || !variant) return 'shadow' // 使用默认 Tailwind shadow
-      if (variant === 'inset') return undefined // inset 变体不使用额外阴影
-      return undefined
-    }
-
-    return (
-      <div
-        ref={ref}
-        className={cn(cardVariants({ variant, className }))}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        {...props}
-      />
-    )
-  }
+  ({ className, variant, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(cardVariants({ variant, className }))}
+      {...props}
+    />
+  )
 )
 Card.displayName = "Card"
 
@@ -77,7 +95,10 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight text-[var(--text-primary)]",
+      className
+    )}
     {...props}
   />
 ))
@@ -89,7 +110,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-[var(--text-secondary)]", className)}
     {...props}
   />
 ))
@@ -115,4 +136,12 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent, cardVariants }
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  cardVariants,
+}
