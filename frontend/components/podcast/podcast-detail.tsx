@@ -244,10 +244,6 @@ export function PodcastDetail({ resource }: PodcastDetailProps) {
           <ContentTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            hasShowNotes={!!(resource.content_markdown || displaySummary)}
-            hasChapters={!!(resource.chapters && resource.chapters.length > 0)}
-            hasTranscript={!!resource.transcript}
-            hasQA={!!(resource.qa_pairs && resource.qa_pairs.length > 0)}
           >
             {renderTabContent()}
           </ContentTabs>
