@@ -1,8 +1,7 @@
-// Input: 筛选状态、筛选更新回调、搜索回调
-// Output: 工具栏式筛选器 UI（Linear/Raycast 风格）
-// Position: 首页搜索区下方，单行工具栏布局
-// 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
-
+/**
+ * CompactFilterToolbar - Mercury 风格筛选工具栏
+ * 特点: 简洁大气、清晰层级、专业感
+ */
 'use client'
 
 import { useState } from 'react'
@@ -28,7 +27,6 @@ export type LanguageFilter = '' | 'zh' | 'en'
 export type ScoreFilter = '' | '9.0' | '8.5' | '7.5'
 export type SortOption = 'default' | 'time' | 'score'
 
-// 重新导出类型
 export const TIME_FILTERS = [
   { value: '', label: '全部时间' },
   { value: '1d', label: '1天' },
@@ -73,7 +71,7 @@ interface CompactFilterToolbarProps {
   className?: string
 }
 
-// 下拉菜单按钮组件 - 使用 Lucide 图标
+// Mercury 风格下拉菜单按钮组件
 function FilterDropdown({
   icon: Icon,
   label,
@@ -104,25 +102,22 @@ function FilterDropdown({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-2 px-4 py-2 rounded-lg text-[15px] font-medium transition-all',
-          'hover:bg-slate-100/80',
+          'flex items-center gap-2 px-4 py-2 rounded-[var(--radius-lg)] text-[var(--text-body-sm)] font-medium transition-all duration-200',
+          'hover:bg-[var(--bg-secondary)]',
           isActive
-            ? 'bg-white/50 backdrop-blur-md ring-1 ring-black/5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)] text-purple-700'
-            : 'text-slate-600'
+            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
+            : 'text-[var(--text-secondary)]'
         )}
       >
-        <Icon className={cn('w-4 h-4', isActive ? 'text-purple-600' : 'text-slate-400')} />
+        <Icon className={cn('w-4 h-4', isActive ? 'text-[var(--color-primary)]' : 'text-[var(--text-muted)]')} />
         <span>{label}:</span>
-        <span className={cn(
-          'font-medium',
-          isActive && 'text-purple-700'
-        )}>
+        <span className="font-medium">
           {displayLabel}
         </span>
         <svg
           className={cn(
-            'w-4 h-4 transition-transform',
-            isActive ? 'text-purple-400' : 'text-slate-400',
+            'w-4 h-4 transition-transform duration-200',
+            isActive ? 'text-[var(--color-primary)]' : 'text-[var(--text-muted)]',
             isOpen && 'transform rotate-180'
           )}
           fill="none"
@@ -141,18 +136,18 @@ function FilterDropdown({
             onClick={() => setIsOpen(false)}
           />
 
-          {/* 下拉菜单 */}
-          <div className="absolute top-full left-0 mt-2 z-50 min-w-[200px] bg-white rounded-lg shadow-xl border border-slate-200 py-1">
+          {/* 下拉菜单 - Mercury 风格 */}
+          <div className="absolute top-full left-0 mt-2 z-50 min-w-[200px] bg-[var(--bg-card)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-[var(--border-default)] py-1">
             {options.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleSelect(option.value)}
                 className={cn(
-                  'w-full px-4 py-2 text-sm text-left transition-colors',
-                  'hover:bg-slate-50',
+                  'w-full px-4 py-2.5 text-[var(--text-body-sm)] text-left transition-colors duration-200',
+                  'hover:bg-[var(--bg-secondary)]',
                   value === option.value
-                    ? 'bg-violet-50 text-violet-700 font-medium'
-                    : 'text-slate-700'
+                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium'
+                    : 'text-[var(--text-primary)]'
                 )}
               >
                 {option.label}
@@ -178,7 +173,7 @@ export function CompactFilterToolbar({
 
   return (
     <div className={cn('flex flex-col gap-6', className)}>
-      {/* 搜索框 - 居中、无阴影 */}
+      {/* 搜索框 - 居中 */}
       <div className="flex justify-center">
         <SearchBox
           value={filters.searchKeyword}
@@ -221,15 +216,15 @@ export function CompactFilterToolbar({
           isActive={filters.scoreFilter !== ''}
         />
 
-        {/* 来源筛选状态（可清除） */}
+        {/* 来源筛选状态（可清除）- Mercury 风格 */}
         {filters.sourceFilter && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
-            <span className="text-sm text-green-600">
+          <div className="flex items-center gap-2 px-3 py-2 bg-[var(--color-primary-light)] rounded-[var(--radius-lg)]">
+            <span className="text-[var(--text-body-sm)] text-[var(--color-primary)]">
               来源: {filters.sourceFilter}
             </span>
             <button
               onClick={() => updateFilter('sourceFilter', '')}
-              className="text-green-400 hover:text-green-600"
+              className="text-[var(--color-primary)] hover:text-[var(--color-primary-dark)] transition-colors"
               aria-label="清除来源筛选"
             >
               <X className="w-4 h-4" />

@@ -8,6 +8,7 @@
 import { notFound } from 'next/navigation'
 import ResourceDetail from '@/components/resource-detail'
 import { PodcastDetail } from '@/components/podcast'
+import { VideoDetail } from '@/components/video'
 import type { Chapter } from '@/components/podcast'
 import type { QAPair } from '@/components/podcast'
 
@@ -37,6 +38,9 @@ interface Resource {
   read_time?: number
   duration?: number
   audio_url?: string
+  video_url?: string
+  thumbnail_url?: string
+  view_count?: number
   transcript?: string
   chapters?: Chapter[]
   qa_pairs?: QAPair[]
@@ -80,6 +84,17 @@ export default async function ResourceDetailPage({
     )
   }
 
-  // 默认使用通用详情组件（文章/视频/推文）
+  if (resource.type === 'video') {
+    return (
+      <VideoDetail
+        resource={{
+          ...resource,
+          type: 'video' as const,
+        }}
+      />
+    )
+  }
+
+  // 默认使用通用详情组件（文章/推文）
   return <ResourceDetail resource={resource} />
 }

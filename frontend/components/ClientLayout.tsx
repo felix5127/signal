@@ -20,12 +20,17 @@ interface ClientLayoutProps {
 export function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith('/admin')
+  const isResearchWorkspace = pathname?.startsWith('/research/workspace')
+
+  // 研究工作台页面：隐藏全局 Navbar 和 Footer（使用自己的布局）
+  const hideGlobalNav = isAdminRoute || isResearchWorkspace
+  const hideFooter = isAdminRoute || isResearchWorkspace
 
   return (
     <MotionConfig reducedMotion="user" transition={{ duration: 0.2 }}>
-      {!isAdminRoute && <Navbar />}
+      {!hideGlobalNav && <Navbar />}
       {children}
-      {!isAdminRoute && <Footer />}
+      {!hideFooter && <Footer />}
       <Toaster position="top-right" richColors />
     </MotionConfig>
   )

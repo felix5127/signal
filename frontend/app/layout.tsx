@@ -7,7 +7,15 @@
 
 import type { Metadata } from 'next'
 import dynamic from 'next/dynamic'
+import { Inter } from 'next/font/google'
 import './globals.css'
+
+// Inter 字体配置
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 // 强制动态渲染，禁用静态生成（layout 中不支持 dynamic，需要在每个页面中设置）
 
@@ -68,13 +76,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning className={inter.variable}>
       <head>
         <script
           dangerouslySetInnerHTML={{ __html: themeScript }}
         />
       </head>
-      <body className="antialiased">
+      <body className={`${inter.className} antialiased`}>
         <ClientLayout>
           {children}
         </ClientLayout>

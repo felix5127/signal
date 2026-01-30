@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React useState/useEffect、Backend API (/api/sources/runs)
- * [OUTPUT]: 对外提供采集日志页面
+ * [OUTPUT]: 对外提供采集日志页面（分页模式，每页20条）
  * [POS]: admin/ 的采集日志页面，展示详细的采集历史记录
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { formatTime } from '@/lib/admin-utils'
+import { Pagination } from '@/components/pagination'
 import {
   RefreshCw,
   AlertTriangle,
@@ -23,6 +24,8 @@ import {
   Filter,
   FileText,
 } from 'lucide-react'
+
+const PAGE_SIZE = 20
 
 // ========== 类型定义 ==========
 
@@ -225,15 +228,15 @@ export default function LogsPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const fetchData = useCallback(async (reset = false) => {
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true)
-      const currentPage = reset ? 1 : page
       const res = await fetch(
-        `/api/sources/runs?page=${currentPage}&page_size=50`,
+        `/api/sources/runs?page=${currentPage}&page_size=${PAGE_SIZE}`,
         { cache: 'no-store' }
       )
 
@@ -246,13 +249,9 @@ export default function LogsPage() {
 
       if (data.success) {
         const items = data.data.items || []
-        if (reset) {
-          setRuns(items)
-          setPage(1)
-        } else {
-          setRuns((prev) => [...prev, ...items])
-        }
-        setHasMore(items.length === 50)
+        setRuns(items)
+        setTotalItems(data.data.total || items.length)
+        setTotalPages(Math.ceil((data.data.total || items.length) / PAGE_SIZE))
         setError(null)
       } else {
         setError(data.error || '获取采集日志失败')
@@ -264,22 +263,21 @@ export default function LogsPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [page])
+  }, [currentPage])
 
   useEffect(() => {
-    fetchData(true)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    fetchData()
+  }, [fetchData])
 
   const filteredRuns =
     statusFilter === 'all'
       ? runs
       : runs.filter((run) => run.status === statusFilter)
 
-  const handleLoadMore = () => {
-    setPage((p) => p + 1)
-    fetchData()
-  }
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   if (loading) {
     return (
@@ -391,16 +389,20 @@ export default function LogsPage() {
             </table>
           </div>
 
-          {/* 加载更多 */}
-          {hasMore && filteredRuns.length > 0 && (
-            <div className="p-4 text-center border-t border-[var(--ds-border)]">
-              <button
-                onClick={handleLoadMore}
-                disabled={refreshing}
-                className="px-6 py-2 text-sm text-indigo-600 hover:text-indigo-700 transition-colors disabled:opacity-50"
-              >
-                {refreshing ? '加载中...' : '加载更多'}
-              </button>
+          {/* 分页导航 */}
+          {totalPages > 1 && filteredRuns.length > 0 && (
+            <div className="p-4 border-t border-[var(--ds-border)]">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[var(--ds-muted)]">
+                  共 <span className="font-medium text-[var(--ds-fg)]">{totalItems}</span> 条记录
+                  · 第 <span className="font-medium text-[var(--ds-fg)]">{currentPage}</span> / {totalPages} 页
+                </p>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React useState/useEffect，后端 API (GET /api/newsletters)
- * [OUTPUT]: 周刊列表页面，展示所有周刊卡片（带动效）
- * [POS]: 周刊列表页，客户端渲染 + 响应式网格布局
+ * [INPUT]: 依赖 React useState/useEffect/useCallback，后端 API (GET /api/newsletters)
+ * [OUTPUT]: 周刊列表页面，展示所有周刊卡片（带动效）+ 分页导航
+ * [POS]: 周刊列表页，客户端渲染 + 响应式网格布局 + 每页20条
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
@@ -10,9 +10,10 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Star, BarChart3, Loader2 } from 'lucide-react'
+import { Pagination } from '@/components/pagination'
 
 // 周刊数据类型
 interface Newsletter {
@@ -37,32 +38,45 @@ interface ApiResponse {
 // API URL helper
 const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+const PAGE_SIZE = 20
+
 export default function NewslettersPage() {
   const [items, setItems] = useState<Newsletter[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+
+  const fetchNewsletters = useCallback(async () => {
+    setLoading(true)
+    try {
+      const apiUrl = getApiUrl()
+      const res = await fetch(`${apiUrl}/api/newsletters?page=${currentPage}&page_size=${PAGE_SIZE}`)
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch newsletters')
+      }
+
+      const data: ApiResponse = await res.json()
+      setItems(data.items || [])
+      setTotalItems(data.total)
+      setTotalPages(Math.ceil(data.total / PAGE_SIZE))
+    } catch (e) {
+      setError('无法加载周刊列表')
+      console.error('Failed to fetch newsletters:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentPage])
 
   useEffect(() => {
-    async function fetchNewsletters() {
-      try {
-        const apiUrl = getApiUrl()
-        const res = await fetch(`${apiUrl}/api/newsletters?page_size=50`)
-
-        if (!res.ok) {
-          throw new Error('Failed to fetch newsletters')
-        }
-
-        const data: ApiResponse = await res.json()
-        setItems(data.items || [])
-      } catch (e) {
-        setError('无法加载周刊列表')
-        console.error('Failed to fetch newsletters:', e)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchNewsletters()
+  }, [fetchNewsletters])
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
   if (loading) {
@@ -99,6 +113,20 @@ export default function NewslettersPage() {
           </p>
         </div>
 
+        {/* 统计信息 */}
+        {totalItems > 0 && (
+          <div className="mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              共 <span className="font-medium text-gray-700 dark:text-gray-300">{totalItems}</span> 期周刊
+              {totalPages > 1 && (
+                <span className="ml-2">
+                  · 第 <span className="font-medium text-gray-700 dark:text-gray-300">{currentPage}</span> / {totalPages} 页
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* 周刊卡片网格 */}
         {items.length === 0 ? (
           <div className="text-center py-20">
@@ -107,44 +135,57 @@ export default function NewslettersPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((nl) => (
-              <Link key={nl.id} href={`/newsletters/${nl.id}`} className="block h-full">
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-xl transition-all duration-200 border border-gray-100 dark:border-gray-700 h-full flex flex-col group">
-                  {/* 标题 */}
-                  <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-                    {nl.title}
-                  </h3>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {items.map((nl) => (
+                <Link key={nl.id} href={`/newsletters/${nl.id}`} className="block h-full">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-xl transition-all duration-200 border border-gray-100 dark:border-gray-700 h-full flex flex-col group">
+                    {/* 标题 */}
+                    <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                      {nl.title}
+                    </h3>
 
-                  {/* 日期 */}
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                    {new Date(nl.published_at).toLocaleDateString('zh-CN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
+                    {/* 日期 */}
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                      {new Date(nl.published_at).toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
 
-                  {/* 预览 */}
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3 flex-grow">
-                    {nl.preview}
-                  </p>
+                    {/* 预览 */}
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3 flex-grow">
+                      {nl.preview}
+                    </p>
 
-                  {/* 统计信息 */}
-                  <div className="flex justify-between text-sm pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                      <BarChart3 className="w-3 h-3" />
-                      {nl.resource_count}篇收录
-                    </span>
-                    <span className="text-yellow-600 dark:text-yellow-400 font-semibold flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-current" />
-                      {nl.featured_count}篇精选
-                    </span>
+                    {/* 统计信息 */}
+                    <div className="flex justify-between text-sm pt-4 border-t border-gray-100 dark:border-gray-700">
+                      <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                        <BarChart3 className="w-3 h-3" />
+                        {nl.resource_count}篇收录
+                      </span>
+                      <span className="text-yellow-600 dark:text-yellow-400 font-semibold flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-current" />
+                        {nl.featured_count}篇精选
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* 分页导航 */}
+            {totalPages > 1 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {/* 底部说明 */}

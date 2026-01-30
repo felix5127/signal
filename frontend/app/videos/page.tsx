@@ -1,29 +1,28 @@
 // 强制动态渲染，禁用静态生成
 export const dynamic = 'force-dynamic'
+
 /**
- * [INPUT]: ResourceListPage基础组件, ResourceCard卡片组件
- * [OUTPUT]: 视频列表页面（展示所有视频类型资源，支持筛选和搜索）
- * [POS]: app/videos/ 的路由页面，导航栏"视频"入口的目标页
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * VideosPage - 视频列表页
+ * 设计规范: Mercury.com 浅色系
+ * - 背景色: #FBFCFD
+ * - 主色调: #1E3A5F (深海军蓝)
+ * - 文字色: #272735, #6B6B6B, #9A9A9A
+ * - 圆角: 16px
+ * - 视频卡片: 3列网格，带彩色缩略图和播放按钮
  */
 
 import { ResourceListPage } from '@/components/resource-list-page'
-import { ResourceCard } from '@/components/resource-card'
+import { VideoCard } from '@/components/video-card'
 
 export default function VideosPage() {
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* 页面头部 */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">🎬 技术视频</h1>
-        <p className="text-muted-foreground">
-          技术教程与会议演讲，视频化学习前沿技术
-        </p>
-      </div>
-
-      {/* 资源列表 */}
-      <ResourceListPage resourceType="video" CardComponent={ResourceCard} />
-    </main>
+    <ResourceListPage
+      resourceType="video"
+      CardComponent={VideoCard}
+      pageTitle="视频"
+      pageSubtitle="观看技术教程与会议演讲"
+      wideLayout
+    />
   )
 }
 

@@ -1,17 +1,14 @@
 'use client'
 
 /**
- * [INPUT]: RESOURCE_TYPES配置, 卡片组件, 筛选器组件
- * [OUTPUT]: 标准化的资源列表页面（包含筛选器、无限滚动、错误处理）
- * [POS]: components/ 的基础列表页模板，被 /articles /podcasts /tweets /videos 路由消费
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * ResourceListPage - Mercury 风格资源列表页面
+ * 特点: 简洁页头 + 分类筛选标签 + 文章卡片列表 + 分页导航
+ * 设计规范: 背景 #FBFCFD, 主色调 #1E3A5F, 16px 圆角
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import type { FilterState, TimeFilter, SortOption } from '@/components/compact-filter-toolbar'
 import { RESOURCE_TYPES, type ResourceType } from '@/lib/resource-types'
-import { CompactFilterToolbar } from '@/components/compact-filter-toolbar'
-import { InfiniteScroll } from '@/components/infinite-scroll'
+import { Pagination } from '@/components/pagination'
 import { cn } from '@/lib/utils'
 
 export interface Resource {
@@ -25,6 +22,7 @@ export interface Resource {
   source?: string
   source_name?: string
   source_icon_url?: string
+  thumbnail_url?: string
   one_sentence_summary?: string
   one_sentence_summary_zh?: string
   summary?: string
@@ -54,48 +52,23 @@ interface ApiResponse {
 interface ResourceListPageProps {
   resourceType: ResourceType
   CardComponent: React.ComponentType<{ resource: Resource }>
+  pageTitle?: string
+  pageSubtitle?: string
+  wideLayout?: boolean
 }
 
-/**
- * 计算时间范围
- */
-function getTimeRange(filter: TimeFilter): Date | null {
-  const now = new Date()
-  switch (filter) {
-    case '1d':
-      return new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    case '1w':
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    case '1m':
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    case '3m':
-      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-    case '1y':
-      return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-    default:
-      return null
-  }
-}
+// 分类筛选标签配置
+const CATEGORY_FILTERS = [
+  { value: '', label: '全部' },
+  { value: '人工智能', label: 'AI-ML' },
+  { value: '软件编程', label: '开发工具' },
+  { value: '商业科技', label: 'Web3' },
+] as const
 
 /**
- * 获取排序参数
- */
-function getSortParam(sortBy: SortOption): string {
-  switch (sortBy) {
-    case 'time':
-      return 'created_at'
-    case 'score':
-      return 'final_score'
-    default:
-      return 'created_at'
-  }
-}
-
-/**
- * 获取 API 地址（直接访问后端）
+ * 获取 API 地址
  */
 function getApiUrl(): string {
-  // 开发环境直接访问后端，绕过 Next.js 代理
   return process.env.NODE_ENV === 'development'
     ? 'http://localhost:8000/api'
     : '/api'
@@ -104,277 +77,235 @@ function getApiUrl(): string {
 /**
  * 资源列表页面组件
  *
- * 基础列表页模板，封装了筛选器、无限滚动、错误处理等所有逻辑
- * 4个独立页面通过配置复用此组件
+ * 包含页面标题、分类筛选和文章列表
  */
 export function ResourceListPage({
   resourceType,
   CardComponent,
+  pageTitle,
+  pageSubtitle,
+  wideLayout = false,
 }: ResourceListPageProps) {
   const config = RESOURCE_TYPES[resourceType]
-  const pageSize = 12
+  const pageSize = 20
+
+  // 根据 wideLayout 决定容器宽度
+  const containerClass = wideLayout ? 'max-w-6xl' : 'max-w-4xl'
 
   // 状态管理
-  const [filters, setFilters] = useState<FilterState>({
-    timeFilter: '',  // 默认不限时间，避免 published_at 为空或较旧时数据不显示
-    domainFilter: '',
-    langFilter: '',
-    scoreFilter: '',
-    sourceFilter: '',
-    sortBy: 'default',
-    featuredOnly: false,
-    searchKeyword: '',
-  })
-
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchLoading, setSearchLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [totalPages, setTotalPages] = useState(1)
 
   /**
-   * 获取资源数据（普通列表或搜索）
+   * 获取资源数据
    */
-  const fetchResources = useCallback(async (isLoadMore: boolean = false) => {
-    const isSearchMode = filters.searchKeyword.trim() !== ''
-
-    // 根据是否加载更多设置加载状态
-    if (isLoadMore) {
-      setIsLoadingMore(true)
-    } else {
-      if (isSearchMode) {
-        setSearchLoading(true)
-      } else {
-        setLoading(true)
-      }
-    }
-
-    // 第一页时重置状态
-    if (currentPage === 1 && !isLoadMore) {
-      setResources([])
-      setHasMore(true)
-    }
-
+  const fetchResources = useCallback(async () => {
+    setLoading(true)
     setError(null)
 
     try {
       const apiUrl = getApiUrl()
 
-      let response: Response
-      let data: ApiResponse
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        sort: 'default',
+        type: resourceType,
+      })
 
-      if (isSearchMode) {
-        // 搜索模式
-        const params = new URLSearchParams({
-          q: filters.searchKeyword.trim(),
-          page: currentPage.toString(),
-          pageSize: pageSize.toString(),
-          sort: filters.sortBy,
-          type: resourceType,
-        })
+      if (categoryFilter) params.set('domain', categoryFilter)
 
-        if (filters.domainFilter) params.set('domain', filters.domainFilter)
-        if (filters.langFilter) params.set('lang', filters.langFilter)
-        if (filters.sourceFilter) params.set('source', filters.sourceFilter)
-        if (filters.scoreFilter) params.set('minScore', filters.scoreFilter)
-        if (filters.timeFilter) params.set('timeFilter', filters.timeFilter)
+      const response = await fetch(`${apiUrl}/resources?${params.toString()}`)
+      if (!response.ok) throw new Error(`API 请求失败: ${response.status}`)
 
-        response = await fetch(`${apiUrl}/api/resources/search?${params.toString()}`)
-        if (!response.ok) throw new Error(`搜索请求失败: ${response.status}`)
+      const data: ApiResponse = await response.json()
 
-        const searchData = await response.json()
-        data = {
-          items: searchData.items,
-          total: searchData.total,
-          limit: searchData.pageSize,
-          offset: (searchData.page - 1) * searchData.pageSize,
-        }
-      } else {
-        // 普通列表模式
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          pageSize: pageSize.toString(),
-          sort: filters.sortBy,
-          type: resourceType,
-        })
-
-        // 时间过滤：只有非空时才发送（空字符串表示"全部时间"）
-        if (filters.timeFilter) params.set('timeFilter', filters.timeFilter)
-        if (filters.domainFilter) params.set('domain', filters.domainFilter)
-        if (filters.langFilter) params.set('lang', filters.langFilter)
-        if (filters.sourceFilter) params.set('source', filters.sourceFilter)
-        if (filters.scoreFilter) params.set('minScore', filters.scoreFilter)
-        if (filters.featuredOnly) params.set('featured', 'true')
-
-        response = await fetch(`${apiUrl}/resources?${params.toString()}`)
-        if (!response.ok) throw new Error(`API 请求失败: ${response.status}`)
-
-        data = await response.json()
-      }
-
-      // 根据页码决定是替换还是追加数据
-      if (currentPage === 1 || !isLoadMore) {
-        setResources(data.items)
-      } else {
-        setResources(prev => [...prev, ...data.items])
-      }
-
+      setResources(data.items)
       setTotalItems(data.total)
-      setHasMore(data.items.length === pageSize)
+      setTotalPages(Math.ceil(data.total / pageSize))
     } catch (err) {
       console.error('获取资源失败:', err)
       setError(err instanceof Error ? err.message : '获取数据失败')
       setResources([])
     } finally {
       setLoading(false)
-      setSearchLoading(false)
-      setIsLoadingMore(false)
     }
-  }, [currentPage, filters, resourceType, pageSize])
+  }, [currentPage, categoryFilter, resourceType, pageSize])
 
   /**
-   * 处理搜索
+   * 处理分类筛选变化
    */
-  const handleSearch = useCallback((keyword: string) => {
-    setFilters((prev: FilterState) => ({ ...prev, searchKeyword: keyword }))
+  const handleCategoryChange = useCallback((value: string) => {
+    setCategoryFilter(value)
     setCurrentPage(1)
   }, [])
 
   /**
-   * 加载更多
+   * 处理页码变化
    */
-  const loadMore = useCallback(() => {
-    if (hasMore && !loading && !isLoadingMore) {
-      const nextPage = currentPage + 1
-      setCurrentPage(nextPage)
-    }
-  }, [hasMore, loading, isLoadingMore, currentPage])
-
-  /**
-   * 刷新数据
-   */
-  const refresh = useCallback(() => {
-    setCurrentPage(1)
-    setResources([])
-    setHasMore(true)
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+    // 滚动到页面顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
-
-  // 监听筛选变化
-  useEffect(() => {
-    if (currentPage === 1) {
-      fetchResources(false)
-    }
-  }, [filters, resourceType, currentPage, fetchResources])
 
   // 获取数据
   useEffect(() => {
-    const isLoadMore = currentPage > 1
-    fetchResources(isLoadMore)
-  }, [currentPage, fetchResources])
+    fetchResources()
+  }, [fetchResources])
+
+  // 默认标题和副标题
+  const displayTitle = pageTitle || config.label
+  const displaySubtitle = pageSubtitle || config.description
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* 筛选工具栏 */}
-      <div className="mb-8 flex justify-center">
-        <div className="w-full max-w-2xl">
-          <CompactFilterToolbar
-            filters={filters}
-            onFiltersChange={setFilters}
-            onSearch={handleSearch}
-            searchLoading={loading}
-          />
+    <div className="min-h-screen bg-[#FBFCFD]">
+      {/* 页面头部 */}
+      <header className="pt-8 pb-6">
+        <div className={cn(containerClass, "mx-auto px-4 sm:px-6 lg:px-8")}>
+          <h1 className="text-[28px] md:text-[32px] font-semibold text-[#272735] tracking-tight">
+            {displayTitle}
+          </h1>
+          <p className="mt-2 text-[15px] text-[#6B6B6B]">
+            {displaySubtitle}
+          </p>
+        </div>
+      </header>
+
+      {/* 分类筛选标签 */}
+      <div className="pb-6">
+        <div className={cn(containerClass, "mx-auto px-4 sm:px-6 lg:px-8")}>
+          <div className="flex items-center gap-3 flex-wrap">
+            {CATEGORY_FILTERS.map((filter) => {
+              const isActive = categoryFilter === filter.value
+              return (
+                <button
+                  key={filter.value}
+                  onClick={() => handleCategoryChange(filter.value)}
+                  className={cn(
+                    'w-[80px] h-[36px] rounded-[16px] text-[14px] font-medium',
+                    'transition-all duration-200',
+                    'flex items-center justify-center',
+                    isActive
+                      ? 'bg-[#1E3A5F] text-white'
+                      : 'bg-white text-[#6B6B6B] border border-[#E5E5E5] hover:border-[#1E3A5F] hover:text-[#1E3A5F]'
+                  )}
+                >
+                  {filter.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* 加载状态 */}
-      {loading && resources.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
-          <p className="mt-4 text-gray-500">加载中...</p>
-        </div>
-      )}
-
-      {/* 错误状态 */}
-      {error && !loading && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-red-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+      {/* 内容区域 */}
+      <div className={cn(containerClass, "mx-auto px-4 sm:px-6 lg:px-8 pb-16")}>
+        {/* 加载状态 */}
+        {loading && resources.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-3 border-[#E5E5E5] border-t-[#1E3A5F] rounded-full animate-spin" />
+            <p className="mt-4 text-[14px] text-[#9A9A9A]">加载中...</p>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">加载失败</h3>
-          <p className="text-gray-500 mb-4">{error}</p>
-        </div>
-      )}
+        )}
 
-      {/* 空状态 */}
-      {!loading && !error && resources.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-              />
-            </svg>
+        {/* 错误状态 */}
+        {error && !loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+              <svg
+                className="w-7 h-7 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-[16px] font-medium text-[#272735] mb-2">加载失败</h3>
+            <p className="text-[14px] text-[#9A9A9A] mb-4">{error}</p>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {filters.searchKeyword ? '未找到匹配结果' : '暂无数据'}
-          </h3>
-          <p className="text-gray-500 text-center">
-            {filters.searchKeyword
-              ? `没有找到包含 "${filters.searchKeyword}" 的资源，请尝试其他关键词`
-              : '当前筛选条件下没有找到资源'}
-          </p>
-        </div>
-      )}
+        )}
 
-      {/* 资源列表 */}
-      {!loading && !error && resources.length > 0 && (
-        <>
-          {/* 统计信息 */}
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500">
-              共 <span className="font-medium text-gray-900">{resources.length}</span> 条结果
+        {/* 空状态 */}
+        {!loading && !error && resources.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-14 h-14 rounded-full bg-[#F6F5F2] flex items-center justify-center mb-4">
+              <svg
+                className="w-7 h-7 text-[#9A9A9A]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                />
+              </svg>
+            </div>
+            <h3 className="text-[16px] font-medium text-[#272735] mb-2">暂无数据</h3>
+            <p className="text-[14px] text-[#9A9A9A] text-center">
+              当前筛选条件下没有找到资源
             </p>
           </div>
+        )}
 
-          {/* 无限滚动容器 */}
-          <InfiniteScroll hasMore={hasMore} isLoading={loading} onLoadMore={loadMore}>
-            <div
-              className={cn(
-                config.layout === 'grid'
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-                  : '-mx-4'
-              )}
-            >
-              {resources.map((resource) => (
-                <CardComponent key={resource.id} resource={resource} />
-              ))}
+        {/* 资源列表 */}
+        {!loading && !error && resources.length > 0 && (
+          <>
+            {/* 统计信息 */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[13px] text-[#9A9A9A]">
+                共 <span className="font-medium text-[#272735]">{totalItems}</span> 条结果
+                {totalPages > 1 && (
+                  <span className="ml-2">
+                    · 第 <span className="font-medium text-[#272735]">{currentPage}</span> / {totalPages} 页
+                  </span>
+                )}
+              </p>
             </div>
-          </InfiniteScroll>
-        </>
-      )}
+
+            {/* 资源卡片列表 */}
+            {config.layout === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {resources.map((resource) => (
+                  <CardComponent key={resource.id} resource={resource} />
+                ))}
+              </div>
+            ) : (
+              /* 设计稿: 推文列表白色卡片容器 + 16px圆角 + 边框 */
+              <div className="bg-white rounded-2xl border border-[#E8E5E0] overflow-hidden">
+                {resources.map((resource) => (
+                  <CardComponent key={resource.id} resource={resource} />
+                ))}
+              </div>
+            )}
+
+            {/* 分页导航 */}
+            {totalPages > 1 && (
+              <div className="mt-8 pb-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

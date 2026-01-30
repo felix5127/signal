@@ -1,23 +1,16 @@
 /**
- * [INPUT]: 依赖 @/components/ui 的 Button、Badge 组件，依赖 framer-motion，依赖 @/lib/motion 的动画预设
- * [OUTPUT]: 对外提供 Hero 区域组件，包含标题、副标题、CTA 按钮和视觉元素
- * [POS]: landing/ 的首屏区域，被 Landing Page 主页面消费
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * Hero - Mercury.com 风格首屏区域
+ * 设计规范: 深海军蓝主题 + Inter字体 + 统计数据
  */
-
 'use client'
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight, Zap, Sparkles } from 'lucide-react'
-import { fadeInUp, staggerContainer, viewportConfig } from '@/lib/motion'
+import { ArrowRight, Sparkles } from 'lucide-react'
 
 export interface HeroProps {
   badge?: {
     text: string
-    variant?: 'default' | 'secondary' | 'outline'
   }
   headline: string
   subheadline: string
@@ -31,8 +24,30 @@ export interface HeroProps {
     href?: string
     onClick?: () => void
   }
+  stats?: {
+    signals: string
+    sources: string
+    categories: string
+  }
+  // Backward compatibility
   socialProof?: string
-  visual?: React.ReactNode
+}
+
+// 动画配置
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+}
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
 }
 
 export function Hero({
@@ -41,38 +56,68 @@ export function Hero({
   subheadline,
   primaryCTA,
   secondaryCTA,
-  socialProof,
-  visual
+  stats,
 }: HeroProps) {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Effects */}
+    <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-[#FBFCFD]">
+      {/* 背景装饰 - Mercury 风格微妙渐变 */}
       <div className="absolute inset-0 -z-10">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-accent/10 rounded-full blur-3xl" />
+        {/* 主背景 */}
+        <div className="absolute inset-0 bg-[#FBFCFD]" />
+
+        {/* 微妙的渐变光晕 */}
+        <div
+          className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full opacity-20"
+          style={{
+            background: 'radial-gradient(circle, #D4DDE8 0%, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full opacity-15"
+          style={{
+            background: 'radial-gradient(circle, #EFF6FF 0%, transparent 70%)',
+          }}
+        />
+
+        {/* 网格装饰 */}
+        <div
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)
+            `,
+            backgroundSize: '64px 64px',
+          }}
+        />
       </div>
 
-      {/* Content */}
+      {/* 内容 */}
       <motion.div
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
-        viewport={viewportConfig}
-        className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center"
+        className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center"
       >
         {/* Badge */}
         {badge && (
-          <motion.div variants={fadeInUp} className="flex justify-center mb-8">
-            <Badge variant={badge.variant || 'default'} className="text-sm px-4 py-2">
+          <motion.div variants={fadeInUp} className="flex justify-center mb-6">
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[20px] text-[13px] font-medium text-[#1E3A5F]"
+              style={{ backgroundColor: 'rgba(30, 58, 95, 0.08)' }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
               {badge.text}
-            </Badge>
+            </span>
           </motion.div>
         )}
 
         {/* Headline */}
         <motion.h1
           variants={fadeInUp}
-          className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
+          transition={{ duration: 0.5 }}
+          className="text-4xl md:text-5xl lg:text-[56px] font-light text-[#272735] mb-6"
+          style={{ letterSpacing: '-0.5px', lineHeight: 1.1 }}
         >
           {headline}
         </motion.h1>
@@ -80,62 +125,60 @@ export function Hero({
         {/* Subheadline */}
         <motion.p
           variants={fadeInUp}
-          className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-10"
+          transition={{ duration: 0.5 }}
+          className="text-base md:text-lg text-[#6B6B6B] max-w-[640px] mx-auto mb-10"
+          style={{ lineHeight: 1.6 }}
         >
           {subheadline}
         </motion.p>
 
-        {/* CTA Buttons */}
+        {/* CTA Buttons - 设计稿规范: 16px字号, 500字重, 10px圆角, 14px/28px内边距 */}
         {(primaryCTA || secondaryCTA) && (
           <motion.div
             variants={fadeInUp}
-            className="flex justify-center mb-12"
+            transition={{ duration: 0.5 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
             {primaryCTA && (
-              <Link href={primaryCTA.href || '#'} onClick={primaryCTA.onClick}>
-                <Button
-                  size="xl"
-                  variant="default"
-                  className="group text-xl md:text-2xl"
-                >
-                  {primaryCTA.text}
-                  <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </Button>
+              <Link
+                href={primaryCTA.href || '#'}
+                className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[10px] bg-[#1E3A5F] text-white text-base font-medium transition-all hover:bg-[#152840]"
+              >
+                {primaryCTA.text}
+                <ArrowRight className="w-[18px] h-[18px] transition-transform group-hover:translate-x-1" />
               </Link>
             )}
 
             {secondaryCTA && (
-              <Link href={secondaryCTA.href || '#'} onClick={secondaryCTA.onClick}>
-                <Button
-                  size="xl"
-                  variant="outline"
-                  className="text-xl md:text-2xl"
-                >
-                  {secondaryCTA.text}
-                </Button>
+              <Link
+                href={secondaryCTA.href || '#'}
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[10px] border border-[#E8E5E0] text-[#272735] text-base font-medium transition-all hover:bg-[#F8F9FA]"
+              >
+                {secondaryCTA.text}
               </Link>
             )}
           </motion.div>
         )}
 
-        {/* Social Proof */}
-        {socialProof && (
+        {/* Stats */}
+        {stats && (
           <motion.div
             variants={fadeInUp}
-            className="flex items-center justify-center gap-2 text-muted-foreground"
+            transition={{ duration: 0.5 }}
+            className="flex flex-wrap items-center justify-center gap-16"
           >
-            <Sparkles className="h-5 w-5 text-primary" />
-            <p className="text-sm">{socialProof}</p>
-          </motion.div>
-        )}
-
-        {/* Visual */}
-        {visual && (
-          <motion.div
-            variants={fadeInUp}
-            className="mt-16 relative"
-          >
-            {visual}
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-[32px] font-medium text-[#1E3A5F]">{stats.signals}</div>
+              <div className="text-sm text-[#9A9A9A]">技术信号</div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-[32px] font-medium text-[#1E3A5F]">{stats.sources}</div>
+              <div className="text-sm text-[#9A9A9A]">精选内容</div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-[32px] font-medium text-[#1E3A5F]">{stats.categories}</div>
+              <div className="text-sm text-[#9A9A9A]">研究报告</div>
+            </div>
           </motion.div>
         )}
       </motion.div>
@@ -143,15 +186,24 @@ export function Hero({
   )
 }
 
-/* ========================================
-   预设配置 - Signal Hunter 使用
-   ======================================== */
-
+/* 预设配置 */
 export const signalHunterHeroConfig: HeroProps = {
-  headline: 'Discover High-Value Signals from the Noise',
-  subheadline: 'AI-powered technical intelligence platform that filters, analyzes, and summarizes the most valuable signals from Hacker News, GitHub, and arXiv—saving you 2 hours daily.',
+  badge: {
+    text: 'AI 驱动的技术情报分析',
+  },
+  headline: '发现改变世界的技术信号',
+  subheadline: '从 Hacker News、GitHub、arXiv 等源头自动筛选高质量技术信号，通过 AI 生成结构化摘要和研究报告',
   primaryCTA: {
-    text: 'Get Started Free',
-    href: '/resources'
-  }
+    text: '开始探索',
+    href: '/articles',
+  },
+  secondaryCTA: {
+    text: '了解更多',
+    href: '/featured',
+  },
+  stats: {
+    signals: '10,000+',
+    sources: '500+',
+    categories: '50+',
+  },
 }
