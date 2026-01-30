@@ -1,15 +1,13 @@
 /**
- * [INPUT]: 依赖 @/lib/utils 的 cn, @/lib/design-system 的 Badge/ScoreBadge
- * [OUTPUT]: 对外提供 ArticleListCard 组件, ArticleResource 类型
- * [POS]: components/ 的文章列表卡片，被 /articles 页面消费，Newsletter 风格单栏布局
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * ArticleListCard - Mercury 风格文章列表卡片
+ * 设计规范: 左侧彩色占位图 + 右侧内容
+ * - 标签统一尺寸: 72px x 28px
+ * - 圆角: 16px
+ * - 主色调: #1E3A5F
  */
-
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Badge, ScoreBadge } from '@/lib/design-system/components/Badge'
-import { ArrowUpRight } from 'lucide-react'
 
 export interface ArticleResource {
   id: number
@@ -43,216 +41,143 @@ interface ArticleListCardProps {
 
 const SOURCE_NAMES: Record<string, string> = {
   hn: 'Hacker News',
-  github: 'GitHub Trending',
-  huggingface: 'Hugging Face',
+  github: 'GitHub',
+  huggingface: 'HuggingFace',
   twitter: 'Twitter',
   arxiv: 'ArXiv',
   producthunt: 'Product Hunt',
   blog: 'Blog',
 }
 
-// 使用设计系统颜色
-const DOMAIN_COLORS: Record<string, string> = {
-  '软件编程': 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-  '人工智能': 'bg-[#F3F2FF] text-[#6258FF] dark:bg-[#6258FF]/10 dark:text-[#CDCBFF] border-[#CDCBFF] dark:border-[#6258FF]',
-  '产品设计': 'bg-pink-50 text-pink-700 dark:bg-pink-950/30 dark:text-pink-400 border-pink-200 dark:border-pink-800',
-  '商业科技': 'bg-[#CDEED3]/30 text-[#1B9A7A] dark:bg-[#1B9A7A]/10 dark:text-[#CDEED3] border-[#CDEED3] dark:border-[#1B9A7A]',
+// 域名对应的颜色配置
+const DOMAIN_COLORS: Record<string, { bg: string; text: string; placeholder: string }> = {
+  '人工智能': { bg: '#EEF2FF', text: '#4F46E5', placeholder: '#818CF8' },
+  '软件编程': { bg: '#ECFDF5', text: '#059669', placeholder: '#34D399' },
+  '商业科技': { bg: '#FEF3C7', text: '#D97706', placeholder: '#FBBF24' },
+  '产品设计': { bg: '#FCE7F3', text: '#DB2777', placeholder: '#F472B6' },
 }
 
-const DOMAIN_TEXT_COLORS: Record<string, string> = {
-  '软件编程': 'text-blue-600 dark:text-blue-400',
-  '人工智能': 'text-[#6258FF] dark:text-[#CDCBFF]',
-  '产品设计': 'text-pink-600 dark:text-pink-400',
-  '商业科技': 'text-[#1B9A7A] dark:text-[#CDEED3]',
-}
+const DEFAULT_COLOR = { bg: '#F3F4F6', text: '#6B7280', placeholder: '#9CA3AF' }
 
-function getWeekDay(dateString?: string): string {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  return days[date.getDay()]
-}
-
-function formatMonthDay(dateString?: string): string {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return `${date.getMonth() + 1}/${date.getDate()}`
-}
-
-function formatRelativeTime(dateString?: string): string {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffHours < 24) return `${diffHours}小时前`
-  if (diffDays < 7) return `${diffDays}天前`
-  return formatMonthDay(dateString)
-}
-
-// 提取摘要内容的前三句
+// 提取摘要内容的前两句
 function getSummaryPreview(summary?: string): string {
   if (!summary) return ''
 
-  // 按句号分割（中文句号.、英文句号.、问号?、感叹号!）
   const sentences = summary
     .replace(/([。！？\.!?])\s*/g, '$1|||')
     .split('|||')
 
-  // 提取前三句
   const contentLines: string[] = []
   for (const sentence of sentences) {
     const trimmed = sentence.trim()
     if (trimmed && trimmed.length > 2) {
       contentLines.push(trimmed)
-      if (contentLines.length >= 3) break
+      if (contentLines.length >= 2) break
     }
   }
 
   return contentLines.join('')
 }
 
+// 格式化日期
+function formatDate(dateString?: string): string {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}月${day}日`
+}
+
 export function ArticleListCard({ resource, className }: ArticleListCardProps) {
   const displayTitle = resource.title_translated || resource.title
 
-  // 优先显示内容摘要前三行（summary_zh），其次显示一句话摘要
   const summaryText = resource.summary_zh || resource.summary || ''
   const displaySummary = getSummaryPreview(summaryText) ||
     resource.one_sentence_summary_zh ||
     resource.one_sentence_summary ||
     ''
+
   const sourceName = resource.source_name || (resource.source ? SOURCE_NAMES[resource.source] : undefined) || resource.source || 'Unknown'
-  const domain = resource.domain
-  const subdomain = resource.subdomain
-  const score = resource.score ?? resource.final_score
+  const domain = resource.domain || ''
   const displayTime = resource.published_at || resource.created_at
+
+  // 获取域名对应的颜色
+  const colorConfig = DOMAIN_COLORS[domain] || DEFAULT_COLOR
 
   return (
     <a
       href={`/resources/${resource.id}`}
       className={cn(
-        'group relative flex gap-5 py-5',
-        'border-b border-[var(--ds-border)]',
-        'hover:bg-[var(--ds-surface-2)]',
+        'group flex gap-4 py-5',
+        'border-b border-[#E5E5E5]',
+        'hover:bg-[#FAFBFC]',
         'transition-colors duration-200',
-        '-mx-5 px-5',
         className
       )}
     >
-      {/* 左侧：日期显示 */}
-      <div className="flex-shrink-0 w-14 pt-0.5">
-        <div className="text-right">
-          <div className="text-2xl font-semibold text-[var(--ds-muted)] leading-none">
-            {new Date(displayTime || '').getDate()}
-          </div>
-          <div className="text-xs text-[var(--ds-muted)] mt-0.5">
-            {getWeekDay(displayTime)}
-          </div>
-        </div>
+      {/* 左侧：彩色占位图 */}
+      <div
+        className="flex-shrink-0 w-[100px] h-[80px] rounded-[12px] flex items-center justify-center"
+        style={{ backgroundColor: colorConfig.bg }}
+      >
+        <div
+          className="w-10 h-10 rounded-[8px] opacity-60"
+          style={{ backgroundColor: colorConfig.placeholder }}
+        />
       </div>
 
-      {/* 中间：主要内容 */}
-      <div className="flex-1 min-w-0">
-        {/* 标题 - 使用深色确保对比度 */}
-        <h3
-          className={cn(
-            'font-semibold text-slate-900 text-base leading-snug mb-2',
-            'group-hover:text-violet-600',
-            'transition-colors flex items-start justify-between gap-3'
+      {/* 右侧：内容区域 */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between">
+        {/* 上部：标签 + 标题 */}
+        <div>
+          {/* 标签行 */}
+          <div className="flex items-center gap-2 mb-2">
+            {/* 分类标签 */}
+            {domain && (
+              <span
+                className="inline-flex items-center justify-center w-[72px] h-[28px] rounded-[8px] text-[12px] font-medium"
+                style={{
+                  backgroundColor: colorConfig.bg,
+                  color: colorConfig.text
+                }}
+              >
+                {domain === '人工智能' ? 'AI-ML' :
+                 domain === '软件编程' ? '开发工具' :
+                 domain === '商业科技' ? 'Web3' : domain}
+              </span>
+            )}
+          </div>
+
+          {/* 标题 */}
+          <h3
+            className={cn(
+              'text-[16px] font-medium text-[#272735] leading-[1.4]',
+              'group-hover:text-[#1E3A5F]',
+              'transition-colors duration-200',
+              'line-clamp-2'
+            )}
+          >
+            {displayTitle}
+          </h3>
+
+          {/* 摘要 */}
+          {displaySummary && (
+            <p className="mt-1.5 text-[14px] text-[#6B6B6B] leading-[1.5] line-clamp-2">
+              {displaySummary}
+            </p>
           )}
-        >
-          <span className="line-clamp-2">{displayTitle}</span>
-          <ArrowUpRight className="w-4 h-4 text-[var(--ds-muted)] group-hover:text-[var(--ds-accent)] flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-all" />
-        </h3>
+        </div>
 
-        {/* 摘要 - 显示前三行 */}
-        {displaySummary && (
-          <p className="text-sm text-[var(--ds-muted)] line-clamp-3 leading-relaxed mb-3">
-            {displaySummary}
-          </p>
-        )}
-
-        {/* 元信息标签行 */}
-        <div className="flex items-center flex-wrap gap-2">
-          {/* 来源 */}
-          <span className="text-sm font-medium text-slate-700">
+        {/* 下部：来源 + 日期 */}
+        <div className="flex items-center gap-3 mt-3">
+          <span className="text-[13px] text-[#9A9A9A]">
             {sourceName}
           </span>
-
-          {/* 分类标签 */}
-          {domain && (
-            <>
-              <span className="text-[var(--ds-subtle)]">·</span>
-              <Badge
-                variant="soft"
-                color="default"
-                size="xs"
-                className={cn(
-                  DOMAIN_COLORS[domain] || 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                )}
-              >
-                {domain}
-                {subdomain && ` / ${subdomain}`}
-              </Badge>
-            </>
-          )}
-
-          {/* 标签 */}
-          {resource.tags && resource.tags.length > 0 && (
-            <>
-              <span className="text-gray-300 dark:text-gray-700">·</span>
-              <div className="flex items-center gap-1.5">
-                {resource.tags.slice(0, 3).map((tag, i) => (
-                  <span
-                    key={i}
-                    className="text-xs text-[var(--ds-subtle)]"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* 字数和时间 */}
-          <span className="text-[var(--ds-subtle)]">·</span>
-          <span className="text-xs text-[var(--ds-subtle)]">
-            {resource.word_count ? `${resource.word_count} 字` : ''}
-            {resource.word_count && resource.read_time && ' · '}
-            {resource.read_time ? `${resource.read_time} 分钟` : ''}
+          <span className="text-[13px] text-[#D4D4D4]">|</span>
+          <span className="text-[13px] text-[#9A9A9A]">
+            {formatDate(displayTime)}
           </span>
-
-          {/* 评分 */}
-          {score !== undefined && score > 0 && (
-            <>
-              <span className="text-[var(--ds-subtle)]">·</span>
-              <ScoreBadge score={score} maxScore={5} size="xs" />
-            </>
-          )}
         </div>
-      </div>
-
-      {/* 右侧：来源图标 */}
-      <div className="flex-shrink-0">
-        {resource.source_icon_url ? (
-          <img
-            src={resource.source_icon_url}
-            alt={sourceName}
-            className="w-10 h-10 rounded-2xl p-1.5 bg-[var(--ds-bg)] border border-[var(--ds-border)]"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.style.display = 'none'
-            }}
-          />
-        ) : (
-          <div className="w-10 h-10 rounded-2xl bg-brand-gradient flex items-center justify-center shadow-brand-md">
-            <span className="text-white text-sm font-medium">
-              {(sourceName || 'S').charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
       </div>
     </a>
   )

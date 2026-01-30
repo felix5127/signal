@@ -1,21 +1,19 @@
 /**
- * [INPUT]: 依赖 @/lib/utils, lucide-react, detail/ 子组件, 本地组件 (ScoreBadge/MainPoints/KeyQuotes/TagList)
- * [OUTPUT]: 对外提供 ResourceDetail 组件
- * [POS]: components/ 的资源详情组件，被 /resources/[id] 页面消费，展示 AI 分析结果
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * ResourceDetail - Mercury 风格资源详情页组件
+ * 设计规范:
+ * - 背景色: #FBFCFD
+ * - 主色调: #1E3A5F
+ * - 文字色: #272735, #6B6B6B, #9A9A9A
+ * - 圆角: 16px
+ * - 布局: Header 全宽 + Content Row 两栏 (70% + 380px)
  */
-
 'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { ScoreBadge } from './score-badge'
-import { TagList } from './tag-list'
-import { FlickeringGrid } from './effects/flickering-grid'
-import DeepResearchButton from './deep-research-button'
-import { FeaturedReason, AuthorInfo, AISidebar, ContentArea } from './detail'
+import { ExternalLink, Star } from 'lucide-react'
+import { AISummaryCard, AIAssistantCard, RelatedContentCard } from './detail'
+import MarkdownRenderer from './markdown-renderer'
 
 export interface ResourceDetailProps {
   resource: {
@@ -50,6 +48,12 @@ export interface ResourceDetailProps {
     key_quotes?: string[]
     key_quotes_zh?: string[]
   }
+  relatedResources?: Array<{
+    id: number
+    title: string
+    source_name?: string
+    type?: string
+  }>
 }
 
 // 类型名称映射
@@ -58,6 +62,25 @@ const TYPE_NAMES: Record<string, string> = {
   podcast: '播客',
   tweet: '推文',
   video: '视频',
+}
+
+// 类型路由映射
+const TYPE_ROUTES: Record<string, { label: string; href: string }> = {
+  article: { label: '文章', href: '/articles' },
+  podcast: { label: '播客', href: '/podcasts' },
+  tweet: { label: '推文', href: '/tweets' },
+  video: { label: '视频', href: '/videos' },
+}
+
+// 来源名称映射
+const SOURCE_NAMES: Record<string, string> = {
+  hn: 'Hacker News',
+  github: 'GitHub',
+  huggingface: 'Hugging Face',
+  twitter: 'Twitter / X',
+  arxiv: 'ArXiv',
+  producthunt: 'Product Hunt',
+  blog: '博客',
 }
 
 // 格式化日期
@@ -71,18 +94,46 @@ function formatDate(dateString?: string): string {
   })
 }
 
-// 验证图片 URL 安全性，防止 javascript: 等危险协议
-function isSafeImageUrl(url?: string): boolean {
-  if (!url) return false
-  try {
-    const parsed = new URL(url)
-    return ['http:', 'https:', 'data:'].includes(parsed.protocol)
-  } catch {
-    return url.startsWith('/') || url.startsWith('./')
+// 格式化阅读时间
+function formatReadTime(minutes?: number): string {
+  if (!minutes) return ''
+  if (minutes < 60) {
+    return `${minutes} 分钟阅读`
   }
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return mins > 0 ? `${hours}小时${mins}分钟阅读` : `${hours}小时阅读`
 }
 
-export default function ResourceDetail({ resource }: ResourceDetailProps) {
+// 清理 Markdown 内容中的重复头部信息和冗余链接
+// 移除: [See all posts], Published on, # 标题, 原文链接, 作者等冗余元数据
+function stripMarkdownHeader(content: string): string {
+  if (!content) return ''
+
+  let cleaned = content
+
+  // 移除所有 [See all posts] 链接（开头和结尾都可能出现）
+  cleaned = cleaned.replace(/\[See all posts\]\([^)]*\)\s*\n*/gi, '')
+
+  // 移除 Published on 日期行
+  cleaned = cleaned.replace(/^\s*Published on[^\n]*\n*/im, '')
+
+  // 移除第一个 H1 标题（重复的文章标题）
+  cleaned = cleaned.replace(/^\s*#\s+[^\n]+\n*/m, '')
+
+  // 移除 原文/原文链接 行
+  cleaned = cleaned.replace(/^\s*原文[：:]\s*\[[^\]]*\]\([^)]*\)\s*\n*/i, '')
+
+  // 移除 作者 行
+  cleaned = cleaned.replace(/^\s*作者[：:]\s*\n*[^\n]*\n*/i, '')
+
+  // 清理开头和结尾的多余空行
+  cleaned = cleaned.replace(/^\n+/, '').replace(/\n+$/, '')
+
+  return cleaned
+}
+
+export default function ResourceDetail({ resource, relatedResources = [] }: ResourceDetailProps) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -91,8 +142,8 @@ export default function ResourceDetail({ resource }: ResourceDetailProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#FBFCFD]">
+        <div className="w-8 h-8 border-4 border-[#E5E5E4] border-t-[#1E3A5F] rounded-full animate-spin" />
       </div>
     )
   }
@@ -102,234 +153,203 @@ export default function ResourceDetail({ resource }: ResourceDetailProps) {
   const displayOneSentence = resource.one_sentence_summary_zh || resource.one_sentence_summary
   const displaySummary = resource.summary_zh || resource.summary
   const displayMainPoints = resource.main_points_zh || resource.main_points
-  const displayKeyQuotes = resource.key_quotes_zh || resource.key_quotes
-  const displayFeaturedReason = resource.featured_reason_zh || resource.featured_reason
   const typeName = TYPE_NAMES[resource.type] || resource.type
+  const typeRoute = TYPE_ROUTES[resource.type] || { label: typeName, href: '/' }
+  const displaySourceName = SOURCE_NAMES[resource.source_name] || resource.source_name
+
+  // 处理 AI 助手问题
+  const handleAskQuestion = (question: string) => {
+    // TODO: 实现 AI 问答功能
+    console.log('Ask question:', question)
+  }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 relative">
-      {/* Flickering Grid 背景 */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <FlickeringGrid
-          squareSize={2}
-          gridGap={20}
-          color="#6B21A8"
-          maxOpacity={0.12}
-          flickerChance={0.08}
-        />
-      </div>
-
-      {/* 头部导航 */}
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+    <div className="min-h-screen bg-[#FBFCFD]">
+      {/* 主要内容容器 */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* ====== Breadcrumb 面包屑 ====== */}
+        <nav className="flex items-center gap-2 text-[13px] mb-8">
           <Link
             href="/"
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="text-[#9A9A9A] hover:text-[#1E3A5F] transition-colors duration-200"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>返回</span>
+            首页
           </Link>
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span>{typeName}</span>
+          <span className="text-[#9A9A9A]">/</span>
+          <Link
+            href={typeRoute.href}
+            className="text-[#9A9A9A] hover:text-[#1E3A5F] transition-colors duration-200"
+          >
+            {typeRoute.label}
+          </Link>
+          <span className="text-[#9A9A9A]">/</span>
+          <span className="text-[#272735] font-medium truncate max-w-[300px]">
+            当前{typeRoute.label}
+          </span>
+        </nav>
+
+        {/* ====== Header 区域 (全宽) ====== */}
+        <header className="mb-10">
+          {/* 标签行 - 匹配设计: 72px x 28px, cornerRadius 6px */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-[12px] font-medium bg-[#1E3A5F15] text-[#1E3A5F]">
+              {typeName}
+            </span>
             {resource.domain && (
-              <>
-                <span>·</span>
-                <span>{resource.domain}</span>
-              </>
+              <span className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-[12px] font-medium bg-[#3D6B4F15] text-[#3D6B4F]">
+                {resource.domain}
+              </span>
             )}
+            {resource.tags && resource.tags.slice(0, 3).map((tag, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-[12px] font-medium bg-[#F5F3F0] text-[#6B6B6B]"
+              >
+                #{tag}
+              </span>
+            ))}
           </div>
-        </div>
-      </header>
 
-      {/* 主要内容 - 响应式布局 */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* ====== 桌面端：左右布局 ====== */}
-        <div className="hidden lg:flex gap-8">
-          {/* 左侧主内容区 */}
-          <div className="flex-1 max-w-3xl">
-            {/* 标题区域 */}
-            <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-4">
-                {displayTitle}
-              </h1>
+          {/* 大标题 - 匹配设计: 36px, 500 weight, -0.5 letterSpacing, 1.3 lineHeight */}
+          <h1 className="text-[28px] sm:text-[32px] lg:text-[36px] font-medium text-[#272735] leading-[1.3] tracking-tight mb-4">
+            {displayTitle}
+          </h1>
 
-              {/* 标签 */}
-              {resource.tags && resource.tags.length > 0 && (
-                <TagList tags={resource.tags} />
-              )}
-            </div>
+          {/* Meta 信息 - 匹配设计: 评分徽章 + 日期 + 来源 (纯文本，无图标) */}
+          <div className="flex flex-wrap items-center gap-6 text-[14px] text-[#9A9A9A]">
+            {/* 评分徽章 */}
+            {resource.score !== undefined && resource.score > 0 && (
+              <div className="flex items-center gap-1.5 bg-[#3D6B4F15] text-[#3D6B4F] px-3 py-1.5 rounded-lg">
+                <Star className="w-4 h-4 fill-current" />
+                <span className="font-medium">{resource.score}</span>
+              </div>
+            )}
+            {/* 日期 */}
+            {resource.published_at && (
+              <span>{formatDate(resource.published_at)}</span>
+            )}
+            {/* 来源 */}
+            <span>来源: {displaySourceName}</span>
+          </div>
+        </header>
 
-            {/* Featured Reason */}
-            {displayFeaturedReason && (
-              <FeaturedReason reason={displayFeaturedReason} className="mb-6" />
+        {/* ====== Content Row 两栏布局 - 匹配设计: gap 48px ====== */}
+        <div className="flex flex-col lg:flex-row gap-12">
+          {/* 左侧 Article Body */}
+          <article className="flex-1 min-w-0">
+            {/* 正文内容 - 匹配设计: 直接展示文章内容，无摘要框 */}
+            {resource.content_markdown ? (
+              <div className="prose prose-lg max-w-none">
+                <style jsx global>{`
+                  .prose {
+                    --tw-prose-body: #272735;
+                    --tw-prose-headings: #272735;
+                    --tw-prose-links: #1E3A5F;
+                    --tw-prose-bold: #272735;
+                    --tw-prose-quotes: #6B6B6B;
+                    --tw-prose-quote-borders: #E5E5E4;
+                    --tw-prose-code: #272735;
+                    --tw-prose-pre-code: #E5E5E4;
+                    --tw-prose-pre-bg: #272735;
+                  }
+                  .prose p {
+                    font-size: 16px;
+                    line-height: 1.8;
+                    margin-bottom: 20px;
+                  }
+                  .prose h2, .prose h3, .prose h4 {
+                    font-size: 22px;
+                    font-weight: 500;
+                    margin-top: 32px;
+                    margin-bottom: 16px;
+                  }
+                  .prose ul, .prose ol {
+                    margin-top: 1em;
+                    margin-bottom: 1em;
+                  }
+                  .prose li {
+                    margin-top: 0.5em;
+                    margin-bottom: 0.5em;
+                  }
+                  .prose blockquote {
+                    font-style: italic;
+                    border-left-width: 3px;
+                    padding-left: 1em;
+                    margin-left: 0;
+                  }
+                  .prose a {
+                    text-decoration: underline;
+                    text-underline-offset: 2px;
+                  }
+                  .prose a:hover {
+                    color: #2A4A6F;
+                  }
+                  .prose code {
+                    background: #F6F5F2;
+                    padding: 0.125em 0.375em;
+                    border-radius: 0.25em;
+                    font-size: 0.875em;
+                  }
+                  .prose pre {
+                    border-radius: 16px;
+                    padding: 1.25em;
+                  }
+                `}</style>
+                <MarkdownRenderer content={stripMarkdownHeader(resource.content_markdown)} />
+              </div>
+            ) : displaySummary ? (
+              <div className="text-[16px] text-[#272735] leading-[1.8] whitespace-pre-line">
+                {displaySummary}
+              </div>
+            ) : (
+              <p className="text-[15px] text-[#9A9A9A]">
+                暂无内容详情
+              </p>
             )}
 
-            {/* 主内容区 */}
-            <ContentArea
-              oneSentenceSummary={displayOneSentence}
-              contentMarkdown={resource.content_markdown}
-              showFullAnalysis={false}
-            />
-
-            {/* 操作按钮 */}
-            <section className="mt-8 flex items-center gap-4 flex-wrap">
+            {/* 操作按钮 - 与首页 Hero 按钮样式一致 */}
+            <div className="mt-10 pt-8 border-t border-[rgba(0,0,0,0.06)]">
               <a
                 href={resource.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
-                style={{
-                  background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
-                  boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)'
-                }}
+                className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[10px] bg-[#1E3A5F] text-white text-base font-medium transition-all hover:bg-[#152840]"
               >
                 <span>阅读原文</span>
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-[18px] h-[18px] transition-transform group-hover:translate-x-0.5" />
               </a>
-              <DeepResearchButton
-                resourceId={resource.id}
-                resourceTitle={displayTitle}
-                resourceContent={resource.content_markdown || displaySummary}
-                resourceUrl={resource.url}
-              />
-            </section>
+            </div>
+          </article>
 
-            {/* 元数据信息 */}
-            <footer className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
-              <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-                <p>ID: {resource.id}</p>
-                {resource.analyzed_at && (
-                  <p>分析时间: {formatDate(resource.analyzed_at)}</p>
-                )}
-                {resource.created_at && (
-                  <p>创建时间: {formatDate(resource.created_at)}</p>
-                )}
-              </div>
-            </footer>
-          </div>
-
-          {/* 右侧 AI 分析侧边栏 (sticky) */}
-          <aside className="w-80 flex-shrink-0">
-            <div className="sticky top-20 space-y-5">
-              {/* 作者信息 */}
-              <AuthorInfo
-                author={resource.author}
-                sourceName={resource.source_name}
-                sourceIconUrl={resource.source_icon_url}
-                publishedAt={resource.published_at}
-                readTime={resource.read_time}
-                wordCount={resource.word_count}
-              />
-
-              {/* AI 分析 */}
-              <AISidebar
-                score={resource.score}
-                isFeatured={resource.is_featured}
+          {/* 右侧 AI Sidebar (380px) - 匹配设计: gap 24px between cards */}
+          <aside className="w-full lg:w-[380px] flex-shrink-0 lg:self-start">
+            <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+              {/* AI 摘要卡片 */}
+              <AISummaryCard
                 summary={displaySummary}
-                mainPoints={displayMainPoints}
-                keyQuotes={displayKeyQuotes}
+                oneSentenceSummary={displayOneSentence}
               />
+
+              {/* AI 研究助手卡片 */}
+              <AIAssistantCard
+                mainPoints={displayMainPoints}
+                onAskQuestion={handleAskQuestion}
+              />
+
+              {/* 相关内容卡片 */}
+              <RelatedContentCard items={relatedResources} />
             </div>
           </aside>
         </div>
 
-        {/* ====== 移动端/平板：上下布局 ====== */}
-        <div className="lg:hidden">
-          {/* 标题区域 */}
-          <div className="mb-6">
-            {/* 来源信息 */}
-            <div className="flex items-center gap-3 mb-4">
-              {isSafeImageUrl(resource.source_icon_url) ? (
-                <img
-                  src={resource.source_icon_url}
-                  alt={resource.source_name}
-                  className="w-6 h-6 rounded"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = 'none'
-                  }}
-                />
-              ) : (
-                <div className="w-6 h-6 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-400">
-                  {resource.source_name.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="text-sm text-gray-600 dark:text-gray-400">{resource.source_name}</span>
-              {resource.published_at && (
-                <>
-                  <span className="text-gray-400">·</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(resource.published_at)}
-                  </span>
-                </>
-              )}
-            </div>
-
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
-                {displayTitle}
-              </h1>
-              {resource.score !== undefined && resource.score > 0 && (
-                <ScoreBadge score={resource.score} />
-              )}
-            </div>
-
-            {/* 标签 */}
-            {resource.tags && resource.tags.length > 0 && (
-              <TagList tags={resource.tags} />
+        {/* ====== 移动端补充信息 ====== */}
+        <div className="lg:hidden mt-10 pt-8 border-t border-[rgba(0,0,0,0.06)]">
+          <div className="text-[13px] text-[#9A9A9A] space-y-1">
+            <p>ID: {resource.id}</p>
+            {resource.analyzed_at && (
+              <p>分析时间: {formatDate(resource.analyzed_at)}</p>
             )}
           </div>
-
-          {/* Featured Reason */}
-          {displayFeaturedReason && (
-            <FeaturedReason reason={displayFeaturedReason} className="mb-6" />
-          )}
-
-          {/* 主内容区 - 包含完整 AI 分析 */}
-          <ContentArea
-            oneSentenceSummary={displayOneSentence}
-            summary={displaySummary}
-            contentMarkdown={resource.content_markdown}
-            mainPoints={displayMainPoints}
-            keyQuotes={displayKeyQuotes}
-            showFullAnalysis={true}
-          />
-
-          {/* 操作按钮 */}
-          <section className="mt-8 flex items-center gap-4 flex-wrap">
-            <a
-              href={resource.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
-              style={{
-                background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
-                boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)'
-              }}
-            >
-              <span>阅读原文</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
-            <DeepResearchButton
-              resourceId={resource.id}
-              resourceTitle={displayTitle}
-              resourceContent={resource.content_markdown || displaySummary}
-              resourceUrl={resource.url}
-            />
-          </section>
-
-          {/* 元数据信息 */}
-          <footer className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
-            <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-              <p>ID: {resource.id}</p>
-              {resource.analyzed_at && (
-                <p>分析时间: {formatDate(resource.analyzed_at)}</p>
-              )}
-              {resource.created_at && (
-                <p>创建时间: {formatDate(resource.created_at)}</p>
-              )}
-            </div>
-          </footer>
         </div>
       </main>
     </div>

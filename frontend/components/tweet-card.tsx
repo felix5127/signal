@@ -1,14 +1,12 @@
 /**
- * [INPUT]: 依赖 @/lib/utils 的 cn, lucide-react 图标组件
- * [OUTPUT]: 对外提供 TweetCard 组件, TweetResource 类型
- * [POS]: components/ 的推文卡片，被 /tweets 页面消费，Twitter 原生风格
- * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ * TweetCard - Mercury 风格推文卡片
+ * 特点: 简洁大气、清晰层级、专业感
  */
-
 'use client'
 
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Repeat2, Heart, Bookmark, Share, Star } from 'lucide-react'
+import { MessageCircle, Repeat2, Heart, Bookmark, Share, Star, ChevronDown, ChevronUp } from 'lucide-react'
 
 export interface TweetResource {
   id: number
@@ -99,7 +97,7 @@ function extractTextFromHtml(html: string): string {
   return text
     .split('\n')
     .map(line => line.trim())
-    .filter(line => line.length > 0 && line.length < 500) // 过滤掉过长的行（可能是图片链接等）
+    .filter(line => line.length > 0 && line.length < 500)
     .join('\n')
 }
 
@@ -111,9 +109,10 @@ const XIcon = () => (
 )
 
 export function TweetCard({ resource, className }: TweetCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
   const displayTitle = resource.title_translated || resource.title
 
-  // 从 HTML 中提取纯文本
   const displayContent =
     resource.summary && !resource.summary.includes('<div') ? resource.summary :
     resource.one_sentence_summary_zh && !resource.one_sentence_summary_zh.includes('<div') ? resource.one_sentence_summary_zh :
@@ -123,7 +122,6 @@ export function TweetCard({ resource, className }: TweetCardProps) {
   const { name, handle } = extractUserInfo(resource.url, resource.author)
   const timeAgo = formatTweetTime(resource.published_at || resource.created_at)
 
-  // 使用 unavatar.io 获取 Twitter 头像
   const getTwitterAvatarUrl = (username: string): string => {
     return `https://unavatar.io/twitter/${username}`
   }
@@ -136,13 +134,12 @@ export function TweetCard({ resource, className }: TweetCardProps) {
     <article
       className={cn(
         'group p-4',
-        'hover:bg-slate-50',
-        'transition-colors duration-150 cursor-pointer',
-        'border-b border-slate-100',
-        '-mx-4',
+        'hover:bg-[#F8F9FA]',
+        'transition-colors duration-200 cursor-pointer',
+        'border-b border-[#E8E5E0] last:border-b-0',
         className
       )}
-      onClick={(e) => {
+      onClick={() => {
         window.open(fullUrl, '_blank')
       }}
     >
@@ -153,7 +150,7 @@ export function TweetCard({ resource, className }: TweetCardProps) {
             <img
               src={avatarUrl}
               alt={name}
-              className="w-10 h-10 rounded-full ring-1 ring-slate-200"
+              className="w-10 h-10 rounded-full ring-1 ring-[var(--border-default)]"
               onError={(e) => {
                 const target = e.target as HTMLImageElement
                 target.style.display = 'none'
@@ -162,7 +159,7 @@ export function TweetCard({ resource, className }: TweetCardProps) {
               }}
             />
           ) : null}
-          <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center ring-1 ring-slate-200 ${shouldUseRealAvatar ? 'hidden' : ''}`}>
+          <div className={`w-10 h-10 rounded-full bg-[var(--text-primary)] flex items-center justify-center text-white ring-1 ring-[var(--border-default)] ${shouldUseRealAvatar ? 'hidden' : ''}`}>
             <XIcon />
           </div>
         </div>
@@ -171,24 +168,24 @@ export function TweetCard({ resource, className }: TweetCardProps) {
         <div className="flex-1 min-w-0">
           {/* 用户信息行 */}
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            <span className="font-bold text-slate-900 text-sm hover:underline">
+            <span className="font-semibold text-[var(--text-primary)] text-[var(--text-body-sm)] hover:underline">
               {name}
             </span>
-            <span className="text-slate-500 text-sm">@{handle}</span>
-            <span className="text-slate-400 text-sm">·</span>
-            <span className="text-slate-400 text-sm hover:underline">
+            <span className="text-[var(--text-muted)] text-[var(--text-body-sm)]">@{handle}</span>
+            <span className="text-[var(--text-muted)] text-[var(--text-body-sm)]">·</span>
+            <span className="text-[var(--text-muted)] text-[var(--text-body-sm)] hover:underline">
               {timeAgo}
             </span>
 
             {/* 标签 */}
             {resource.tags && resource.tags.length > 0 && (
               <>
-                <span className="text-slate-400 text-sm">·</span>
+                <span className="text-[var(--text-muted)] text-[var(--text-body-sm)]">·</span>
                 <div className="flex items-center gap-1">
                   {resource.tags.slice(0, 2).map((tag, i) => (
                     <span
                       key={i}
-                      className="text-[10px] px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded-md"
+                      className="text-[var(--text-xs)] px-1.5 py-0.5 bg-[var(--color-primary-light)] text-[var(--color-primary)] rounded-md"
                     >
                       #{tag}
                     </span>
@@ -200,8 +197,8 @@ export function TweetCard({ resource, className }: TweetCardProps) {
             {/* 评分 */}
             {resource.score && resource.score > 0 && (
               <>
-                <span className="text-slate-400 text-sm">·</span>
-                <span className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded-md font-medium inline-flex items-center gap-1">
+                <span className="text-[var(--text-muted)] text-[var(--text-body-sm)]">·</span>
+                <span className="text-[var(--text-xs)] px-1.5 py-0.5 bg-[var(--color-accent-light)] text-[var(--color-accent)] rounded-md font-medium inline-flex items-center gap-1">
                   {resource.score.toFixed(1)}
                   <Star className="w-3 h-3 fill-current" />
                 </span>
@@ -210,7 +207,7 @@ export function TweetCard({ resource, className }: TweetCardProps) {
 
             <div className="ml-auto">
               <button
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -225,59 +222,81 @@ export function TweetCard({ resource, className }: TweetCardProps) {
           {/* 推文内容 */}
           <div
             className={cn(
-              'text-slate-800 text-[15px] leading-relaxed',
-              'whitespace-pre-wrap break-words mb-3'
+              'text-[var(--text-primary)] text-[var(--text-body)] whitespace-pre-wrap break-words',
+              !isExpanded && 'line-clamp-3'
             )}
+            style={{ lineHeight: 'var(--leading-relaxed)' }}
           >
             {displayContent}
           </div>
 
+          {/* 显示全文按钮 - 设计稿: 始终显示 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsExpanded(!isExpanded)
+            }}
+            className="flex items-center gap-1 py-1 mt-2 mb-2"
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-3.5 h-3.5" style={{ color: '#1E3A5F' }} />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" style={{ color: '#1E3A5F' }} />
+            )}
+            <span
+              className="text-[13px] font-medium"
+              style={{ color: '#1E3A5F' }}
+            >
+              {isExpanded ? '收起' : '显示全文'}
+            </span>
+          </button>
+
           {/* 底部互动按钮 */}
-          <div className="flex items-center justify-between max-w-md text-slate-400">
+          <div className="flex items-center justify-between max-w-md text-[var(--text-muted)]">
             <button
-              className="flex items-center gap-2 group/btn hover:text-[#1DA1F2] transition-colors"
+              className="flex items-center gap-2 group/btn hover:text-[var(--color-primary)] transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-1.5 rounded-full group-hover/btn:bg-[#1DA1F2]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover/btn:bg-[var(--color-primary-light)] transition-colors">
                 <MessageCircle className="w-4 h-4" />
               </div>
-              <span className="text-xs">Reply</span>
+              <span className="text-[var(--text-xs)]">Reply</span>
             </button>
 
             <button
-              className="flex items-center gap-2 group/btn hover:text-[#00BA7C] transition-colors"
+              className="flex items-center gap-2 group/btn hover:text-[var(--color-success)] transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-1.5 rounded-full group-hover/btn:bg-[#00BA7C]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover/btn:bg-green-50 transition-colors">
                 <Repeat2 className="w-4 h-4" />
               </div>
-              <span className="text-xs">Repost</span>
+              <span className="text-[var(--text-xs)]">Repost</span>
             </button>
 
             <button
-              className="flex items-center gap-2 group/btn hover:text-[#F91880] transition-colors"
+              className="flex items-center gap-2 group/btn hover:text-[var(--color-error)] transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-1.5 rounded-full group-hover/btn:bg-[#F91880]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover/btn:bg-red-50 transition-colors">
                 <Heart className="w-4 h-4" />
               </div>
-              <span className="text-xs">Like</span>
+              <span className="text-[var(--text-xs)]">Like</span>
             </button>
 
             <button
-              className="flex items-center gap-2 group/btn hover:text-[#1DA1F2] transition-colors"
+              className="flex items-center gap-2 group/btn hover:text-[var(--color-primary)] transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-1.5 rounded-full group-hover/btn:bg-[#1DA1F2]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover/btn:bg-[var(--color-primary-light)] transition-colors">
                 <Bookmark className="w-4 h-4" />
               </div>
             </button>
 
             <button
-              className="flex items-center gap-2 group/btn hover:text-[#1DA1F2] transition-colors"
+              className="flex items-center gap-2 group/btn hover:text-[var(--color-primary)] transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-1.5 rounded-full group-hover/btn:bg-[#1DA1F2]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover/btn:bg-[var(--color-primary-light)] transition-colors">
                 <Share className="w-4 h-4" />
               </div>
             </button>
