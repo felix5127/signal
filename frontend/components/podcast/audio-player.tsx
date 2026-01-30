@@ -1,20 +1,22 @@
 /**
  * [INPUT]: 依赖 lucide-react, @/lib/utils, ./utils, ./audio-player-context
  * [OUTPUT]: 对外提供 AudioPlayer 组件, seekToTime 函数
- * [POS]: podcast/ 的音频播放器组件，支持时间戳跳转
+ * [POS]: podcast/ 的音频播放器组件，匹配 Pencil 设计稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, Pause, Volume2, VolumeX, Download, SkipBack, SkipForward, AlertCircle } from 'lucide-react'
+import { Play, Pause, Download, SkipBack, SkipForward, Mic, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatTime } from './utils'
 import { useAudioPlayer } from './audio-player-context'
 
 interface AudioPlayerProps {
   audioUrl: string
+  title?: string
+  description?: string
   duration?: number // 总时长（秒）
   onTimeUpdate?: (currentTime: number) => void
   className?: string
@@ -25,6 +27,8 @@ const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
 export function AudioPlayer({
   audioUrl,
+  title = '与 Andrej Karpathy 对话',
+  description = 'AI 教育的未来与编程新范式',
   duration: propDuration,
   onTimeUpdate,
   className,
@@ -34,8 +38,6 @@ export function AudioPlayer({
   const { registerSeekHandler, setCurrentTime: setContextTime, setIsPlaying: setContextPlaying } = useAudioPlayer()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(propDuration || 0)
-  const [volume, setVolume] = useState(1)
-  const [isMuted, setIsMuted] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,23 +65,7 @@ export function AudioPlayer({
     const handleError = () => {
       setIsLoading(false)
       setIsPlaying(false)
-      const errorCode = audio.error?.code
-      switch (errorCode) {
-        case MediaError.MEDIA_ERR_ABORTED:
-          setError('播放被中断')
-          break
-        case MediaError.MEDIA_ERR_NETWORK:
-          setError('网络错误，无法加载音频')
-          break
-        case MediaError.MEDIA_ERR_DECODE:
-          setError('音频解码失败')
-          break
-        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          setError('不支持的音频格式')
-          break
-        default:
-          setError('音频加载失败')
-      }
+      setError('音频加载失败')
     }
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
@@ -125,28 +111,6 @@ export function AudioPlayer({
     setCurrentTime(newTime)
   }, [duration])
 
-  // 调节音量
-  const handleVolumeChange = useCallback((newVolume: number) => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.volume = newVolume
-    setVolume(newVolume)
-    setIsMuted(newVolume === 0)
-  }, [])
-
-  // 静音切换
-  const toggleMute = useCallback(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (isMuted) {
-      audio.volume = volume || 1
-      setIsMuted(false)
-    } else {
-      audio.volume = 0
-      setIsMuted(true)
-    }
-  }, [isMuted, volume])
-
   // 切换倍速
   const cyclePlaybackRate = useCallback(() => {
     const audio = audioRef.current
@@ -169,7 +133,6 @@ export function AudioPlayer({
   // 注册 seekTo 方法到 Context + window（向后兼容）
   useEffect(() => {
     registerSeekHandler(seekTo)
-    // 向后兼容：仍然挂载到 window
     ;(window as any).__audioPlayerSeekTo = seekTo
     return () => {
       delete (window as any).__audioPlayerSeekTo
@@ -187,157 +150,133 @@ export function AudioPlayer({
   }, [currentTime, setContextTime])
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-
-  // 错误状态显示
-  if (error) {
-    return (
-      <div className={cn('rounded-xl p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800', className)}>
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">请检查音频链接或稍后重试</p>
-          </div>
-          <a
-            href={audioUrl}
-            download
-            className="px-3 py-1.5 text-sm rounded-lg bg-red-100 dark:bg-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
-          >
-            下载音频
-          </a>
-        </div>
-      </div>
-    )
-  }
+  const displayDuration = propDuration || duration
 
   return (
-    <div className={cn('rounded-xl p-4 bg-gray-50 dark:bg-gray-800', className)}>
+    <div className={cn(
+      'rounded-2xl p-6 bg-white border border-[#E8E5E0]',
+      className
+    )}>
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
 
-      {/* 进度条 */}
-      <div
-        className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full cursor-pointer mb-4 group"
-        onClick={handleProgressClick}
-      >
-        <div
-          className="absolute h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-          style={{ width: `${progress}%` }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-md border-2 border-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ left: `calc(${progress}% - 8px)` }}
-        />
-      </div>
+      {/* 顶部：封面 + 信息 + 控制 */}
+      <div className="flex items-center gap-5 mb-5">
+        {/* 封面艺术 */}
+        <div className="w-20 h-20 rounded-xl bg-[#1E3A5F] flex items-center justify-center flex-shrink-0">
+          <Mic className="w-8 h-8 text-white" />
+        </div>
 
-      {/* 时间显示 */}
-      <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
-        <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
-      </div>
+        {/* 播放信息 */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[15px] font-medium text-[#272735] truncate">{title}</h3>
+          <p className="text-[14px] text-[#6B6B6B] mt-1 truncate">{description}</p>
+        </div>
 
-      {/* 控制按钮 */}
-      <div className="flex items-center justify-between">
-        {/* 左侧：播放控制 */}
-        <div className="flex items-center gap-2">
-          {/* 后退 10 秒 */}
+        {/* 控制按钮 */}
+        <div className="flex items-center gap-3">
+          {/* 后退 */}
           <button
             onClick={() => skip(-10)}
-            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-[#F5F3F0] transition-colors"
             title="后退 10 秒"
           >
-            <SkipBack className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <SkipBack className="w-5 h-5 text-[#6B6B6B]" />
           </button>
 
           {/* 播放/暂停 */}
           <button
             onClick={togglePlay}
-            disabled={isLoading}
+            disabled={isLoading && !error}
             className={cn(
-              'p-3 rounded-full transition-all',
-              'bg-gradient-to-r from-indigo-500 to-purple-500 text-white',
-              'hover:shadow-lg hover:scale-105 active:scale-95',
-              isLoading && 'opacity-50 cursor-not-allowed'
+              'w-12 h-12 rounded-full flex items-center justify-center transition-all',
+              'bg-[#1E3A5F] text-white',
+              'hover:bg-[#152840]',
+              (isLoading && !error) && 'opacity-50 cursor-not-allowed'
             )}
           >
             {isPlaying ? (
-              <Pause className="w-6 h-6" />
+              <Pause className="w-5 h-5" />
             ) : (
-              <Play className="w-6 h-6 ml-0.5" />
+              <Play className="w-5 h-5 ml-0.5" />
             )}
           </button>
 
-          {/* 前进 30 秒 */}
+          {/* 前进 */}
           <button
             onClick={() => skip(30)}
-            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-[#F5F3F0] transition-colors"
             title="前进 30 秒"
           >
-            <SkipForward className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <SkipForward className="w-5 h-5 text-[#6B6B6B]" />
           </button>
         </div>
+      </div>
 
-        {/* 中间：倍速 */}
+      {/* 进度条行 */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-[13px] text-[#6B6B6B] w-12 text-right">
+          {formatTime(currentTime)}
+        </span>
+        <div
+          className="flex-1 h-1.5 bg-[#E8E5E0] rounded-full cursor-pointer relative"
+          onClick={handleProgressClick}
+        >
+          <div
+            className="absolute h-full bg-[#1E3A5F] rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-[13px] text-[#6B6B6B] w-12">
+          {formatTime(displayDuration)}
+        </span>
+      </div>
+
+      {/* 额外控制 */}
+      <div className="flex items-center justify-between">
+        {/* 倍速按钮 */}
         <button
           onClick={cyclePlaybackRate}
-          className="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          className="px-3 py-1.5 rounded-md bg-[#F5F3F0] text-[13px] font-medium text-[#272735] hover:bg-[#E8E5E0] transition-colors"
         >
           {playbackRate}x
         </button>
 
-        {/* 右侧：音量和下载 */}
+        {/* 右侧按钮 */}
         <div className="flex items-center gap-2">
-          {/* 音量 */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={toggleMute}
-              className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              ) : (
-                <Volume2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              )}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={isMuted ? 0 : volume}
-              onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-              className="w-20 h-1 accent-indigo-500"
-            />
-          </div>
-
-          {/* 下载 */}
+          <button
+            className="p-2 rounded-lg hover:bg-[#F5F3F0] transition-colors"
+            title="分享"
+          >
+            <Share2 className="w-4 h-4 text-[#6B6B6B]" />
+          </button>
           <a
             href={audioUrl}
             download
-            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-[#F5F3F0] transition-colors"
             title="下载音频"
           >
-            <Download className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Download className="w-4 h-4 text-[#6B6B6B]" />
           </a>
         </div>
       </div>
+
+      {/* 错误提示 */}
+      {error && (
+        <div className="mt-4 text-center text-[13px] text-[#9A9A9A]">
+          {error} - 点击播放按钮重试
+        </div>
+      )}
     </div>
   )
 }
 
 /**
  * 全局跳转方法（向后兼容）
- * 推荐使用 useAudioPlayer().seekTo 代替
  * @deprecated 请使用 useAudioPlayer hook
  */
 export function seekToTime(seconds: number) {
-  // 保留 window 方式作为备选，确保向后兼容
   const seekTo = (window as any).__audioPlayerSeekTo
   if (seekTo) {
     seekTo(seconds)
   }
-}
-
-// 为了向后兼容，仍然挂载到 window（将在未来版本移除）
-if (typeof window !== 'undefined') {
-  // 动态注入，由 AudioPlayer 组件在挂载时设置
 }

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 detail/ 组件, podcast/ 子组件, @/lib/utils, @/lib/constants
  * [OUTPUT]: 对外提供 PodcastDetail 组件
- * [POS]: podcast/ 的播客详情页主组件，4 Tab 结构
+ * [POS]: podcast/ 的播客详情页主组件，匹配 Pencil 设计稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
@@ -9,13 +9,7 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Podcast, Clock, Star, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { FlickeringGrid } from '../effects/flickering-grid'
-import { FeaturedReason } from '../detail/featured-reason'
-import { ScoreBadge } from '../score-badge'
-import { TagList } from '../tag-list'
-import DeepResearchButton from '../deep-research-button'
 import { AudioPlayer } from './audio-player'
 import { AudioPlayerProvider } from './audio-player-context'
 import { ContentTabs, TabKey } from './content-tabs'
@@ -71,10 +65,16 @@ const SOURCE_NAMES: Record<string, string> = {
   blog: '博客',
 }
 
-// 格式化时长（使用共享的 formatTime）
+// 格式化时长
 function formatDuration(seconds?: number): string {
   if (!seconds) return ''
-  return formatTime(seconds)
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
 // 格式化日期
@@ -88,25 +88,13 @@ function formatDate(dateString?: string): string {
   })
 }
 
-// 验证图片 URL 安全性，防止 javascript: 等危险协议
-function isSafeImageUrl(url?: string): boolean {
-  if (!url) return false
-  try {
-    const parsed = new URL(url)
-    return ['http:', 'https:', 'data:'].includes(parsed.protocol)
-  } catch {
-    return url.startsWith('/') || url.startsWith('./')
-  }
-}
-
 export function PodcastDetail({ resource }: PodcastDetailProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('show-notes')
   const [currentTime, setCurrentTime] = useState(0)
 
   // 获取显示的内容（中文优先）
   const displayTitle = resource.title_translated || resource.title
-  const displayOneSentence = resource.one_sentence_summary_zh || resource.one_sentence_summary
-  const displayFeaturedReason = resource.featured_reason_zh || resource.featured_reason
+  const displaySummary = resource.summary_zh || resource.summary || resource.one_sentence_summary_zh || resource.one_sentence_summary
   const sourceName = SOURCE_NAMES[resource.source_name] || resource.source_name
 
   // 处理时间更新
@@ -118,31 +106,51 @@ export function PodcastDetail({ resource }: PodcastDetailProps) {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'show-notes':
-        return resource.content_markdown ? (
-          <div className="prose prose-gray dark:prose-invert max-w-none">
-            <div className="whitespace-pre-line text-gray-700 dark:text-gray-300 leading-relaxed">
-              {resource.content_markdown}
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            暂无 Show Notes
+        return (
+          <div className="space-y-4">
+            <h3 className="text-[18px] font-semibold text-[#272735]">节目简介</h3>
+            {resource.content_markdown ? (
+              <div className="text-[15px] text-[#6B6B6B] leading-[1.7] whitespace-pre-line">
+                {resource.content_markdown}
+              </div>
+            ) : displaySummary ? (
+              <div className="text-[15px] text-[#6B6B6B] leading-[1.7] whitespace-pre-line">
+                {displaySummary}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-[#9A9A9A]">
+                暂无节目简介
+              </div>
+            )}
           </div>
         )
 
       case 'chapters':
         return (
-          <ChapterOverview
-            chapters={resource.chapters || []}
-            currentTime={currentTime}
-          />
+          <div className="space-y-4">
+            <h3 className="text-[18px] font-semibold text-[#272735]">章节概览</h3>
+            <ChapterOverview
+              chapters={resource.chapters || []}
+              currentTime={currentTime}
+            />
+          </div>
         )
 
       case 'transcript':
-        return <TranscriptView transcript={resource.transcript} />
+        return (
+          <div className="space-y-4">
+            <h3 className="text-[18px] font-semibold text-[#272735]">完整文字稿</h3>
+            <TranscriptView transcript={resource.transcript} />
+          </div>
+        )
 
       case 'qa':
-        return <QARecap qaPairs={resource.qa_pairs || []} />
+        return (
+          <div className="space-y-4">
+            <h3 className="text-[18px] font-semibold text-[#272735]">问答回顾</h3>
+            <QARecap qaPairs={resource.qa_pairs || []} />
+          </div>
+        )
 
       default:
         return null
@@ -151,168 +159,100 @@ export function PodcastDetail({ resource }: PodcastDetailProps) {
 
   return (
     <AudioPlayerProvider>
-    <div className="min-h-screen bg-white dark:bg-gray-950 relative">
-      {/* Flickering Grid 背景 */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <FlickeringGrid
-          squareSize={2}
-          gridGap={20}
-          color="#6B21A8"
-          maxOpacity={0.12}
-          flickerChance={0.08}
-        />
+      <div className="min-h-screen bg-[#FBFCFD]">
+        {/* 主要内容 */}
+        <main className="max-w-[1280px] mx-auto px-20 py-10">
+          {/* ====== Breadcrumb 面包屑 ====== */}
+          <nav className="flex items-center gap-2 text-[13px] mb-8">
+            <Link
+              href="/"
+              className="text-[#9A9A9A] hover:text-[#1E3A5F] transition-colors duration-200"
+            >
+              首页
+            </Link>
+            <span className="text-[#9A9A9A]">/</span>
+            <Link
+              href="/podcasts"
+              className="text-[#9A9A9A] hover:text-[#1E3A5F] transition-colors duration-200"
+            >
+              播客
+            </Link>
+            <span className="text-[#9A9A9A]">/</span>
+            <span className="text-[#272735] font-medium">当前播客</span>
+          </nav>
+
+          {/* ====== Header 区域 ====== */}
+          <header className="mb-8 space-y-4">
+            {/* 标签行 - 匹配设计: 多个彩色标签 */}
+            <div className="flex flex-wrap items-center gap-2">
+              {resource.domain && (
+                <span className="inline-flex items-center px-3 py-1.5 rounded-md text-[13px] font-medium bg-[#EEF2FF] text-[#4F46E5]">
+                  {resource.domain}
+                </span>
+              )}
+              {resource.tags && resource.tags.slice(0, 2).map((tag, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    "inline-flex items-center px-3 py-1.5 rounded-md text-[13px] font-medium",
+                    index === 0 ? "bg-[#FEF3C7] text-[#B45309]" : "bg-[#F5F3F0] text-[#6B6B6B]"
+                  )}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            {/* 大标题 - 匹配设计: 32px, 500 weight */}
+            <h1 className="text-[32px] font-medium text-[#272735] leading-[1.3] tracking-tight">
+              {displayTitle}
+            </h1>
+
+            {/* Meta 信息 - 匹配设计: 日期 · 时长 · 来源 (点分隔) */}
+            <div className="flex items-center gap-6 text-[14px] text-[#6B6B6B]">
+              {resource.published_at && (
+                <span>{formatDate(resource.published_at)}</span>
+              )}
+              {resource.duration && (
+                <>
+                  <span className="text-[#9A9A9A]">·</span>
+                  <span>{formatDuration(resource.duration)}</span>
+                </>
+              )}
+              {sourceName && (
+                <>
+                  <span className="text-[#9A9A9A]">·</span>
+                  <span>{sourceName}</span>
+                </>
+              )}
+            </div>
+          </header>
+
+          {/* ====== 音频播放器 ====== */}
+          {resource.audio_url && (
+            <AudioPlayer
+              audioUrl={resource.audio_url}
+              title={displayTitle}
+              description={displaySummary || ''}
+              duration={resource.duration}
+              onTimeUpdate={handleTimeUpdate}
+              className="mb-8"
+            />
+          )}
+
+          {/* ====== 4 Tab 内容区 ====== */}
+          <ContentTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            hasShowNotes={!!(resource.content_markdown || displaySummary)}
+            hasChapters={!!(resource.chapters && resource.chapters.length > 0)}
+            hasTranscript={!!resource.transcript}
+            hasQA={!!(resource.qa_pairs && resource.qa_pairs.length > 0)}
+          >
+            {renderTabContent()}
+          </ContentTabs>
+        </main>
       </div>
-
-      {/* 头部导航 */}
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>返回</span>
-          </Link>
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Podcast className="w-4 h-4" />
-            <span>播客</span>
-            {resource.domain && (
-              <>
-                <span>·</span>
-                <span>{resource.domain}</span>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* 主要内容 */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Featured Reason */}
-        {displayFeaturedReason && (
-          <FeaturedReason reason={displayFeaturedReason} className="mb-6" />
-        )}
-
-        {/* 一句话总结 */}
-        {displayOneSentence && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5 mb-6 border border-blue-100 dark:border-blue-800">
-            <p className="text-gray-900 dark:text-white leading-relaxed text-lg">
-              {displayOneSentence}
-            </p>
-          </div>
-        )}
-
-        {/* 播客信息卡片 */}
-        <div className="flex flex-wrap items-center gap-6 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-          {/* 来源 */}
-          <div className="flex items-center gap-2">
-            {isSafeImageUrl(resource.source_icon_url) ? (
-              <img
-                src={resource.source_icon_url}
-                alt={sourceName}
-                className="w-5 h-5 rounded"
-              />
-            ) : (
-              <Podcast className="w-5 h-5 text-gray-400" />
-            )}
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {sourceName}
-            </span>
-          </div>
-
-          {/* 发布日期 */}
-          {resource.published_at && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Calendar className="w-4 h-4" />
-              <span>{formatDate(resource.published_at)}</span>
-            </div>
-          )}
-
-          {/* 时长 */}
-          {resource.duration && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Clock className="w-4 h-4" />
-              <span>{formatDuration(resource.duration)}</span>
-            </div>
-          )}
-
-          {/* 评分 */}
-          {resource.score !== undefined && resource.score > 0 && (
-            <ScoreBadge score={resource.score} isFeatured={resource.is_featured} />
-          )}
-        </div>
-
-        {/* 标题 */}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-4">
-          {displayTitle}
-        </h1>
-
-        {/* 标签 */}
-        {resource.tags && resource.tags.length > 0 && (
-          <div className="mb-6">
-            <TagList tags={resource.tags} />
-          </div>
-        )}
-
-        {/* 音频播放器 */}
-        {resource.audio_url && (
-          <AudioPlayer
-            audioUrl={resource.audio_url}
-            duration={resource.duration}
-            onTimeUpdate={handleTimeUpdate}
-            className="mb-8"
-          />
-        )}
-
-        {/* 4 Tab 内容区 */}
-        <ContentTabs
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          hasShowNotes={!!resource.content_markdown}
-          hasChapters={!!(resource.chapters && resource.chapters.length > 0)}
-          hasTranscript={!!resource.transcript}
-          hasQA={!!(resource.qa_pairs && resource.qa_pairs.length > 0)}
-        >
-          {renderTabContent()}
-        </ContentTabs>
-
-        {/* 操作按钮 */}
-        <section className="mt-8 flex items-center gap-4 flex-wrap">
-          <a
-            href={resource.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
-            style={{
-              background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
-              boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)'
-            }}
-          >
-            <span>访问原链接</span>
-            <ExternalLink className="w-4 h-4" />
-          </a>
-          <DeepResearchButton
-            resourceId={resource.id}
-            resourceTitle={displayTitle}
-            resourceContent={resource.transcript || resource.content_markdown}
-            resourceUrl={resource.url}
-          />
-        </section>
-
-        {/* 元数据信息 */}
-        <footer className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-            <p>ID: {resource.id}</p>
-            {resource.analyzed_at && (
-              <p>分析时间: {formatDate(resource.analyzed_at)}</p>
-            )}
-            {resource.created_at && (
-              <p>创建时间: {formatDate(resource.created_at)}</p>
-            )}
-          </div>
-        </footer>
-      </main>
-    </div>
     </AudioPlayerProvider>
   )
 }

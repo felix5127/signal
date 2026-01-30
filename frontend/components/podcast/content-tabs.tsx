@@ -1,13 +1,13 @@
 /**
  * [INPUT]: 依赖 @/lib/utils
  * [OUTPUT]: 对外提供 ContentTabs 组件
- * [POS]: podcast/ 的 Tab 切换组件，4 个 Tab 内容区
+ * [POS]: podcast/ 的 Tab 切换组件，匹配 Pencil 设计稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
 'use client'
 
-import { useState, ReactNode } from 'react'
+import { ReactNode } from 'react'
 import { FileText, BookOpen, MessageSquare, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,9 +21,9 @@ interface Tab {
 
 const TABS: Tab[] = [
   { key: 'show-notes', label: 'Show Notes', icon: <FileText className="w-4 h-4" /> },
-  { key: 'chapters', label: 'Content Overview', icon: <BookOpen className="w-4 h-4" /> },
+  { key: 'chapters', label: '章节概览', icon: <BookOpen className="w-4 h-4" /> },
   { key: 'transcript', label: 'Transcript', icon: <MessageSquare className="w-4 h-4" /> },
-  { key: 'qa', label: 'Q&A Recap', icon: <HelpCircle className="w-4 h-4" /> },
+  { key: 'qa', label: 'Q&A 回顾', icon: <HelpCircle className="w-4 h-4" /> },
 ]
 
 interface ContentTabsProps {
@@ -57,9 +57,9 @@ export function ContentTabs({
   }
 
   return (
-    <div className={className}>
-      {/* Tab 导航 */}
-      <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6 overflow-x-auto">
+    <div className={cn('space-y-6', className)}>
+      {/* Tab 导航 - 匹配设计: 圆角容器 + pill 样式 */}
+      <div className="flex items-center gap-1 p-1 bg-[#F5F3F0] rounded-xl overflow-x-auto">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key
           const isAvailable = tabAvailability[tab.key]
@@ -67,29 +67,28 @@ export function ContentTabs({
           return (
             <button
               key={tab.key}
-              onClick={() => onTabChange(tab.key)}
+              onClick={() => isAvailable && onTabChange(tab.key)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
+                'flex items-center gap-2 px-5 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-all',
                 isActive
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  ? 'bg-white text-[#272735] shadow-sm'
                   : isAvailable
-                  ? 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                  : 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                  ? 'text-[#6B6B6B] hover:text-[#272735]'
+                  : 'text-[#9A9A9A] cursor-not-allowed'
               )}
               disabled={!isAvailable}
             >
               {tab.icon}
               <span>{tab.label}</span>
-              {!isAvailable && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">(N/A)</span>
-              )}
             </button>
           )
         })}
       </div>
 
-      {/* Tab 内容 */}
-      <div className="min-h-[300px]">{children}</div>
+      {/* Tab 内容卡片 - 匹配设计: 白色卡片 + 边框 */}
+      <div className="rounded-2xl bg-white border border-[#E8E5E0] p-6">
+        {children}
+      </div>
     </div>
   )
 }
