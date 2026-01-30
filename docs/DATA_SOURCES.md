@@ -1,126 +1,453 @@
-# Signal Hunter 数据源配置规范
+# Signal Hunter 数据源目录
 
-> **单一真相源** - 所有数据源变更必须在此文档同步更新
->
-> [PROTOCOL]: 变更时更新此文档，然后同步到相关代码和配置文件
+> 版本: 1.0 | 更新: 2026-01-30 | 状态: Active
 
----
-
-## 1. 当前启用的数据源
-
-Signal Hunter 只采集以下 4 类内容：
-
-| 模块 | 类型 | 当前数量 | 状态 |
-|------|------|----------|------|
-| **文章** | Blog RSS | 16 源 | ✅ 生产中 |
-| **播客** | Podcast RSS | 待配置 | 🔧 规划中 |
-| **推文** | Twitter (XGoing) | 待配置 | 🔧 规划中 |
-| **视频** | Video RSS | 待配置 | 🔧 规划中 |
+本文档记录 Signal Hunter 支持的所有数据源、数据模型及采集流水线。
 
 ---
 
-## 2. Blog RSS 源清单 (16个)
+## 目录
 
-来源：`backend/BestBlog/current_sources.md`
-
-| # | 名称 | 状态 |
-|---|------|------|
-| 1 | 阮一峰的网络日志 | ✅ |
-| 2 | 云风的 BLOG | ✅ |
-| 3 | 酷壳 | ✅ |
-| 4 | 二丫讲梵 | ✅ |
-| 5 | Limboy | ✅ |
-| 6 | DIYGod | ✅ |
-| 7 | 一派胡言 | ✅ |
-| 8 | Yingbo Li | ✅ |
-| 9 | 戴铭 | ✅ |
-| 10 | GeekPlux | ✅ |
-| 11 | 小胡子哥 | ✅ |
-| 12 | Pseudoyu | ✅ |
-| 13 | Owen | ✅ |
-| 14 | 1byte | ✅ |
-| 15 | Randy's Blog | ✅ |
-| 16 | Tw93 | ✅ |
+1. [数据源概览](#1-数据源概览)
+2. [数据源详情](#2-数据源详情)
+3. [数据模型](#3-数据模型)
+4. [采集流水线](#4-采集流水线)
+5. [配置管理](#5-配置管理)
 
 ---
 
-## 3. 已废弃的数据源
+## 1. 数据源概览
 
-以下数据源已永久移除，**不再采集**：
+### 1.1 数据源分类
 
-| 数据源 | 移除日期 | 原因 |
-|--------|----------|------|
-| Hacker News | 2026-01-17 | 用户决定不需要 |
-| GitHub Trending | 2026-01-17 | 用户决定不需要 |
-| arXiv | 2026-01-17 | 用户决定不需要 |
-| HuggingFace | 2026-01-17 | 用户决定不需要 |
-| Product Hunt | 2026-01-17 | 用户决定不需要 |
+| 分类 | 数据源 | 采集器 | 内容类型 |
+|------|--------|--------|----------|
+| **RSS 订阅** | OPML 技术博客 | `rss.py` | article |
+| **社交媒体** | Twitter/X | `xgoing.py` | tweet |
+| **播客节目** | Podcast RSS | `podcast.py` | podcast |
+| **视频内容** | YouTube RSS | `video.py` | video |
+
+### 1.2 采集频率
+
+| 频率 | 数据源 | 说明 |
+|------|--------|------|
+| **每小时** | RSS/OPML, Twitter | 时效性要求高 |
+| **按需** | Podcast, Video | 手动触发或低频 |
+
+### 1.3 数据源状态
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     数据源健康状态                           │
+├────────────────┬────────────┬────────────┬─────────────────┤
+│     数据源     │   状态     │  最近采集   │    今日采集     │
+├────────────────┼────────────┼────────────┼─────────────────┤
+│ RSS/OPML       │ ✅ 正常    │ 5分钟前    │ 127 条         │
+│ Twitter        │ ✅ 正常    │ 30分钟前   │ 89 条          │
+│ Podcast        │ ⏸️ 按需    │ 2天前      │ 0 条           │
+│ YouTube        │ ⏸️ 按需    │ 3天前      │ 0 条           │
+└────────────────┴────────────┴────────────┴─────────────────┘
+```
 
 ---
 
-## 4. 配置文件位置
+## 2. 数据源详情
 
-数据源配置分布在以下位置，变更时需**全部同步**：
+### 2.1 RSS/OPML 订阅
 
-| 文件 | 位置 | 职责 |
+**采集器**: `backend/app/scrapers/rss.py`
+
+**数据源**:
+- BestBlog OPML (技术博客精选)
+- 自定义 RSS 订阅
+
+**配置位置**: `BestBlog/` 目录
+
+**采集流程**:
+```
+1. 解析 OPML 文件，获取 RSS 订阅列表
+2. 并发请求各 RSS Feed
+3. 解析 Feed 条目 (feedparser)
+4. 构造 RawSignal 对象
+5. 规则预筛 + URL 去重
+```
+
+**输出字段**:
+| 字段 | 来源 |
+|------|------|
+| title | feed.entry.title |
+| url | feed.entry.link |
+| content | feed.entry.summary / description |
+| published_at | feed.entry.published |
+| source_name | feed.title |
+
+---
+
+### 2.2 Twitter/X (XGoing)
+
+**采集器**: `backend/app/scrapers/xgoing.py`
+
+**数据源**: XGoing 平台 (Twitter 数据聚合)
+
+**特点**:
+- 跳过 LLM 分析，直接存储
+- 高频采集 (每小时)
+
+**采集流程**:
+```
+1. 调用 XGoing API
+2. 获取指定账号的推文
+3. 解析推文内容
+4. 直接存储 (不经过 LLM 过滤)
+```
+
+**输出字段**:
+| 字段 | 来源 |
+|------|------|
+| title | tweet.text (截取) |
+| url | tweet.url |
+| content | tweet.text |
+| author | tweet.author |
+| type | "tweet" |
+
+---
+
+### 2.3 Podcast RSS
+
+**采集器**: `backend/app/scrapers/podcast.py`
+
+**数据源**: 播客 RSS Feed
+
+**处理流程**:
+```
+1. 解析播客 RSS Feed
+2. 提取节目信息
+3. 下载音频文件 (可选)
+4. 听悟转写 → transcript
+5. 章节分析 → chapters
+6. Q&A 提取 → qa_pairs
+```
+
+**输出字段**:
+| 字段 | 来源 |
+|------|------|
+| title | episode.title |
+| url | episode.link |
+| audio_url | episode.enclosure |
+| duration | episode.duration |
+| transcript | 听悟转写 |
+| chapters | PodcastAnalyzer |
+| qa_pairs | PodcastAnalyzer |
+
+---
+
+### 2.4 YouTube RSS
+
+**采集器**: `backend/app/scrapers/video.py`
+
+**数据源**: YouTube 频道 RSS Feed
+
+**处理流程**:
+```
+1. 解析 YouTube RSS Feed
+2. 提取视频信息
+3. 获取字幕/转写
+4. 章节分析
+```
+
+**输出字段**:
+| 字段 | 来源 |
+|------|------|
+| title | video.title |
+| url | video.link |
+| thumbnail | video.thumbnail |
+| duration | video.duration |
+| transcript | 字幕/转写 |
+
+---
+
+## 3. 数据模型
+
+### 3.1 Resource (v2 核心模型)
+
+**位置**: `backend/app/models/resource.py`
+
+**类型枚举**:
+```python
+class ResourceType(Enum):
+    article = "article"   # 文章
+    podcast = "podcast"   # 播客
+    tweet = "tweet"       # 推文
+    video = "video"       # 视频
+```
+
+**核心字段**:
+
+| 分类 | 字段 | 类型 | 描述 |
+|------|------|------|------|
+| **基础** | id | UUID | 主键 |
+| | title | String | 标题 |
+| | url | String | 原始链接 |
+| | url_hash | String | URL MD5 哈希 (唯一) |
+| | type | Enum | 内容类型 |
+| | source_name | String | 来源名称 |
+| | source_icon_url | String | 来源图标 |
+| **分类** | domain | String | 一级领域 |
+| | subdomain | String | 二级领域 |
+| | tags | Array | 标签列表 |
+| **LLM 分析** | one_sentence_summary | String | 一句话摘要 |
+| | summary | Text | 详细摘要 |
+| | main_points | Array | 核心观点 |
+| | key_quotes | Array | 关键引用 |
+| | score | Integer | 质量评分 (0-100) |
+| **多语言** | title_translated | String | 标题翻译 |
+| | summary_zh | Text | 中文摘要 |
+| | main_points_zh | Array | 中文观点 |
+| **LLM 过滤** | llm_score | Integer | LLM 评分 (0-5) |
+| | llm_reason | Text | 评分理由 |
+| | llm_prompt_version | String | Prompt 版本 |
+| **人工审核** | review_status | Enum | 审核状态 |
+| | review_comment | Text | 审核备注 |
+| | reviewed_at | DateTime | 审核时间 |
+| **深度研究** | deep_research | Text | 研究报告 |
+| | deep_research_tokens | Integer | Token 消耗 |
+| | deep_research_cost | Float | 成本 |
+| **播客/视频** | audio_url | String | 音频链接 |
+| | duration | Integer | 时长 (秒) |
+| | transcript | Text | 转录文本 |
+| | chapters | JSON | 章节信息 |
+| | qa_pairs | JSON | 问答对 |
+| **精选** | is_featured | Boolean | 是否精选 |
+| | featured_reason | Text | 推荐理由 |
+| | featured_reason_zh | Text | 中文推荐理由 |
+| **元数据** | published_at | DateTime | 发布时间 |
+| | created_at | DateTime | 创建时间 |
+| | language | String | 语言 (zh/en) |
+
+---
+
+### 3.2 Source (数据源管理)
+
+**位置**: `backend/app/models/source.py`
+
+**用途**: 管理数据源元信息
+
+**核心字段**:
+
+| 字段 | 类型 | 描述 |
 |------|------|------|
-| `DATA_SOURCES.md` | `docs/` | **本文档 - 权威配置** |
-| `current_sources.md` | `backend/BestBlog/` | Blog RSS 源清单 |
-| `config.yaml` | `backend/app/` | 后端数据源开关 |
-| `startup.py` | `backend/app/` | 定时任务配置 |
-| `sources-page-content.tsx` | `frontend/components/admin/` | 前端 UI 展示 |
-| `scheduler-page-content.tsx` | `frontend/components/admin/` | 任务描述映射 |
+| id | UUID | 主键 |
+| name | String | 数据源名称 |
+| type | Enum | 类型 (blog/twitter/podcast/video) |
+| url | String | 数据源 URL (唯一) |
+| enabled | Boolean | 是否启用 |
+| is_whitelist | Boolean | 是否白名单 |
+| total_collected | Integer | 总采集数 |
+| total_approved | Integer | 总通过数 |
+| total_rejected | Integer | 总拒绝数 |
+| avg_llm_score | Float | 平均 LLM 评分 |
+| last_collected_at | DateTime | 最近采集时间 |
+| last_error | Text | 最近错误信息 |
 
 ---
 
-## 5. 定时任务配置
+### 3.3 SourceRun (采集记录)
 
-| 任务 ID | 名称 | 触发规则 | 采集内容 |
-|---------|------|----------|----------|
-| `twitter_pipeline_job` | Twitter 采集 | 每 1 小时 | 推文 |
-| `main_pipeline_job` | RSS 内容采集 | 每 12 小时 | Blog/Podcast/Video |
-| `daily_digest_job` | 每日精选 | 每天 07:00 | 汇总 |
-| `weekly_digest_job` | 每周精选 | 每周一 08:00 | 汇总 |
-| `newsletter_job` | 周刊生成 | 每周五 17:00 | 周刊 |
+**位置**: `backend/app/models/source_run.py`
 
----
+**用途**: 记录每次采集的统计数据
 
-## 6. 变更日志
+**核心字段**:
 
-### 2026-01-17 - 数据源精简
-
-**变更内容**：
-- 移除 5 个数据源：HN、GitHub、arXiv、HuggingFace、Product Hunt
-- 保留 4 个模块：文章、播客、推文、视频
-- 更新前端任务描述
-
-**修改文件**：
-- `backend/app/api/stats.py` - 修复 API 路由路径
-- `backend/app/api/admin/prompts.py` - 修复响应格式
-- `frontend/components/admin/scheduler-page-content.tsx` - 更新任务描述
-- `frontend/app/admin/page.tsx` - 新建重定向页面
-
-**待完成**：
-- [ ] 后端 `config.yaml` 禁用废弃数据源
-- [ ] 后端 `main_pipeline` 任务逻辑调整
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| id | UUID | 主键 |
+| source_type | String | 数据源类型 |
+| started_at | DateTime | 开始时间 |
+| finished_at | DateTime | 结束时间 |
+| status | Enum | 状态 (running/completed/failed) |
+| fetched_count | Integer | 抓取数量 |
+| rule_filtered | Integer | 规则过滤数 |
+| dedup_filtered | Integer | 去重过滤数 |
+| llm_filtered | Integer | LLM 过滤数 |
+| saved | Integer | 最终保存数 |
+| error_message | Text | 错误信息 |
 
 ---
 
-## 7. 新增数据源流程
+### 3.4 RawSignal (采集中间结构)
 
-1. **更新本文档** - 在对应模块表格中添加新源
-2. **更新后端配置** - 修改 `config.yaml` 或 OPML 文件
-3. **验证采集** - 手动触发或等待定时任务
-4. **同步前端** - 如需展示新类型，更新 UI 组件
+**位置**: `backend/app/scrapers/base.py`
+
+**用途**: 采集器输出的原始数据结构
+
+```python
+@dataclass
+class RawSignal:
+    title: str
+    url: str
+    content: str
+    published_at: datetime
+    source_name: str
+    source_type: str
+    extra: dict = None  # 额外数据
+```
 
 ---
 
-## 8. 相关文档
+## 4. 采集流水线
 
-- `docs/PRD.md` - 产品需求文档（数据源规划）
-- `backend/BestBlog/` - OPML 配置目录
-- `docs/media-subscriptions.md` - 播客/视频订阅清单
+### 4.1 流水线架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     采集流水线架构                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐                                           │
+│  │ APScheduler │ ─── 定时触发                               │
+│  └─────────────┘                                           │
+│         │                                                   │
+│         ↓                                                   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                  Pipeline 选择                       │   │
+│  ├─────────────────────────────────────────────────────┤   │
+│  │ ArticlePipeline │ TwitterPipeline │ PodcastPipeline │   │
+│  │ VideoPipeline │                                     │   │
+│  └─────────────────────────────────────────────────────┘   │
+│         │                                                   │
+│         ↓                                                   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │               标准处理流程                           │   │
+│  │  采集 → 去重 → 全文提取 → 过滤 → 分析 → 翻译 → 存储  │   │
+│  └─────────────────────────────────────────────────────┘   │
+│         │                                                   │
+│         ↓                                                   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │               数据追踪 (DataTracker)                 │   │
+│  │           飞书多维表格记录                            │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 ArticlePipeline (文章流水线)
+
+**触发**: 每小时 (RSS)
+
+**处理步骤**:
+
+| 步骤 | 处理器 | 输入 | 输出 |
+|------|--------|------|------|
+| 1 | RSS Scraper | OPML | RawSignal[] |
+| 2 | Deduper | RawSignal[] | 去重后信号 |
+| 3 | ContentExtractor | URL | 全文内容 |
+| 4 | UnifiedFilter | 内容 | 过滤结果 |
+| 5 | Analyzer | 内容 | 结构化分析 |
+| 6 | Translator | 英文内容 | 中文翻译 |
+| 7 | Favicon | URL | 图标URL |
+| 8 | DB Save | 处理结果 | Resource |
+
+**数据追踪节点**:
+- 去重阶段: 记录重复项 (stage=dedup)
+- 过滤阶段: 记录 LLM 评分 (stage=llm)
+- 存储阶段: 记录收录项 (stage=save)
 
 ---
 
-[PROTOCOL]: 变更时更新此文档，然后同步到相关代码和配置文件
+### 4.3 TwitterPipeline (推文流水线)
+
+**触发**: 每小时
+
+**特点**: 跳过 LLM 分析，直接存储
+
+**处理步骤**:
+
+| 步骤 | 处理器 | 说明 |
+|------|--------|------|
+| 1 | XGoing Scraper | 采集推文 |
+| 2 | Deduper | URL 去重 |
+| 3 | DB Save | 直接存储 |
+
+---
+
+### 4.4 PodcastPipeline / VideoPipeline
+
+**触发**: 按需
+
+**额外处理**:
+- 音频/视频转写 (听悟)
+- 章节分析 (PodcastAnalyzer)
+- Q&A 提取 (PodcastAnalyzer)
+
+---
+
+## 5. 配置管理
+
+### 5.1 数据源配置
+
+**静态配置**: `config.yaml`
+
+```yaml
+scrapers:
+  rss:
+    enabled: true
+    interval: 3600  # 秒
+  xgoing:
+    enabled: true
+    interval: 3600
+```
+
+**动态配置**: `SourceConfig` 模型
+
+```python
+# 运行时覆盖 config.yaml
+SourceConfig(
+    source_type="rss",
+    enabled=True,
+    config_override={}
+)
+```
+
+### 5.2 OPML 订阅管理
+
+**位置**: `BestBlog/` 目录
+
+**格式**: 标准 OPML 文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Tech Blogs</title>
+  </head>
+  <body>
+    <outline text="AI/ML" title="AI/ML">
+      <outline type="rss" text="Blog Name" xmlUrl="https://..." />
+    </outline>
+  </body>
+</opml>
+```
+
+### 5.3 白名单机制
+
+**作用**: 白名单源的内容自动通过 LLM 过滤 (score=5)
+
+**设置方式**:
+1. 管理后台: 数据源管理 → 设置白名单
+2. API: `PUT /api/admin/sources/{id}/whitelist`
+
+**生效位置**: `UnifiedFilter.filter()` 第一步检查
+
+---
+
+## 附录: 数据源 API 参考
+
+| 数据源 | API 端点 | 认证 |
+|--------|----------|------|
+| XGoing | 私有 API | API Key |
+| Tavily | https://api.tavily.com | API Key |
+
+---
+
+*数据源变更时请同步更新此文档*

@@ -2,7 +2,20 @@
 > Python 3.11 + Next.js 14 + PostgreSQL + Docker Compose
 
 ## 定位
-面向超级个体的技术情报聚合与深度分析平台，从 Hacker News 等源头自动筛选高质量技术信号，通过 AI 生成结构化摘要和研究报告。
+面向超级个体的技术情报聚合与深度分析平台，自动筛选高质量技术信号，通过 AI 生成结构化摘要和研究报告。
+
+## 文档导航
+
+> CLAUDE.md 体系描述"怎么做"，需求文档体系描述"做什么"和"为什么"
+
+| 文档 | 描述 | 类型 |
+|------|------|------|
+| [PRODUCT.md](PRODUCT.md) | 产品愿景与路线图 | 需求文档 |
+| [docs/FEATURES.md](docs/FEATURES.md) | 功能规格说明 | 需求文档 |
+| [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) | 数据源目录 | 需求文档 |
+| [docs/API.md](docs/API.md) | API 接口参考 | 需求文档 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计决策 | 需求文档 |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 部署运维指南 | 需求文档 |
 
 ## <directory>
 
@@ -10,7 +23,7 @@
 - **app/api/** - REST API 路由 (resources, signals, newsletters, stats, feeds)
 - **app/models/** - 数据库模型 (Resource, Signal, Newsletter, Task)
 - **app/processors/** - 内容处理器 (analyzer, generator, translator, podcast_analyzer)
-- **app/scrapers/** - 数据抓取器 (hackernews, github, arxiv, huggingface)
+- **app/scrapers/** - 数据抓取器 (rss, xgoing, podcast, video)
 - **app/tasks/** - 异步任务队列 (pipeline, digest, newsletter)
 - **app/services/** - 业务服务 (deep_research_service, cache_service)
 
@@ -26,9 +39,7 @@
 - **lib/design-system/** - 设计系统令牌 (colors, spacing, typography)
 - **lib/motion.ts** - Apple 级 Spring 动画预设库
 
-### docs/ - 项目文档
-- **architecture/** - 架构设计文档
-- **deployment/** - 部署指南 (Cloudflare, Railway)
+
 
 ## <config>
 
@@ -77,40 +88,8 @@
 - **反向代理**: Nginx (生产环境)
 - **部署**: Railway / Cloudflare Pages
 
-## 设计系统
 
-### 微拟物设计语言 (Neumorphic Design)
-- **核心原则**: 三段式渐变 + 三层阴影 + 微交互
-- **CSS 变量**: `--gradient-*`, `--shadow-raised`, `--shadow-inset`
-- **圆角规范**: 16px - 32px 大圆角设计
-- **微交互**: hover scale-[1.02], active scale-[0.97]
 
-### Apple 级 Spring 动效系统
-- **核心哲学**: Spring 弹簧 + 阻尼落定 + 物理惯性
-- **Spring 配置**:
-  - 标准交互: stiffness: 400, damping: 30 (~200ms)
-  - 柔和过渡: stiffness: 300, damping: 35 (~350ms)
-  - 弹性强调: stiffness: 500, damping: 25 (~300ms)
-  - 优雅落定: stiffness: 200, damping: 40 (~500ms)
-  - 惯性滑动: stiffness: 150, damping: 20
-- **缓动曲线**: appleEase, appleEaseOut, appleDecelerate
-- **动画预设**: fadeInUp, scaleIn, staggerContainer, hoverLift, tapScale
-- **页面过渡**: pageTransition (AnimatePresence + Spring)
-- **可访问性**: MotionConfig reducedMotion="user"
-
-### 已升级组件
-1. **Button**: 渐变背景 + 立体阴影 + 8 种变体 + tapScale 交互动画
-2. **Card**: 4 种阴影变体 (default/raised/inset/outline) + hoverLift 提升
-3. **Input**: 内凹阴影效果，聚焦增强
-4. **Badge**: 渐变背景 + 悬停增强
-5. **Navbar**: 全局导航栏 + Spring 动画 (下滑进场 + hover 提升 + tap 缩放)
-6. **PageTransition**: 页面路由过渡 (AnimatePresence + Spring 物理引擎)
-
-### 颜色系统
-- **主色调**: Primary (蓝色系)
-- **辅助色**: Secondary (灰色系)
-- **强调色**: Accent (紫色系)
-- **语义色**: Destructive (红色), Success (绿色)
 
 ## 数据流架构
 
@@ -130,35 +109,7 @@
 [前端展示 Next.js]
 ```
 
-## 核心功能
 
-### 1. 信号采集
-- Hacker News 热门新闻
-- GitHub Trending 仓库
-- arXiv 新论文
-- Hugging Face 新模型
-- Product Hunt 热门产品
-
-### 2. AI 处理
-- **过滤规则**: 新代码/新模型/新论文/可复现结果/可用工具
-- **摘要生成**: 一句话总结 + 详细摘要 (300字)
-- **评分系统**: 0-100 分，≥70 分为精选
-- **分类标签**: AI/ML/Web3/DevTools/Career 等
-
-### 3. 深度研究 (Deep Research)
-- 一键生成 1500 字研究报告
-- 技术分析 + 竞品对比 + 应用场景
-- 搜索增强 (Tavily API)
-
-### 4. 周刊生成
-- 每周自动汇总精选信号
-- 生成 HTML/PDF 格式周刊
-- 邮件订阅推送
-
-### 5. 数据导出
-- RSS 订阅源
-- JSON API
-- CSV 导出
 
 ## 环境变量
 

@@ -76,6 +76,11 @@ data_tracker.py: 数据追踪器，Pipeline 各节点调用，收集并批量写
 - get_source_stats(): 按数据源统计 (采集量、通过率、平均评分)
 - get_daily_stats(): 每日统计 (指定天数内的每日数据)
 - get_score_distribution(): LLM 评分分布 (0-5 分各档数量)
+- get_data_quality_stats(): 内容完整率统计 (播客/视频/文章的关键字段填充率)
+- get_source_health_stats(): RSS 源健康状态 (基于最近 7 天采集成功率，三级健康状态)
+- get_transcription_stats(): 转写成功率统计 (有音频但无转录的记录，待转写列表)
+- get_pipeline_status(): Pipeline 实时状态 (运行状态、上次运行、下次运行倒计时、处理队列)
+- get_today_funnel_stats(): 今日采集漏斗统计 (抓取→规则过滤→去重→LLM过滤→保存)
 
 ### ReviewService
 - get_review_list(): 获取待审核列表 (按状态/来源/日期筛选，分页)

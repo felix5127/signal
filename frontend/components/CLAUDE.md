@@ -130,6 +130,12 @@
 
 ## 变更日志
 
+### 2026-01-30 - 深度研究按钮恢复
+- 恢复 resource-detail.tsx 中的 DeepResearchButton 导入和按钮
+- 恢复 podcast/podcast-detail.tsx 中的 DeepResearchButton（含"收听原节目"按钮）
+- 恢复 video/video-detail.tsx 中的 DeepResearchButton（含"观看原视频"按钮）
+- 修复 Mercury 风格重构时遗漏的深度研究入口（影响所有详情页类型）
+
 ### 2026-01-27 - Footer 品牌统一 & 推文卡片优化
 - Footer.tsx 品牌统一：Radar 图标 + 统一品牌描述
 - Footer.tsx 链接结构简化：4列 → 2列（内容/关于）

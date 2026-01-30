@@ -7,7 +7,7 @@ Admin 管理 API，提供后台管理功能的 HTTP 接口。
 ## 成员清单
 __init__.py: 子包入口
 sources.py: 数据源管理 CRUD (GET/POST/PUT/DELETE /api/admin/sources)
-stats.py: Admin 统计 API (/overview, /daily, /sources, /score-distribution)
+stats.py: Admin 统计 API (/overview, /daily, /sources, /score-distribution, /data-quality, /source-health, /transcription, /pipeline-status, /today-funnel)
 review.py: Admin 审核 API (/list, /action, /{resource_id}/action, /stats)
 prompts.py: Admin Prompt 管理 API (列表/活跃版本/创建/激活)
 
@@ -19,7 +19,7 @@ prompts.py: Admin Prompt 管理 API (列表/活跃版本/创建/激活)
 | /api/admin/sources/{id} | PUT | 更新数据源 |
 | /api/admin/sources/{id} | DELETE | 删除数据源 |
 | /api/admin/sources/{id}/stats | GET | 获取数据源详情统计 |
-| /api/admin/stats/* | GET | 统计概览/每日统计/数据源统计/评分分布 |
+| /api/admin/stats/* | GET | 统计概览/每日统计/数据源统计/评分分布/数据质量/源健康/转写率/Pipeline状态/今日漏斗 |
 | /api/admin/review/* | GET/POST | 审核列表/审核操作/审核统计 |
 | /api/admin/prompts/* | GET/POST | Prompt 列表/活跃版本/创建/激活 |
 

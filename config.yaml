@@ -152,7 +152,7 @@ sources:
     max_daily_items: 5  # 每日最多处理播客数
 
   video:
-    enabled: true  # 启用视频数据源
+    enabled: false  # 视频功能已禁用，停止采集（保留已有数据）
     opml_path: "BestBlog/BestBlogs_RSS_Videos.opml"  # 视频 OPML 文件路径
     max_items_per_feed: 1  # 每个 feed 最多抓取条目数
     max_duration_seconds: 7200  # 最大视频时长（秒），默认 2 小时

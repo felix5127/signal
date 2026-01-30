@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { ExternalLink, Star } from 'lucide-react'
 import { AISummaryCard, AIAssistantCard, RelatedContentCard } from './detail'
 import MarkdownRenderer from './markdown-renderer'
+import DeepResearchButton from './deep-research-button'
 
 export interface ResourceDetailProps {
   resource: {
@@ -308,7 +309,7 @@ export default function ResourceDetail({ resource, relatedResources = [] }: Reso
             )}
 
             {/* 操作按钮 - 与首页 Hero 按钮样式一致 */}
-            <div className="mt-10 pt-8 border-t border-[rgba(0,0,0,0.06)]">
+            <div className="mt-10 pt-8 border-t border-[rgba(0,0,0,0.06)] flex flex-wrap items-center gap-4">
               <a
                 href={resource.url}
                 target="_blank"
@@ -318,6 +319,12 @@ export default function ResourceDetail({ resource, relatedResources = [] }: Reso
                 <span>阅读原文</span>
                 <ExternalLink className="w-[18px] h-[18px] transition-transform group-hover:translate-x-0.5" />
               </a>
+              <DeepResearchButton
+                resourceId={resource.id}
+                resourceTitle={displayTitle}
+                resourceContent={resource.content_markdown || displaySummary}
+                resourceUrl={resource.url}
+              />
             </div>
           </article>
 

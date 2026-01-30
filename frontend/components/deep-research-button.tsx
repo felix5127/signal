@@ -18,16 +18,16 @@ interface DeepResearchProps {
   resourceUrl?: string      // 资源原始链接
 }
 
-// 按钮样式配置
+// 按钮样式配置 - 使用与"阅读原文"按钮一致的 Mercury 风格颜色
 const buttonStyles = {
   default: {
-    background: 'linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 50%, color-mix(in srgb, var(--primary) 70%, black) 100%)',
-    boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
-    hoverBoxShadow: '0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)',
+    background: '#1E3A5F',
+  },
+  hover: {
+    background: '#152840',
   },
   loading: {
     background: '#9ca3af',
-    boxShadow: '0 4px 12px rgba(156, 163, 175, 0.35), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)',
   },
 }
 
@@ -110,26 +110,18 @@ export default function DeepResearchButton({
   }
 
   // ============================================================
-  // 渲染
+  // 渲染 - 使用与"阅读原文"按钮一致的 Mercury 风格
   // ============================================================
-  const baseButtonClass = 'inline-flex items-center gap-2 px-6 py-3 rounded-xl border-none font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]'
-  const currentStyle = status === 'loading' ? buttonStyles.loading : buttonStyles.default
-
   return (
     <div>
       <button
         onClick={handleClick}
         disabled={status === 'loading'}
-        className={`${baseButtonClass} text-white ${status === 'loading' ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        style={currentStyle}
-        onMouseEnter={(e) => {
-          if (status !== 'loading') {
-            e.currentTarget.style.boxShadow = buttonStyles.default.hoverBoxShadow
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = currentStyle.boxShadow
-        }}
+        className={`group inline-flex items-center gap-2 px-7 py-3.5 rounded-[10px] text-white text-base font-medium transition-all ${
+          status === 'loading'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-[#1E3A5F] hover:bg-[#152840] cursor-pointer'
+        }`}
       >
         {status === 'loading' ? (
           <>

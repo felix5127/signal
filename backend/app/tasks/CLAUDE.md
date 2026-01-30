@@ -5,7 +5,7 @@
 异步任务系统，流水线编排，定时任务调度，进度追踪。
 
 ## 成员清单
-pipeline.py: 核心流水线，包含 ArticlePipeline/FullPipeline/TwitterPipeline/PodcastPipeline/VideoPipeline
+pipeline.py: 核心流水线，包含 ArticlePipeline/TwitterPipeline/PodcastPipeline/VideoPipeline
 base_pipeline.py: 流水线公共基类 ✅
   - PipelineStats: 统一统计类 (采集/去重/过滤/分析/翻译/转写/保存/Token)
   - BasePipeline: 基础流水线类 (去重检查/数据库会话/进度打印/运行记录)
@@ -18,8 +18,7 @@ queue.py: 任务队列管理 (APScheduler 配置)
 ## 流水线概览
 | 流水线 | 数据源 | 采集频率 | 特点 |
 |--------|--------|---------|------|
-| ArticlePipeline | RSS/OPML | 按需 | 完整 8 步处理 (Deduper + UnifiedFilter) |
-| FullPipeline | HN/GitHub/arXiv/HF/PH | 每12小时 | 多源混合 |
+| ArticlePipeline | RSS/OPML | 每小时 | 完整 8 步处理 (Deduper + UnifiedFilter) |
 | TwitterPipeline | XGoing | 每小时 | 跳过 LLM 分析，直接存储 |
 | PodcastPipeline | Podcast RSS | 按需 | 转写 + PodcastAnalyzer 章节/Q&A 分析 |
 | VideoPipeline | YouTube RSS | 按需 | 转写 + PodcastAnalyzer 章节/Q&A 分析 |
@@ -49,19 +48,19 @@ queue.py: 任务队列管理 (APScheduler 配置)
 |------|------|------|
 | 标题 | 文本 | 内容标题 (限 100 字符) |
 | URL | 链接 | 原始链接 |
-| 来源 | 单选 | RSS/HN/GitHub 等 |
+| 来源 | 单选 | RSS/Twitter/Podcast/Video |
 | 时间 | 日期 | 采集时间 |
 | 状态 | 单选 | 收录/过滤 |
 | 原因 | 文本 | LLM 评分理由或过滤原因 |
 | 阶段 | 单选 | 去重/LLM过滤/存储 |
 | 评分 | 数字 | LLM 评分 (0-5) |
-| 流水线 | 单选 | 文章/多源/推特/播客/视频 |
+| 流水线 | 单选 | 文章/推特/播客/视频 |
 
 ## 定时任务配置
 | 任务 | 触发时间 | 函数 |
 |------|---------|------|
+| Article Pipeline | 每小时 | scheduled_article_pipeline |
 | Twitter Pipeline | 每小时 | scheduled_twitter_pipeline |
-| Main Pipeline | 每12小时 | scheduled_main_pipeline |
 | Daily Digest | 每天 07:00 | daily_digest_job |
 | Weekly Digest | 每周一 08:00 | weekly_digest_job |
 | Newsletter | 每周五 17:00 | newsletter_job |

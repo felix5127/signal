@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { FileText, BookOpen, MessageSquare, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VideoPlayer } from './video-player'
+import DeepResearchButton from '../deep-research-button'
 
 export interface VideoResource {
   id: number
@@ -343,6 +344,24 @@ export function VideoDetail({ resource }: VideoDetailProps) {
           <div className="rounded-2xl bg-white border border-[#E8E5E0] p-6">
             {renderTabContent()}
           </div>
+        </div>
+
+        {/* ====== 操作按钮 ====== */}
+        <div className="mt-10 pt-8 border-t border-[rgba(0,0,0,0.06)] flex flex-wrap items-center gap-4">
+          <a
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[10px] bg-[#1E3A5F] text-white text-base font-medium transition-all hover:bg-[#152840]"
+          >
+            <span>观看原视频</span>
+          </a>
+          <DeepResearchButton
+            resourceId={resource.id}
+            resourceTitle={displayTitle}
+            resourceContent={resource.content_markdown || displaySummary}
+            resourceUrl={resource.url}
+          />
         </div>
       </main>
     </div>

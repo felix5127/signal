@@ -16,7 +16,7 @@ BestBlog/: BestBlogs OPML 订阅源配置
 FastAPI 0.115+ | SQLAlchemy 2.0 | PostgreSQL 15 | APScheduler | Redis 7
 
 ## 核心能力
-- **数据采集**: 16 个爬虫适配 (RSS/HN/GitHub/arXiv/HuggingFace/Twitter 等)
+- **数据采集**: 4 类数据源 (RSS/Twitter/Podcast/Video)
 - **AI 分析**: 规则预筛 + LLM 初评 + 三步深度分析
 - **深度研究**: Tavily 搜索增强 + LLM 报告生成
 - **定时任务**: APScheduler 驱动的自动化流水线

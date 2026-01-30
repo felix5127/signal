@@ -44,13 +44,10 @@ from app.processors.deduper import Deduper
 from app.services.prompt_service import prompt_service
 from app.processors.analyzer import Analyzer, AnalysisResult
 from app.processors.translator import Translator
-from app.scrapers.hackernews import HackerNewsScraper
-from app.scrapers.github import GitHubScraper
-from app.scrapers.huggingface import HuggingFaceScraper
+# 旧 scraper 已移除 (hackernews, github, huggingface, arxiv, producthunt)
+# 保留: XGoing, Blog, RSS, Podcast, Video
 from app.scrapers.twitter import TwitterScraper
 from app.scrapers.xgoing import XGoingScraper
-from app.scrapers.arxiv import ArXivScraper
-from app.scrapers.producthunt import ProductHuntScraper
 from app.scrapers.blog import BlogScraper
 from app.scrapers.rss import RSSScraper
 from app.scrapers.podcast import PodcastScraper
@@ -544,26 +541,8 @@ async def run_full_pipeline(sources: list[str] | None = None) -> PipelineStats:
             return True  # 运行所有源
         return source_name in sources
 
-    # 1.1 Hacker News
-    if should_run('hn') and config.hackernews.enabled:
-        hn_scraper = HackerNewsScraper()
-        hn_signals = await hn_scraper.scrape()
-        raw_signals.extend(hn_signals)
-        print(f"[HN] Scraped {len(hn_signals)} signals")
-
-    # 1.2 GitHub Trending
-    if should_run('github') and config.github.enabled:
-        github_scraper = GitHubScraper()
-        github_signals = await github_scraper.scrape()
-        raw_signals.extend(github_signals)
-        print(f"[GitHub] Scraped {len(github_signals)} signals")
-
-    # 1.3 Hugging Face
-    if should_run('huggingface') and config.huggingface.enabled:
-        hf_scraper = HuggingFaceScraper()
-        hf_signals = await hf_scraper.scrape()
-        raw_signals.extend(hf_signals)
-        print(f"[HuggingFace] Scraped {len(hf_signals)} signals")
+    # 1.1-1.3 已移除 (HackerNews, GitHub, HuggingFace)
+    # 这些 scraper 已不再使用，由 RSS 统一处理
 
     # 1.4 Twitter
     if should_run('twitter') and config.twitter.enabled:
@@ -572,19 +551,8 @@ async def run_full_pipeline(sources: list[str] | None = None) -> PipelineStats:
         raw_signals.extend(twitter_signals)
         print(f"[Twitter] Scraped {len(twitter_signals)} signals")
 
-    # 1.5 ArXiv
-    if should_run('arxiv') and config.arxiv.enabled:
-        arxiv_scraper = ArXivScraper()
-        arxiv_signals = await arxiv_scraper.scrape()
-        raw_signals.extend(arxiv_signals)
-        print(f"[ArXiv] Scraped {len(arxiv_signals)} signals")
-
-    # 1.6 Product Hunt
-    if should_run('producthunt') and config.producthunt.enabled:
-        ph_scraper = ProductHuntScraper()
-        ph_signals = await ph_scraper.scrape()
-        raw_signals.extend(ph_signals)
-        print(f"[ProductHunt] Scraped {len(ph_signals)} signals")
+    # 1.5-1.6 已移除 (ArXiv, ProductHunt)
+    # 这些 scraper 已不再使用，由 RSS 统一处理
 
     # 1.7 Blog/Podcast RSS - 使用 RSSScraper 支持 OPML
     if should_run('blog') and hasattr(config, 'blog') and config.blog.enabled:
