@@ -2,152 +2,141 @@
 > L2 | 父级: ../CLAUDE.md
 
 ## 职责
-研究工作台的面板组件，提供源材料管理、深度研究、输出预览等侧边栏功能。
+研究工作台的面板组件，实现 NotebookLM 风格三栏布局的各个面板。
+
+## 设计风格
+- **Mercury.com 浅色系**: #FBFCFD 背景, #1E3A5F 主色调, #8B5CF6 强调色
+- **圆角规范**: 12px-16px (输入框/卡片), 24px (大按钮)
+- **间距**: 16px 内边距, 12px 组件间距
 
 ## 成员清单
 
-**SourcesPanel.tsx**: 左侧源材料面板 (w-72)
-- 职责: 源材料列表展示 + 添加 URL/文本 + 删除源材料 + 处理状态图标
-- 导出: SourcesPanel({ projectId, sources, onSourcesChange }), Source 类型
-- 技术细节: 弹窗表单、状态图标(CheckCircle/Clock/AlertCircle)、Framer Motion 动画
-- 状态图标: completed(绿色) / processing|pending(黄色) / failed(红色)
+**SourcesPanel.tsx**: 左侧来源面板 (300px)
+- 职责: NotebookLM 风格来源管理（添加/选择/删除/搜索）
+- 导出: SourcesPanel({ projectId, sources, onSourcesChange, selectedSources, onSelectedSourcesChange, isCollapsed, onToggleCollapse }), Source 类型
+- 技术细节:
+  - Header: "来源" + 折叠图标
+  - "+ 添加来源" 按钮 (#1E3A5F)
+  - "试用 Deep Research" 链接 (#8B5CF6 紫色)
+  - 搜索框 "在网络中搜索新来源"
+  - 筛选按钮 (Web / Fast Research)
+  - "选择所有来源" 复选框
+  - 来源列表（复选框 + 文件图标 + 标题 + 状态）
 - API: POST /api/research/projects/{id}/sources, DELETE /api/research/sources/{id}
 
-**ChatPanel.tsx**: 中间对话面板
-- 职责: 用户/AI 对话，基于项目材料的问答
-- 导出: ChatPanel({ projectId, messages, onMessagesChange, sessionId, onSessionIdChange })
-- 技术细节: 消息气泡、自动滚动、加载状态、错误处理
+**ChatPanel.tsx**: 中间对话面板 (flex-1)
+- 职责: NotebookLM 风格 AI 对话界面
+- 导出: ChatPanel({ projectId, projectName, sourceCount, messages, onMessagesChange, sessionId, onSessionIdChange })
+- 技术细节:
+  - Header: "对话" + 设置/更多图标
+  - 空状态: 项目图标 + 标题 + 来源数 + 建议问题卡片
+  - 消息气泡: 用户(#1E3A5F) / AI(白色边框)
+  - AI 消息操作按钮: 保存到笔记 / 复制 / 点赞
+  - 底部输入框 (圆角24px + 圆形发送按钮)
+  - 行高: AI 消息 1.8
 - API: POST /api/research/projects/{id}/chat
 
-**ResearchPanel.tsx**: 右侧研究面板
-- 职责: 深度研究输入 + SSE 进度展示 + 研究输出列表
-- 导出: ResearchPanel({ projectId, outputs, onOutputsChange })
-- 技术细节: SSE 流式进度、Framer Motion 动画、可展开输出卡片
+**StudioPanel.tsx**: 右侧 Studio 面板 (320px)
+- 职责: NotebookLM 风格工具网格 + 笔记 + 输出列表
+- 导出: StudioPanel({ projectId, outputs, onOutputsChange, isCollapsed, onToggleCollapse })
+- 技术细节:
+  - Header: "Studio" + 折叠图标
+  - 工具网格 (2x3):
+    - 音频概览 (#F8F9FA)
+    - 视频概览 (#E8F4FD)
+    - 思维导图 (#FEF3E8)
+    - 报告 (#F0FDF4)
+    - 信息图 (#FEF2F2)
+    - 演示文稿 (#F5F3FF)
+  - Deep Research 输入框 + 进度条
+  - "相关笔记" 列表 + "添加笔记" 按钮
+  - 研究输出列表（可展开）
 - API: POST /api/research/projects/{id}/research (SSE), GET /api/research/projects/{id}/outputs
 
 **index.ts**: 模块导出入口
-- 职责: 统一导出 panels 目录下所有组件
+- 导出: StudioPanel, ChatPanel, SourcesPanel, Source 类型
+- 兼容: ResearchPanel (别名 StudioPanel)
 
-## 功能说明
+## 布局结构
 
-### SourcesPanel
 ```
-┌──────────────────────┐
-│ 源材料         (3)   │
-│ [+ 添加源材料]       │
-├──────────────────────┤
-│ ┌──────────────────┐ │
-│ │ 🔗 example.com   │ │
-│ │ ✅ https://...   │ │
-│ │              [x] │ │
-│ └──────────────────┘ │
-│ ┌──────────────────┐ │
-│ │ 📄 文本片段...   │ │
-│ │ ⏳ text          │ │
-│ │              [x] │ │
-│ └──────────────────┘ │
-│                      │
-│   还没有源材料       │
-│   点击上方按钮添加   │
-└──────────────────────┘
-```
-
-### ResearchPanel
-```
-┌────────────────────┐
-│   深度研究区       │
-│ ┌────────────────┐ │
-│ │ 研究问题输入   │ │
-│ │ [多行文本框]   │ │
-│ │ [开始研究]     │ │
-│ ├────────────────┤ │
-│ │ 研究进度条     │ │
-│ │ ████████░░ 80% │ │
-│ ├────────────────┤ │
-│ │ 研究结果预览   │ │
-│ └────────────────┘ │
-├────────────────────┤
-│   研究输出 (3)     │
-│ ┌────────────────┐ │
-│ │ 📄 报告标题    │ │
-│ │ research_report│ │
-│ │ 1月18日 14:30  │ │
-│ │ ▶ 展开查看内容 │ │
-│ └────────────────┘ │
-│ ┌────────────────┐ │
-│ │ 📄 ...         │ │
-│ └────────────────┘ │
-└────────────────────┘
-```
-
-### SSE 流式处理
-```typescript
-const reader = res.body?.getReader()
-while (true) {
-  const { done, value } = await reader.read()
-  if (done) break
-  // 解析 data: 行
-  // 更新 researchProgress 状态
-}
+┌─────────────────┬────────────────────────────────┬─────────────────────┐
+│ Sources (300px) │ Chat (flex-1)                  │ Studio (320px)      │
+│                 │                                │                     │
+│ ┌─────────────┐ │ ┌────────────────────────────┐ │ ┌─────────────────┐ │
+│ │ 来源 + [<]  │ │ │ 对话 + [设置] [更多]       │ │ │ Studio + [>]    │ │
+│ ├─────────────┤ │ ├────────────────────────────┤ │ ├─────────────────┤ │
+│ │ [+添加来源] │ │ │                            │ │ │ [音频] [视频]   │ │
+│ │ 试用 Deep.. │ │ │   ┌──────────────────┐     │ │ │ [思维] [报告]   │ │
+│ ├─────────────┤ │ │   │ 项目图标         │     │ │ │ [信息] [演示]   │ │
+│ │ [搜索来源]  │ │ │   │ 项目名称         │     │ │ ├─────────────────┤ │
+│ │ [Web][Fast] │ │ │   │ 3 个来源         │     │ │ │ Deep Research   │ │
+│ ├─────────────┤ │ │   └──────────────────┘     │ │ │ [输入问题...]   │ │
+│ │ [x] 全选    │ │ │                            │ │ │ [开始研究]      │ │
+│ ├─────────────┤ │ │   ┌──────────────────┐     │ │ ├─────────────────┤ │
+│ │ [x] 来源1   │ │ │   │ 建议问题卡片 1   │     │ │ │ 相关笔记 [+]    │ │
+│ │ [x] 来源2   │ │ │   │ 建议问题卡片 2   │     │ │ │ ┌─────────────┐ │ │
+│ │ [x] 来源3   │ │ │   │ 建议问题卡片 3   │     │ │ │ │ 笔记项      │ │ │
+│ │             │ │ │   └──────────────────┘     │ │ │ └─────────────┘ │ │
+│ │             │ │ │                            │ │ ├─────────────────┤ │
+│ │             │ │ ├────────────────────────────┤ │ │ 研究输出 (3)    │ │
+│ │             │ │ │ [输入消息...        ] [▶]  │ │ │ ┌─────────────┐ │ │
+│ └─────────────┘ │ └────────────────────────────┘ │ │ │ 输出项 1    │ │ │
+│                 │                                │ │ │ 输出项 2    │ │ │
+│                 │                                │ │ └─────────────┘ │ │
+└─────────────────┴────────────────────────────────┴─────────────────────┘
 ```
 
 ## 依赖关系
 
 ### API 端点
-- POST /api/research/projects/{id}/research (SSE)
-  - Body: { query, include_web_search, max_iterations }
-  - 返回: SSE 事件流 (phase, message, progress, output)
-- GET /api/research/projects/{id}/outputs
-  - 返回: Output[]
+- POST /api/research/projects/{id}/sources - 添加来源
+- DELETE /api/research/sources/{id} - 删除来源
+- POST /api/research/projects/{id}/chat - 对话
+- POST /api/research/projects/{id}/research (SSE) - 深度研究
+- GET /api/research/projects/{id}/outputs - 获取输出列表
 
 ### 外部依赖
 - framer-motion: AnimatePresence + motion.div
-- lucide-react: Search, BookOpen, Loader2, CheckCircle2, ChevronDown, ChevronRight, Clock, FileText
+- lucide-react: 图标库
 
 ## 样式规范
 
+### 颜色
+- 背景: #FBFCFD
+- 主色: #1E3A5F
+- 强调: #8B5CF6 (紫色)
+- 边框: rgba(0, 0, 0, 0.06)
+
 ### 面板
-- 宽度: w-80 (320px)
-- 背景: bg-gray-50
-- 边框: border-l border-gray-200
+- 左侧: w-[300px], 可折叠到 48px
+- 中间: flex-1, min-w-0
+- 右侧: w-[320px], 可折叠到 48px
 
-### 深度研究卡片
-- 背景: bg-white
-- 圆角: rounded-xl
-- 边框: border border-gray-200
-- 内边距: p-4
-
-### 输出卡片
-- 背景: bg-white
-- 圆角: rounded-lg
-- 边框: border border-gray-200
-- 悬浮: hover:shadow-md
-
-### 进度条
-- 背景: bg-gray-200
-- 进度: bg-purple-600
-- 高度: h-1.5
-- 圆角: rounded-full
+### 输入框
+- 圆角: rounded-xl (12px) / rounded-3xl (24px 大输入框)
+- 背景: bg-[#FBFCFD]
+- 边框: border-gray-200
+- 聚焦: ring-[#1E3A5F]/20
 
 ### 按钮
-- 主色: bg-purple-600 text-white
-- 悬浮: hover:bg-purple-700
-- 禁用: disabled:opacity-50
+- 主按钮: bg-[#1E3A5F] text-white rounded-xl
+- 次按钮: border border-gray-200 rounded-lg
 
 ## 变更日志
 
-### 2026-01-18 - ChatPanel 创建
-- 创建 ChatPanel.tsx 对话面板组件
-- 从 workspace.tsx 提取对话功能
-- 状态提升到父组件，通过 props 传递
-- 添加错误处理和网络异常提示
-- 支持 Ctrl/Cmd + Enter 快捷发送
+### 2026-01-26 - NotebookLM 风格重构
+- SourcesPanel.tsx 重构: 添加选择状态、搜索框、筛选按钮、Deep Research 链接
+- ChatPanel.tsx 重构: 添加项目标题区、建议问题卡片、消息操作按钮、圆角输入框
+- 新增 StudioPanel.tsx: 替代 ResearchPanel，添加工具网格(2x3)、相关笔记区
+- 删除 ResearchPanel.tsx (由 StudioPanel 替代)
+- index.ts 更新: 导出 StudioPanel，保留 ResearchPanel 别名兼容
 
 ### 2026-01-18 - 初始创建
 - 创建 ResearchPanel.tsx 组件
 - 创建 SourcesPanel.tsx 组件
+- 创建 ChatPanel.tsx 组件
 - 实现深度研究 SSE 流式进度
-- 实现可展开的研究输出列表
 - 创建 CLAUDE.md 文档
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
