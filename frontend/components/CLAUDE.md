@@ -17,11 +17,16 @@
 - 动画配置: Spring物理引擎(stiffness:400,damping:30) + mode="sync"
 - 消费方: app/template.tsx
 
-**Footer.tsx**: 全局页脚组件
-- 技术细节: 4列网格布局，包含产品/资源/法律链接、社交媒体图标、版权信息
+**Footer.tsx**: 全局页脚组件 (Mercury 风格)
+- 技术细节: 2列网格布局，统一品牌元素
 - 导出: Footer()
 - 消费方: app/layout.tsx
-- 样式: 深色背景(bg-gray-900)、响应式网格
+- Logo: Radar 图标 (Lucide) + Signal Hunter
+- 品牌描述: "AI 驱动的技术情报分析平台，帮助你发现改变世界的技术信号。"
+- 链接结构:
+  - 内容: 文章、视频、播客、推文
+  - 关于: 关于我们、联系方式
+- 样式: 浅色背景、响应式双列布局
 
 **Breadcrumb.tsx**: 面包屑导航组件
 - 技术细节: 动态面包屑，支持链接和纯文本项
@@ -44,11 +49,27 @@
 **README.md**: 组件目录说明文档
 - 内容: 组件使用指南和设计说明
 
-**resource-detail.tsx**: 资源详情页组件
-- 技术细节: 左右布局（桌面）/ 上下布局（移动端），整合 detail/ 子组件
-- 导出: ResourceDetail({ resource })
+**resource-detail.tsx**: 资源详情页组件 (Mercury 风格重构)
+- 技术细节: Mercury.com 浅色系设计，Header 全宽 + Content Row 两栏布局
+- 导出: ResourceDetail({ resource, relatedResources })
 - 消费方: app/resources/[id]/page.tsx（非播客类型）
-- 功能: AI 分析结果展示、Featured Reason、响应式布局
+- 功能: 面包屑导航、标签行、AI 侧边栏三卡片、响应式布局
+- 颜色: #FBFCFD (背景), #1E3A5F (主色), #272735/#6B6B6B/#9A9A9A (文字)
+
+**tweet-card.tsx**: 推文卡片组件 (Mercury 风格)
+- 技术细节: 卡片内展开全文，无需跳转详情页
+- 导出: TweetCard({ tweet })
+- 消费方: app/tweets/page.tsx
+- 设计规范:
+  - "显示全文"按钮: chevron-down 图标 + 文字
+  - 按钮颜色: #1E3A5F, 字号 13px
+  - 卡片间距: 16px
+- 交互: 点击展开/收起推文全文
+
+**article-list-card.tsx**: 文章列表卡片组件 (Mercury 风格)
+- 技术细节: 简洁卡片布局，支持标题、摘要、标签
+- 导出: ArticleListCard({ article })
+- 消费方: app/articles/page.tsx
 
 ## 子目录
 
@@ -108,6 +129,22 @@
 - 语义化 HTML（nav, button, link）
 
 ## 变更日志
+
+### 2026-01-27 - Footer 品牌统一 & 推文卡片优化
+- Footer.tsx 品牌统一：Radar 图标 + 统一品牌描述
+- Footer.tsx 链接结构简化：4列 → 2列（内容/关于）
+- tweet-card.tsx 新增"显示全文"按钮设计规范
+- 推文卡片间距调整为 16px
+
+### 2026-01-26 - Mercury 风格资源详情页重构
+- 重构 resource-detail.tsx 为 Mercury.com 浅色系风格
+- 新增 detail/ai-summary-card.tsx AI 摘要卡片组件
+- 新增 detail/ai-assistant-card.tsx AI 研究助手卡片组件
+- 新增 detail/related-content-card.tsx 相关内容卡片组件
+- 实现 Header 全宽 + Content Row 两栏布局 (70% + 380px)
+- 面包屑导航: 首页 > 文章详情 > 当前文章
+- 标签尺寸统一: 72px x 28px
+- 正文排版: 行高 1.8, 子标题 18px/600
 
 ### 2026-01-18 - 详情页体验改进
 - 创建 detail/ 子目录（FeaturedReason, AuthorInfo, AISidebar, ContentArea）

@@ -27,14 +27,35 @@ queue.py: 任务队列管理 (APScheduler 配置)
 ## ArticlePipeline 流程
 ```
 1. RSS 采集 → RawSignal[]
-2. 三层去重 (Deduper) → URL精确 + 标题Jaccard + 内容指纹
+2. 三层去重 (Deduper) → URL精确 + 标题Jaccard + 内容指纹 [追踪: 重复项]
 3. 全文提取 (ContentExtractor) → ExtractedContent[]
-4. 统一过滤 (UnifiedFilter) → score >= 3 通过 + llm_score/llm_reason/llm_prompt_version
+4. 统一过滤 (UnifiedFilter) → score >= 3 通过 [追踪: 过滤/通过]
 5. 深度分析 (Analyzer) → 三步分析
 6. 翻译分流 (Translator) → 英文翻译，中文保留
 7. Favicon 获取 → source_icon_url
-8. 数据库持久化 → Resource 表 (含 llm_* 字段)
+8. 数据库持久化 → Resource 表 (含 llm_* 字段) [追踪: 收录项]
+9. 记录采集结果 → SourceService
+10. 飞书追踪 (DataTracker) → 批量写入飞书多维表格
 ```
+
+## 数据追踪 (ArticlePipeline)
+通过 DataTracker 在流水线各节点记录数据状态:
+- **去重阶段**: 记录被过滤的重复项 (stage=dedup)
+- **过滤阶段**: 记录 LLM 评分及拒绝原因 (stage=llm)
+- **存储阶段**: 记录最终收录的内容 (stage=save)
+
+追踪数据写入飞书多维表格字段:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| 标题 | 文本 | 内容标题 (限 100 字符) |
+| URL | 链接 | 原始链接 |
+| 来源 | 单选 | RSS/HN/GitHub 等 |
+| 时间 | 日期 | 采集时间 |
+| 状态 | 单选 | 收录/过滤 |
+| 原因 | 文本 | LLM 评分理由或过滤原因 |
+| 阶段 | 单选 | 去重/LLM过滤/存储 |
+| 评分 | 数字 | LLM 评分 (0-5) |
+| 流水线 | 单选 | 文章/多源/推特/播客/视频 |
 
 ## 定时任务配置
 | 任务 | 触发时间 | 函数 |
