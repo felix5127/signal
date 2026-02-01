@@ -22,11 +22,23 @@ from app.api.signals import router as signals_router
 from app.api.stats import router as stats_router
 from app.api.newsletters import router as newsletters_router
 from app.api.tasks import router as tasks_router
-from app.api.research import router as research_router
-from app.api.podcast import router as podcast_router
-from app.api.mindmap import router as mindmap_router
 from app.api.search import router as search_router
-from app.api.export import router as export_router
+
+# 研究助手相关路由 (需要 pgvector)
+try:
+    from app.api.research import router as research_router
+    from app.api.podcast import router as podcast_router
+    from app.api.mindmap import router as mindmap_router
+    from app.api.export import router as export_router
+    RESEARCH_ROUTES_AVAILABLE = True
+except Exception as e:
+    print(f"[WARN] Research routes disabled: {e}")
+    research_router = None
+    podcast_router = None
+    mindmap_router = None
+    export_router = None
+    RESEARCH_ROUTES_AVAILABLE = False
+
 from app.api.auth import router as auth_router
 
 # 导入 Admin API 路由
@@ -69,11 +81,13 @@ app.include_router(signals_router, prefix="/api", tags=["signals"])
 app.include_router(stats_router, prefix="/api", tags=["stats"])
 app.include_router(newsletters_router, prefix="/api", tags=["newsletters"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
-app.include_router(research_router, prefix="/api", tags=["research"])
-app.include_router(podcast_router, prefix="/api", tags=["podcast"])
-app.include_router(mindmap_router, prefix="/api", tags=["mindmap"])
+# 研究助手路由 (仅在 pgvector 可用时注册)
+if RESEARCH_ROUTES_AVAILABLE:
+    app.include_router(research_router, prefix="/api", tags=["research"])
+    app.include_router(podcast_router, prefix="/api", tags=["podcast"])
+    app.include_router(mindmap_router, prefix="/api", tags=["mindmap"])
+    app.include_router(export_router, prefix="/api", tags=["export"])
 app.include_router(search_router, prefix="/api", tags=["search"])
-app.include_router(export_router, prefix="/api", tags=["export"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 # Admin API 路由

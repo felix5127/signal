@@ -16,6 +16,9 @@ from app.config import config
 is_sqlite = config.database_url.startswith("sqlite:")
 is_postgresql = config.database_url.startswith("postgresql:")
 
+# pgvector 数据库扩展是否可用 (在 init_db 中检测)
+PGVECTOR_DB_AVAILABLE = False
+
 if is_sqlite:
     # SQLite 配置
     engine = create_engine(
@@ -73,25 +76,34 @@ def init_db():
 
     在应用启动时调用一次
     """
-    # 导入所有模型，确保它们被注册到 Base.metadata
+    global PGVECTOR_DB_AVAILABLE
+
+    # 导入核心模型 (不依赖 pgvector)
     from app.models import signal  # noqa: F401
     from app.models import resource  # noqa: F401
     from app.models import source  # noqa: F401
     from app.models import prompt  # noqa: F401
     from app.models import review  # noqa: F401
-    from app.models import research  # noqa: F401
 
-    # PostgreSQL: 启用 pgvector 扩展 (用于向量搜索)
+    # PostgreSQL: 检测并启用 pgvector 扩展 (用于向量搜索)
     if is_postgresql:
         with engine.connect() as conn:
             try:
                 conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
                 conn.commit()
+                PGVECTOR_DB_AVAILABLE = True
                 print("[DB] pgvector extension enabled")
             except Exception as e:
-                # 扩展可能已存在或无权限，继续运行
-                print(f"[DB] pgvector extension note: {e}")
+                # 扩展不可用 (Railway 等平台可能不支持)
+                PGVECTOR_DB_AVAILABLE = False
+                print(f"[DB] pgvector not available: {e}")
+                print("[DB] Research assistant features will be disabled")
                 conn.rollback()
+
+    # 仅在 pgvector 可用时导入研究助手模型
+    if PGVECTOR_DB_AVAILABLE:
+        from app.models import research  # noqa: F401
+        print("[DB] Research models registered")
 
     # 创建所有表 (checkfirst=True 避免重复创建错误)
     Base.metadata.create_all(bind=engine, checkfirst=True)
