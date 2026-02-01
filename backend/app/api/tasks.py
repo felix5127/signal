@@ -194,13 +194,14 @@ def toggle_task_pause(
 
 @router.post("/tasks/pipeline/trigger")
 def trigger_pipeline(
-    source: Optional[str] = Query(default=None, description="数据源: hn/twitter/github/huggingface/arxiv/producthunt/blog"),
+    source: Optional[str] = Query(default=None, description="数据源: twitter/blog/podcast"),
 ):
     """
     手动触发数据抓取任务
 
     Args:
         source: 指定数据源（可选），不指定则运行全部
+                支持: twitter, blog, podcast
 
     Returns:
         触发结果
@@ -220,6 +221,6 @@ def trigger_pipeline(
         else:
             thread = threading.Thread(target=scheduled_main_pipeline)
             thread.start()
-            return {"success": True, "message": "主数据源 pipeline 已触发（hn/github/huggingface/arxiv/producthunt/blog）"}
+            return {"success": True, "message": "主数据源 pipeline 已触发（twitter/blog/podcast）"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"触发失败: {str(e)}")

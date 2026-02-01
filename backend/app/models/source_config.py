@@ -13,16 +13,12 @@ from app.database import Base
 
 
 # 所有支持的信号源类型
+# 已移除: hackernews, github, huggingface, arxiv, producthunt (scraper 代码已删除)
+# 已移除: video (暂不使用)
 SOURCE_TYPES = [
-    "hackernews",
-    "github",
-    "huggingface",
-    "twitter",
-    "arxiv",
-    "producthunt",
-    "blog",
-    "podcast",
-    "video",
+    "twitter",   # XGoingScraper
+    "blog",      # BlogScraper/RSSScraper
+    "podcast",   # PodcastScraper
 ]
 
 

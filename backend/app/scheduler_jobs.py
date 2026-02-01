@@ -88,8 +88,9 @@ def scheduled_twitter_pipeline():
 def scheduled_main_pipeline():
     """主要数据源调度任务（每12小时）"""
     print("[Scheduler] Starting main pipeline...")
+    # 已移除: hn, github, huggingface, arxiv, producthunt (scraper 已删除)
     scheduled_pipeline(
-        sources=["hn", "github", "huggingface", "arxiv", "producthunt", "blog"]
+        sources=["blog", "podcast"]
     )
 
 

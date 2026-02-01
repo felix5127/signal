@@ -115,8 +115,9 @@ class TaskScheduler:
     def scheduled_main_pipeline(self):
         """主要数据源调度任务（每12小时）"""
         print("[Scheduler] Starting main pipeline...")
+        # 已移除: hn, github, huggingface, arxiv, producthunt (scraper 已删除)
         self.scheduled_pipeline(
-            sources=["hn", "github", "huggingface", "arxiv", "producthunt", "blog"]
+            sources=["blog", "podcast"]
         )
 
     def daily_digest_job(self):
