@@ -70,6 +70,65 @@ def get_db():
         db.close()
 
 
+def _run_schema_migrations():
+    """
+    运行 schema 迁移 - 添加 create_all 不会添加的新列
+
+    PostgreSQL 专用：使用 ADD COLUMN IF NOT EXISTS 安全添加缺失列
+    """
+    if not is_postgresql:
+        return
+
+    print("[DB] Running schema migrations...")
+
+    # 需要添加到 resources 表的列 (来自 001_data_pipeline_refactor.sql)
+    resource_columns = [
+        ("llm_score", "INTEGER"),
+        ("llm_reason", "TEXT"),
+        ("llm_prompt_version", "INTEGER"),
+        ("review_status", "VARCHAR(20)"),
+        ("review_comment", "TEXT"),
+        ("reviewed_at", "TIMESTAMP"),
+        ("reviewed_by", "VARCHAR(100)"),
+        ("source_id", "INTEGER"),
+        ("thumbnail_url", "TEXT"),
+    ]
+
+    # 需要添加的索引
+    resource_indexes = [
+        ("idx_resources_llm_score", "llm_score"),
+        ("idx_resources_source_id", "source_id"),
+        ("idx_resources_review_status", "review_status"),
+    ]
+
+    with engine.connect() as conn:
+        # 添加缺失的列
+        for col_name, col_type in resource_columns:
+            try:
+                conn.execute(text(
+                    f"ALTER TABLE resources ADD COLUMN IF NOT EXISTS {col_name} {col_type}"
+                ))
+                conn.commit()
+            except Exception as e:
+                if "already exists" not in str(e).lower():
+                    print(f"[DB] Warning: Failed to add column {col_name}: {e}")
+                conn.rollback()
+
+        # 添加缺失的索引
+        for idx_name, col_name in resource_indexes:
+            try:
+                conn.execute(text(
+                    f"CREATE INDEX IF NOT EXISTS {idx_name} ON resources({col_name})"
+                ))
+                conn.commit()
+            except Exception as e:
+                if "already exists" not in str(e).lower():
+                    print(f"[DB] Warning: Failed to create index {idx_name}: {e}")
+                conn.rollback()
+
+    print("[DB] Schema migrations completed")
+
+
 def init_db():
     """
     初始化数据库，创建所有表
@@ -124,3 +183,6 @@ def init_db():
         print(f"[DB] Skipping pgvector tables: {PGVECTOR_TABLES}")
         print(f"[DB] Creating {len(tables_to_create)} core tables")
         Base.metadata.create_all(bind=engine, tables=tables_to_create, checkfirst=True)
+
+    # 运行 schema 迁移（添加 create_all 不会处理的新列）
+    _run_schema_migrations()
