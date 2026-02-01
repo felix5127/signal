@@ -100,10 +100,27 @@ def init_db():
                 print("[DB] Research assistant features will be disabled")
                 conn.rollback()
 
-    # 仅在 pgvector 可用时导入研究助手模型
+    # 需要 pgvector 的表名列表
+    PGVECTOR_TABLES = {
+        "research_projects",
+        "research_sources",
+        "source_embeddings",
+        "research_outputs",
+        "chat_sessions",
+        "agent_tasks",
+    }
+
     if PGVECTOR_DB_AVAILABLE:
+        # pgvector 可用: 创建所有表
         from app.models import research  # noqa: F401
         print("[DB] Research models registered")
-
-    # 创建所有表 (checkfirst=True 避免重复创建错误)
-    Base.metadata.create_all(bind=engine, checkfirst=True)
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    else:
+        # pgvector 不可用: 仅创建核心表，跳过研究助手表
+        tables_to_create = [
+            table for table in Base.metadata.sorted_tables
+            if table.name not in PGVECTOR_TABLES
+        ]
+        print(f"[DB] Skipping pgvector tables: {PGVECTOR_TABLES}")
+        print(f"[DB] Creating {len(tables_to_create)} core tables")
+        Base.metadata.create_all(bind=engine, tables=tables_to_create, checkfirst=True)
