@@ -81,17 +81,42 @@ def _run_schema_migrations():
 
     print("[DB] Running schema migrations...")
 
-    # 需要添加到 resources 表的列 (来自 001_data_pipeline_refactor.sql)
+    # 需要添加到 resources 表的所有列（完整列表）
     resource_columns = [
+        # LLM 过滤
         ("llm_score", "INTEGER"),
         ("llm_reason", "TEXT"),
         ("llm_prompt_version", "INTEGER"),
+        # 人工审核
         ("review_status", "VARCHAR(20)"),
         ("review_comment", "TEXT"),
         ("reviewed_at", "TIMESTAMP"),
         ("reviewed_by", "VARCHAR(100)"),
+        # 数据源关联
         ("source_id", "INTEGER"),
+        # 缩略图
         ("thumbnail_url", "TEXT"),
+        # 播客/视频专用
+        ("audio_url", "TEXT"),
+        ("duration", "INTEGER"),
+        ("transcript", "TEXT"),
+        ("chapters", "JSONB"),
+        ("qa_pairs", "JSONB"),
+        # 精选理由
+        ("featured_reason", "TEXT"),
+        ("featured_reason_zh", "TEXT"),
+        # 深度研究
+        ("deep_research", "TEXT"),
+        ("deep_research_generated_at", "TIMESTAMP"),
+        ("deep_research_tokens", "INTEGER"),
+        ("deep_research_cost", "FLOAT"),
+        ("deep_research_strategy", "VARCHAR(20)"),
+        ("deep_research_sources", "TEXT"),
+        ("deep_research_metadata", "TEXT"),
+        # 时间戳
+        ("analyzed_at", "TIMESTAMP"),
+        # 元数据
+        ("extra_metadata", "JSONB"),
     ]
 
     # 需要添加的索引
