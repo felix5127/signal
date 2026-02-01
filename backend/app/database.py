@@ -81,5 +81,17 @@ def init_db():
     from app.models import review  # noqa: F401
     from app.models import research  # noqa: F401
 
+    # PostgreSQL: 启用 pgvector 扩展 (用于向量搜索)
+    if is_postgresql:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                conn.commit()
+                print("[DB] pgvector extension enabled")
+            except Exception as e:
+                # 扩展可能已存在或无权限，继续运行
+                print(f"[DB] pgvector extension note: {e}")
+                conn.rollback()
+
     # 创建所有表 (checkfirst=True 避免重复创建错误)
     Base.metadata.create_all(bind=engine, checkfirst=True)
