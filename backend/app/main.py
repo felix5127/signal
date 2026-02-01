@@ -44,7 +44,7 @@ from app.startup import register_startup_events
 # ============================================================
 
 app = FastAPI(
-    title="AI Signal Hunter API",
+    title="Signal API",
     description="面向超级个体的技术情报分析系统",
     version="0.2.0",
     default_response_class=PrettyJSONResponse,
@@ -111,7 +111,7 @@ async def root():
     """根路径 - API信息"""
     return {
         "success": True,
-        "message": "Welcome to AI Signal Hunter API",
+        "message": "Welcome to Signal API",
         "version": "0.2.0",
         "docs": "/docs",
     }

@@ -1,4 +1,4 @@
-# Signal Hunter 设计系统
+# Signal 设计系统
 
 基于 Figma 设计稿构建的完整设计系统，包含设计 Tokens、可复用组件和通用 Hooks。
 

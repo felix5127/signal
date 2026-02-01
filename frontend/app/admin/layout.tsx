@@ -11,9 +11,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Database,
-  Calendar,
-  Activity,
-  FileWarning,
   LogOut,
   Menu,
   X,
@@ -21,19 +18,19 @@ import {
   ClipboardCheck,
   FileText,
   BarChart3,
+  Activity,
 } from 'lucide-react'
 import { useState } from 'react'
 
 // ========== 侧边栏导航配置 ==========
 
+// 精简后的导航：7 → 4 页面
+// 已移除：调度器（未初始化）、系统状态（合并到控制台）、采集日志（合并到信号源）
 const NAV_ITEMS = [
-  { id: 'dashboard', label: '数据统计', href: '/admin/dashboard', icon: BarChart3 },
+  { id: 'dashboard', label: '控制台', href: '/admin/dashboard', icon: BarChart3 },
   { id: 'sources', label: '信号源', href: '/admin/sources', icon: Database },
   { id: 'review', label: '内容审核', href: '/admin/review', icon: ClipboardCheck },
   { id: 'prompts', label: 'Prompt 管理', href: '/admin/prompts', icon: FileText },
-  { id: 'scheduler', label: '调度器', href: '/admin/scheduler', icon: Calendar },
-  { id: 'system', label: '系统状态', href: '/admin/system', icon: Activity },
-  { id: 'logs', label: '采集日志', href: '/admin/logs', icon: FileWarning },
 ] as const
 
 // ========== 组件 ==========

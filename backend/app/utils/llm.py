@@ -78,7 +78,7 @@ class LLMClient:
             if provider == "openrouter":
                 default_headers = {
                     "HTTP-Referer": "https://github.com/yourusername/signal-hunter",  # 可选,用于分析
-                    "X-Title": "AI Signal Hunter"  # 可选,显示在OpenRouter dashboard
+                    "X-Title": "Signal"  # 可选,显示在OpenRouter dashboard
                 }
                 self.client = AsyncOpenAI(
                     api_key=api_key,

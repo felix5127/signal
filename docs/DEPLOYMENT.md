@@ -1,8 +1,8 @@
-# Signal Hunter 部署指南
+# Signal 部署指南
 
 > 版本: 1.0 | 更新: 2026-01-30 | 状态: Active
 
-本文档提供 Signal Hunter 的本地开发、生产部署和运维指南。
+本文档提供 Signal 的本地开发、生产部署和运维指南。
 
 ---
 
@@ -30,8 +30,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-org/signal-hunter.git
-cd signal-hunter
+git clone https://github.com/your-org/signal.git
+cd signal
 
 # 复制环境变量文件
 cp .env.example .env

@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ExternalLink, Star } from 'lucide-react'
-import { AISummaryCard, AIAssistantCard, RelatedContentCard } from './detail'
+import { AISummaryCard, AIAssistantCard } from './detail'
 import MarkdownRenderer from './markdown-renderer'
 import DeepResearchButton from './deep-research-button'
 
@@ -49,12 +49,6 @@ export interface ResourceDetailProps {
     key_quotes?: string[]
     key_quotes_zh?: string[]
   }
-  relatedResources?: Array<{
-    id: number
-    title: string
-    source_name?: string
-    type?: string
-  }>
 }
 
 // 类型名称映射
@@ -134,7 +128,7 @@ function stripMarkdownHeader(content: string): string {
   return cleaned
 }
 
-export default function ResourceDetail({ resource, relatedResources = [] }: ResourceDetailProps) {
+export default function ResourceDetail({ resource }: ResourceDetailProps) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -342,9 +336,6 @@ export default function ResourceDetail({ resource, relatedResources = [] }: Reso
                 mainPoints={displayMainPoints}
                 onAskQuestion={handleAskQuestion}
               />
-
-              {/* 相关内容卡片 */}
-              <RelatedContentCard items={relatedResources} />
             </div>
           </aside>
         </div>

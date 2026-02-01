@@ -27,6 +27,6 @@ export default function PodcastsPage() {
 }
 
 export const metadata = {
-  title: '技术播客 - Signal Hunter',
+  title: '技术播客 - Signal',
   description: '精选技术播客与访谈节目，涵盖人工智能、软件工程等领域',
 }

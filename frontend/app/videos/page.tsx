@@ -27,6 +27,6 @@ export default function VideosPage() {
 }
 
 export const metadata = {
-  title: '技术视频 - Signal Hunter',
+  title: '技术视频 - Signal',
   description: '精选技术视频与教程，涵盖人工智能、软件工程等领域',
 }

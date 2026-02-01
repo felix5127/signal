@@ -207,19 +207,19 @@ export function Testimonials({
 }
 
 /* ========================================
-   预设配置 - Signal Hunter 使用
+   预设配置 - Signal 使用
    ======================================== */
 
 export const signalHunterTestimonials: TestimonialItem[] = [
   {
-    quote: 'Signal Hunter has completely transformed how I stay updated. What used to take 2 hours now takes 10 minutes. The AI summaries are incredibly accurate.',
+    quote: 'Signal has completely transformed how I stay updated. What used to take 2 hours now takes 10 minutes. The AI summaries are incredibly accurate.',
     author: 'Sarah Chen',
     role: 'Senior Software Engineer',
     company: 'Google',
     rating: 5
   },
   {
-    quote: 'As a VC, I need to track hundreds of companies. Signal Hunter\'s scoring system helps me identify breakthrough innovations before my competitors.',
+    quote: 'As a VC, I need to track hundreds of companies. Signal\'s scoring system helps me identify breakthrough innovations before my competitors.',
     author: 'Michael Rodriguez',
     role: 'Partner',
     company: 'Sequoia Capital',

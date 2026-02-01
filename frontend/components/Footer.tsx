@@ -33,7 +33,7 @@ export function Footer() {
             <div className="flex items-center gap-2 mb-4">
               <Radar className="w-6 h-6" style={{ color: '#1E3A5F' }} />
               <span className="text-lg font-semibold" style={{ color: '#272735' }}>
-                Signal Hunter
+                Signal
               </span>
             </div>
             <p
@@ -94,7 +94,7 @@ export function Footer() {
           style={{ borderColor: '#E8E5E0' }}
         >
           <p className="text-[13px]" style={{ color: '#9A9A9A' }}>
-            © 2024 Signal Hunter. All rights reserved.
+            © 2024 Signal. All rights reserved.
           </p>
         </div>
       </div>

@@ -5,7 +5,7 @@
 
 set -e  # 遇到错误立即退出
 
-echo "🚀 AI Signal Hunter - 部署准备脚本"
+echo "🚀 Signal - 部署准备脚本"
 echo "======================================"
 echo ""
 

@@ -188,7 +188,7 @@ export function Pricing({ headline, subheadline, plans, toggle }: PricingProps) 
 }
 
 /* ========================================
-   预设配置 - Signal Hunter 使用
+   预设配置 - Signal 使用
    ======================================== */
 
 export const signalHunterPricing: PricingPlan[] = [

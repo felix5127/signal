@@ -4,7 +4,7 @@
 // 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
 
 /**
- * Signal Hunter 设计系统组件库
+ * Signal 设计系统组件库
  * 基于 Figma 设计稿构建的标准化 UI 组件
  *
  * @module design-system/components

@@ -135,7 +135,7 @@ export function Footer({ columns, legal, social, copyright }: FooterProps) {
 
             {/* Copyright */}
             <p className="text-sm text-muted-foreground">
-              {copyright || `© ${currentYear} Signal Hunter. All rights reserved.`}
+              {copyright || `© ${currentYear} Signal. All rights reserved.`}
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function Footer({ columns, legal, social, copyright }: FooterProps) {
 }
 
 /* ========================================
-   预设配置 - Signal Hunter 使用
+   预设配置 - Signal 使用
    ======================================== */
 
 export const signalHunterFooterColumns: FooterColumn[] = [

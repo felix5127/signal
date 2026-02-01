@@ -86,7 +86,7 @@ export function FAQ({ headline, subheadline, faqs }: FAQProps) {
 }
 
 /* ========================================
-   预设配置 - Signal Hunter 使用
+   预设配置 - Signal 使用
    ======================================== */
 
 export const signalHunterFAQs: FAQItem[] = [
@@ -95,7 +95,7 @@ export const signalHunterFAQs: FAQItem[] = [
     answer: 'Our Kimi AI-powered summaries achieve over 95% accuracy in capturing key technical details. The AI is trained on technical documentation and research papers, ensuring it understands domain-specific terminology and context.'
   },
   {
-    question: 'Can I use Signal Hunter for commercial purposes?',
+    question: 'Can I use Signal for commercial purposes?',
     answer: 'Yes! The Pro and Team plans include commercial usage rights. You can use the signals, summaries, and reports for your business, investment research, or content creation.'
   },
   {

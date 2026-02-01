@@ -1,7 +1,7 @@
 [project]
 name = "signal-hunter-backend"
 version = "0.1.0"
-description = "AI Signal Hunter - Backend API Service"
+description = "Signal - Backend API Service"
 authors = [{name = "Felix"}]
 requires-python = ">=3.11"
 

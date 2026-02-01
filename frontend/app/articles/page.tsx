@@ -25,6 +25,6 @@ export default function ArticlesPage() {
 }
 
 export const metadata = {
-  title: '技术文章 - Signal Hunter',
+  title: '技术文章 - Signal',
   description: '精选技术文章与深度解读，覆盖人工智能、软件编程、产品设计等领域',
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Signal Hunter 系统验证脚本
+"""Signal 系统验证脚本
 
 运行: python3 scripts/verify_system.py
 """
@@ -473,7 +473,7 @@ def test_performance():
 
 def main():
     print("=" * 60)
-    print("Signal Hunter 系统验证")
+    print("Signal 系统验证")
     print("=" * 60)
 
     # P0: 基础设施

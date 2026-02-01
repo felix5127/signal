@@ -45,7 +45,7 @@ def create_rss_feed(
     SubElement(channel, "link").text = link
     SubElement(channel, "description").text = description
     SubElement(channel, "language").text = "zh-CN"
-    SubElement(channel, "generator").text = "Signal Hunter"
+    SubElement(channel, "generator").text = "Signal"
     SubElement(channel, "lastBuildDate").text = datetime.now().strftime(
         "%a, %d %b %Y %H:%M:%S +0000"
     )
@@ -210,17 +210,17 @@ def get_rss_feed(
         feed_parts.append(f"评分≥{minScore}")
 
     if feed_parts:
-        feed_title = f"Signal Hunter - {' '.join(feed_parts)}"
+        feed_title = f"Signal - {' '.join(feed_parts)}"
         feed_description = f"{' | '.join(feed_parts)} 的最新内容"
     else:
-        feed_title = "Signal Hunter - AI驱动的技术内容聚合"
+        feed_title = "Signal - AI驱动的技术内容聚合"
         feed_description = "精选优质技术文章、播客、推文和视频"
 
     # 生成 RSS XML
     rss_xml = create_rss_feed(
         resources=resources,
         title=feed_title,
-        link="https://signal-hunter.com",
+        link="https://signal.felixwithai.com",
         description=feed_description,
     )
 

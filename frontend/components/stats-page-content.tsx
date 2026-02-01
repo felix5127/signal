@@ -83,7 +83,7 @@ export default function StatsPage() {
             返回首页
           </a>
           <h1 className="text-3xl font-bold text-[var(--ds-fg)] mb-2">数据统计</h1>
-          <p className="text-[var(--ds-muted)]">Signal Hunter 系统运行数据概览</p>
+          <p className="text-[var(--ds-muted)]">Signal 系统运行数据概览</p>
         </div>
 
         {/* 核心指标 */}

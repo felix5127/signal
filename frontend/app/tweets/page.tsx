@@ -25,6 +25,6 @@ export default function TweetsPage() {
 }
 
 export const metadata = {
-  title: '精选推文 - Signal Hunter',
+  title: '精选推文 - Signal',
   description: 'Twitter技术专家观点分享，即时获取行业动态与思考',
 }

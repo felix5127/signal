@@ -2,7 +2,7 @@
 > L2 | 父级: backend/CLAUDE.md
 
 ## 职责
-Signal Hunter 后端应用主目录，包含所有业务逻辑代码。
+Signal 后端应用主目录，包含所有业务逻辑代码。
 
 ## 成员清单
 main.py: FastAPI 应用入口，路由注册，调度器初始化，启动/关闭事件

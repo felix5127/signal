@@ -4,7 +4,7 @@
 // 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
 
 /**
- * Signal Hunter 设计系统 Tokens
+ * Signal 设计系统 Tokens
  * 从 Figma 设计稿提取的标准化设计变量
  *
  * @module design-system/tokens

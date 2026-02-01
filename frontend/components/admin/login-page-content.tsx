@@ -57,7 +57,7 @@ function LoginForm() {
             <Lock className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--ds-fg)]">
-            Signal Hunter Admin
+            Signal Admin
           </h1>
           <p className="text-[var(--ds-muted)] mt-2">
             请输入管理员密码

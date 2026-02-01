@@ -244,7 +244,7 @@ async def generate_weekly_overview(
     }
 
     # LLM Prompt
-    system_prompt = """你是 Signal Hunter 的技术情报主编，负责撰写每周技术情报综述。
+    system_prompt = """你是 Signal 的技术情报主编，负责撰写每周技术情报综述。
 
 你的任务是：
 1. 基于提供的统计数据，总结本周技术趋势
@@ -324,7 +324,7 @@ async def generate_newsletter_content(
     overview = await generate_weekly_overview(domain_groups, featured)
 
     # 2. 构建完整周刊
-    content = f"""# Signal Hunter 周刊 {year}年第{week_number}周
+    content = f"""# Signal 周刊 {year}年第{week_number}周
 
 > 📅 出版日期：{datetime.now().strftime('%Y-%m-%d')}
 > 📊 本周收录：{sum(len(r) for r in domain_groups.values())} 条优质信号
@@ -422,7 +422,7 @@ async def generate_newsletter_content(
 
 ## 📬 订阅与反馈
 
-- 🌐 网站：[Signal Hunter](https://signal.felixwithai.com)
+- 🌐 网站：[Signal](https://signal.felixwithai.com)
 - 💬 反馈：欢迎在 GitHub 提出建议
 - 📧 邮箱：hello@felixwithai.com
 
@@ -430,7 +430,7 @@ async def generate_newsletter_content(
 
 ---
 
-*本周刊由 AI Signal Hunter 自动生成，收录本周最值得阅读的技术情报。*
+*本周刊由 Signal 自动生成，收录本周最值得阅读的技术情报。*
 """
 
     return content

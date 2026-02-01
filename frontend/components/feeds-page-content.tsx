@@ -87,7 +87,7 @@ export default function FeedsPage() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-[var(--ds-fg)]">
-                    Signal Hunter
+                    Signal
                   </h1>
                   <p className="text-xs text-[var(--ds-muted)]">
                     RSS 订阅
@@ -138,7 +138,7 @@ export default function FeedsPage() {
             RSS 订阅
           </h2>
           <p className="text-[var(--ds-muted)] max-w-2xl mx-auto">
-            使用你喜欢的 RSS 阅读器订阅 Signal Hunter 的内容更新。
+            使用你喜欢的 RSS 阅读器订阅 Signal 的内容更新。
             支持按类型、分类、评分等多种方式订阅。
           </p>
         </div>
@@ -311,7 +311,7 @@ export default function FeedsPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-[var(--ds-muted)]">
-              Signal Hunter - 面向超级个体的技术情报分析系统
+              Signal - 面向超级个体的技术情报分析系统
             </p>
             <div className="flex items-center gap-4 text-sm text-[var(--ds-muted)]">
               <a href="/" className="hover:text-[var(--ds-fg)] transition-colors">

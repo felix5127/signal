@@ -55,7 +55,7 @@ export default function Navbar() {
           >
             <Radar className="w-7 h-7 text-[#1E3A5F]" />
             <span className="text-xl font-semibold text-[#272735]">
-              Signal Hunter
+              Signal
             </span>
           </Link>
 

@@ -126,7 +126,7 @@ export function HowItWorks({ headline, subheadline, steps }: HowItWorksProps) {
 }
 
 /* ========================================
-   预设配置 - Signal Hunter 使用
+   预设配置 - Signal 使用
    ======================================== */
 
 import {

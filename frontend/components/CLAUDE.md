@@ -21,7 +21,7 @@
 - 技术细节: 2列网格布局，统一品牌元素
 - 导出: Footer()
 - 消费方: app/layout.tsx
-- Logo: Radar 图标 (Lucide) + Signal Hunter
+- Logo: Radar 图标 (Lucide) + Signal
 - 品牌描述: "AI 驱动的技术情报分析平台，帮助你发现改变世界的技术信号。"
 - 链接结构:
   - 内容: 文章、视频、播客、推文

@@ -4,7 +4,7 @@
 // Style: Mercury.com - 简洁大气
 
 /**
- * Signal Hunter 设计系统 - Mercury 风格
+ * Signal 设计系统 - Mercury 风格
  * 核心理念: 简洁 · 大气 · 专业
  */
 

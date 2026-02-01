@@ -1,4 +1,4 @@
-# Signal Hunter - AI 技术情报分析系统
+# Signal - AI 技术情报分析系统
 > Python 3.11 + Next.js 14 + PostgreSQL + Docker Compose
 
 ## 定位

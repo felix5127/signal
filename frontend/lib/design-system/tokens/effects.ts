@@ -4,7 +4,7 @@
 // Style: Mercury.com - 简洁大气，大圆角，极淡阴影
 
 /**
- * Signal Hunter 设计系统 - Mercury 风格效果
+ * Signal 设计系统 - Mercury 风格效果
  * 核心特点: 大圆角 (2rem)、极淡阴影、微妙玻璃效果
  */
 

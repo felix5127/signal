@@ -7,7 +7,7 @@
 
 'use client'
 
-import { FileText, Mic, Video, AlertCircle } from 'lucide-react'
+import { FileText, Mic, AlertCircle } from 'lucide-react'
 import type { TranscriptionStats } from './hooks/useDashboardData'
 
 interface TranscriptionCardProps {
@@ -27,6 +27,7 @@ export function TranscriptionCard({ data }: TranscriptionCardProps) {
     )
   }
 
+  // 只显示播客转写（视频数据源已禁用）
   const items = [
     {
       label: '播客转写',
@@ -35,14 +36,6 @@ export function TranscriptionCard({ data }: TranscriptionCardProps) {
       total: data.podcast.with_audio,
       rate: data.podcast.success_rate,
       pending: data.podcast.pending,
-    },
-    {
-      label: '视频转写',
-      icon: Video,
-      transcribed: data.video.transcribed,
-      total: data.video.total,
-      rate: data.video.success_rate,
-      pending: data.video.pending,
     },
   ]
 

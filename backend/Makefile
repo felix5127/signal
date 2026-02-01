@@ -1,11 +1,11 @@
-# Makefile for Signal Hunter Backend
+# Makefile for Signal Backend
 # 便捷的开发工具命令
 
 .PHONY: help install dev test lint format type-check clean run docker-build docker-up docker-down
 
 # 默认目标
 help:
-	@echo "Signal Hunter Backend - 可用命令："
+	@echo "Signal Backend - 可用命令："
 	@echo ""
 	@echo "  make install         - 安装依赖"
 	@echo "  make dev            - 开发模式运行"

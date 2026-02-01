@@ -4,7 +4,7 @@
 // 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
 
 /**
- * Signal Hunter 设计系统 Hooks
+ * Signal 设计系统 Hooks
  * 通用 React Hooks 集合
  *
  * @module design-system/hooks

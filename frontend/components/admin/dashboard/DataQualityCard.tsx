@@ -7,7 +7,7 @@
 
 'use client'
 
-import { Activity, Mic, Video, FileType } from 'lucide-react'
+import { Activity, Mic, FileType } from 'lucide-react'
 import type { DataQualityStats } from './hooks/useDashboardData'
 
 interface DataQualityCardProps {
@@ -27,18 +27,13 @@ export function DataQualityCard({ data }: DataQualityCardProps) {
     )
   }
 
+  // 只显示播客和文章（视频数据源已禁用）
   const items = [
     {
       label: '播客',
       icon: Mic,
       rate: data.podcast_quality.completeness_rate,
       detail: `${data.podcast_quality.has_audio_url}/${data.podcast_quality.total} 有音频`,
-    },
-    {
-      label: '视频',
-      icon: Video,
-      rate: data.video_quality.completeness_rate,
-      detail: `${data.video_quality.has_transcript}/${data.video_quality.total} 有转录`,
     },
     {
       label: '文章',

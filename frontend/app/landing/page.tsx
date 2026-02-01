@@ -22,7 +22,7 @@ import {
 import { signalHunterPricing } from '@/components/landing/Pricing'
 
 /* ========================================
-   Signal Hunter Landing Page
+   Signal Landing Page
    ======================================== */
 
 export default function LandingPage() {
@@ -110,7 +110,7 @@ export default function LandingPage() {
 
       {/* How It Works */}
       <HowItWorks
-        headline="How Signal Hunter Works"
+        headline="How Signal Works"
         subheadline="Simple 3-step process to transform information overload into actionable intelligence"
         steps={[
           {
@@ -137,14 +137,14 @@ export default function LandingPage() {
         subheadline="Join thousands of satisfied users who have transformed their information consumption"
         testimonials={[
           {
-            quote: 'Signal Hunter has completely transformed how I stay updated. What used to take 2 hours now takes 10 minutes. The AI summaries are incredibly accurate.',
+            quote: 'Signal has completely transformed how I stay updated. What used to take 2 hours now takes 10 minutes. The AI summaries are incredibly accurate.',
             author: 'Sarah Chen',
             role: 'Senior Software Engineer',
             company: 'Google',
             rating: 5
           },
           {
-            quote: 'As a VC, I need to track hundreds of companies. Signal Hunter\'s scoring system helps me identify breakthrough innovations before my competitors.',
+            quote: 'As a VC, I need to track hundreds of companies. Signal\'s scoring system helps me identify breakthrough innovations before my competitors.',
             author: 'Michael Rodriguez',
             role: 'Partner',
             company: 'Sequoia Capital',
@@ -181,7 +181,7 @@ export default function LandingPage() {
             answer: 'Our Kimi AI-powered summaries achieve over 95% accuracy in capturing key technical details. The AI is trained on technical documentation and research papers, ensuring it understands domain-specific terminology and context.'
           },
           {
-            question: 'Can I use Signal Hunter for commercial purposes?',
+            question: 'Can I use Signal for commercial purposes?',
             answer: 'Yes! The Pro and Team plans include commercial usage rights. You can use the signals, summaries, and reports for your business, investment research, or content creation.'
           },
           {

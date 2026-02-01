@@ -46,7 +46,7 @@ def register_startup_events(app: FastAPI):
         )
 
         print("\n" + "=" * 60)
-        print("AI Signal Hunter API Starting...")
+        print("Signal API Starting...")
         print("=" * 60 + "\n")
 
         # 初始化数据库

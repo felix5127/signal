@@ -1,4 +1,4 @@
-# Frontend - AI Signal Hunter
+# Frontend - Signal
 
 面向超级个体的技术情报分析系统前端应用。基于 Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui，提供优雅的信号浏览和筛选体验。
 

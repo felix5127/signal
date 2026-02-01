@@ -44,12 +44,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   if (!newsletter) {
     return {
-      title: '周刊未找到 - Signal Hunter',
+      title: '周刊未找到 - Signal',
     }
   }
 
   return {
-    title: `${newsletter.title} - Signal Hunter`,
+    title: `${newsletter.title} - Signal`,
     description: `${newsletter.resource_count}篇收录，${newsletter.featured_count}篇精选`,
     openGraph: {
       title: newsletter.title,
@@ -118,7 +118,7 @@ export default async function NewsletterDetailPage({ params }: { params: Promise
 
         {/* 底部说明 */}
         <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>本周刊由 AI Signal Hunter 自动生成</p>
+          <p>本周刊由 Signal 自动生成</p>
           <p className="mt-1">收录本周最值得阅读的技术情报</p>
         </div>
       </div>

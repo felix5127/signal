@@ -1,4 +1,4 @@
-# Signal Hunter 系统验证结果
+# Signal 系统验证结果
 
 > 执行时间: 2026-01-29
 > 验证工具: scripts/verify_system.py
@@ -107,7 +107,7 @@ curl http://localhost:8000/api/stats
 
 ## 六、结论
 
-Signal Hunter 系统所有核心功能验证通过：
+Signal 系统所有核心功能验证通过：
 
 1. **基础设施正常** - 配置加载、OPML 解析、数据库/Redis 连接均正常
 2. **核心 API 完整** - 资源列表/详情/筛选/搜索功能正常工作

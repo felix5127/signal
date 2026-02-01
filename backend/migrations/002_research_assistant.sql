@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_projects_created ON research_projects(created_at 
 CREATE TABLE IF NOT EXISTS research_sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES research_projects(id) ON DELETE CASCADE,
-    resource_id INTEGER REFERENCES resources(id),  -- 关联 Signal Hunter 的 Resource
+    resource_id INTEGER REFERENCES resources(id),  -- 关联 Signal 的 Resource
 
     -- 源信息
     source_type VARCHAR(50) NOT NULL,  -- url, pdf, audio, video, text

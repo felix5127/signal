@@ -1,5 +1,5 @@
 # backend/
-> L2 | Signal Hunter Python 后端
+> L2 | Signal Python 后端
 
 ## 职责
 FastAPI 驱动的 RESTful API 服务，负责数据采集、AI 分析、存储和接口暴露。

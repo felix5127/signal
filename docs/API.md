@@ -1,8 +1,8 @@
-# Signal Hunter API 参考
+# Signal API 参考
 
 > 版本: 1.0 | 更新: 2026-01-30 | Base URL: `http://localhost:8000/api`
 
-本文档定义 Signal Hunter 所有 REST API 端点的请求/响应格式。
+本文档定义 Signal 所有 REST API 端点的请求/响应格式。
 
 ---
 

@@ -18,14 +18,10 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Rss,
-  Github,
   Twitter,
   FileText,
   Mic,
   Video,
-  Newspaper,
-  Sparkles,
   Database,
   Play,
   Loader2,
@@ -56,14 +52,7 @@ interface SourceStatus {
   stats_24h: SourceStats24h
 }
 
-interface FunnelStats {
-  fetched: number
-  rule_filtered: number
-  dedup_filtered: number
-  llm_filtered: number
-  saved: number
-  hours: number
-}
+// FunnelStats 类型已移至 Dashboard，这里不再需要
 
 interface SourceRunFunnel {
   fetched: number
@@ -82,29 +71,23 @@ interface SourceRun {
 
 // ========== 图标映射 ==========
 
+// 只保留实际使用的 4 个数据源
 const SOURCE_ICONS: Record<string, any> = {
-  hackernews: Newspaper,
-  github: Github,
-  huggingface: Sparkles,
   twitter: Twitter,
-  arxiv: FileText,
-  producthunt: Rss,
   blog: FileText,
   podcast: Mic,
   video: Video,
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  hackernews: 'Hacker News',
-  github: 'GitHub',
-  huggingface: 'Hugging Face',
   twitter: 'Twitter',
-  arxiv: 'arXiv',
-  producthunt: 'Product Hunt',
   blog: 'Blog RSS',
   podcast: 'Podcast',
   video: 'Video',
 }
+
+// 定义显示顺序（过滤后端返回的数据源）
+const ACTIVE_SOURCE_TYPES = ['twitter', 'blog', 'podcast', 'video']
 
 // ========== 组件 ==========
 
@@ -193,42 +176,7 @@ function SourceCard({
   )
 }
 
-function FunnelChart({ funnel }: { funnel: FunnelStats }) {
-  const maxWidth = 100
-  const stages = [
-    { label: '抓取', value: funnel.fetched, color: 'bg-blue-500' },
-    { label: '规则过滤', value: funnel.rule_filtered, color: 'bg-indigo-500' },
-    { label: '去重', value: funnel.dedup_filtered, color: 'bg-purple-500' },
-    { label: 'LLM过滤', value: funnel.llm_filtered, color: 'bg-pink-500' },
-    { label: '存储', value: funnel.saved, color: 'bg-green-500' },
-  ]
-
-  const maxValue = Math.max(...stages.map(s => s.value), 1)
-
-  return (
-    <div className="bg-[var(--ds-bg)] rounded-xl border border-[var(--ds-border)] p-6">
-      <h3 className="text-lg font-semibold text-[var(--ds-fg)] mb-4">
-        采集漏斗 (最近 {funnel.hours} 小时)
-      </h3>
-      <div className="space-y-3">
-        {stages.map((stage, index) => (
-          <div key={stage.label} className="flex items-center gap-4">
-            <span className="w-20 text-sm text-[var(--ds-muted)]">{stage.label}</span>
-            <div className="flex-1 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
-              <div
-                className={`h-full ${stage.color} transition-all duration-500`}
-                style={{ width: `${(stage.value / maxValue) * maxWidth}%` }}
-              />
-            </div>
-            <span className="w-16 text-right font-mono text-sm text-[var(--ds-fg)]">
-              {stage.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+// FunnelChart 已移至 Dashboard 页面，这里不再重复显示
 
 function RunsTable({ runs }: { runs: SourceRun[] }) {
   return (
@@ -396,7 +344,6 @@ function FilteringRulesPanel() {
 
 export default function AdminSourcesPage() {
   const [sources, setSources] = useState<SourceStatus[]>([])
-  const [funnel, setFunnel] = useState<FunnelStats | null>(null)
   const [runs, setRuns] = useState<SourceRun[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -410,10 +357,9 @@ export default function AdminSourcesPage() {
     try {
       setRefreshing(true)
 
-      // 使用 Promise.allSettled 确保单个请求失败不影响其他请求
+      // 精简后只获取 status 和 runs（funnel 已移至 Dashboard）
       const results = await Promise.allSettled([
         fetch('/api/sources/status', { cache: 'no-store' }),
-        fetch('/api/sources/funnel?hours=24', { cache: 'no-store' }),
         fetch('/api/sources/runs?page=1&page_size=20', { cache: 'no-store' }),
       ])
 
@@ -425,17 +371,9 @@ export default function AdminSourcesPage() {
         }
       }
 
-      // 处理 funnel 响应
-      if (results[1].status === 'fulfilled' && results[1].value.ok) {
-        const funnelData = await results[1].value.json()
-        if (funnelData.success) {
-          setFunnel(funnelData.data)
-        }
-      }
-
       // 处理 runs 响应
-      if (results[2].status === 'fulfilled' && results[2].value.ok) {
-        const runsData = await results[2].value.json()
+      if (results[1].status === 'fulfilled' && results[1].value.ok) {
+        const runsData = await results[1].value.json()
         if (runsData.success) {
           setRuns(runsData.data.items || [])
         }
@@ -577,27 +515,22 @@ export default function AdminSourcesPage() {
           <FilteringRulesPanel />
         </div>
 
-        {/* 信号源卡片网格 */}
+        {/* 信号源卡片网格 - 只显示活跃的数据源 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {sources.map((source) => (
-            <SourceCard
-              key={source.source_type}
-              source={source}
-              onToggle={() => handleToggle(source.source_type)}
-              onTrigger={() => handleTrigger(source.source_type)}
-              triggering={triggeringSource === source.source_type}
-            />
-          ))}
+          {sources
+            .filter((source) => ACTIVE_SOURCE_TYPES.includes(source.source_type))
+            .map((source) => (
+              <SourceCard
+                key={source.source_type}
+                source={source}
+                onToggle={() => handleToggle(source.source_type)}
+                onTrigger={() => handleTrigger(source.source_type)}
+                triggering={triggeringSource === source.source_type}
+              />
+            ))}
         </div>
 
-        {/* 漏斗图 */}
-        {funnel && (
-          <div className="mb-8">
-            <FunnelChart funnel={funnel} />
-          </div>
-        )}
-
-        {/* 采集记录 */}
+        {/* 采集记录 - 漏斗图已移至 Dashboard，这里只保留记录表格 */}
         <RunsTable runs={runs} />
       </div>
     </div>

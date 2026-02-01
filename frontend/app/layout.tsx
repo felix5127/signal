@@ -33,7 +33,7 @@ const ClientLayout = dynamic(
 )
 
 export const metadata: Metadata = {
-  title: 'Signal Hunter - 技术情报聚合',
+  title: 'Signal - 技术情报聚合',
   description: '面向超级个体的技术情报分析系统',
   icons: {
     icon: '/favicon.ico',
@@ -41,8 +41,8 @@ export const metadata: Metadata = {
   alternates: {
     types: {
       'application/rss+xml': [
-        { url: 'https://signal.felixwithai.com/api/feeds/rss', title: 'Signal Hunter - 全站订阅' },
-        { url: 'https://signal.felixwithai.com/api/feeds/rss?featured=true', title: 'Signal Hunter - 精选内容' },
+        { url: 'https://signal.felixwithai.com/api/feeds/rss', title: 'Signal - 全站订阅' },
+        { url: 'https://signal.felixwithai.com/api/feeds/rss?featured=true', title: 'Signal - 精选内容' },
       ],
     },
   },

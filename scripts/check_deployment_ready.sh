@@ -3,7 +3,7 @@
 # Cloudflare + Railway 部署前检查脚本
 # 用途: 验证所有必需配置是否就绪
 
-echo "🚀 AI Signal Hunter - 部署前检查"
+echo "🚀 Signal - 部署前检查"
 echo "================================"
 echo ""
 

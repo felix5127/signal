@@ -36,7 +36,7 @@ class Newsletter(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
 
     # ==================== 周刊基础信息 ====================
-    title = Column(String(255), nullable=False)  # 周刊标题，如 "Signal Hunter 周刊 #12"
+    title = Column(String(255), nullable=False)  # 周刊标题，如 "Signal 周刊 #12"
     week_number = Column(Integer, nullable=False)  # 年内第几周（1-52）
     year = Column(Integer, nullable=False)  # 年份，如 2026
 
@@ -68,9 +68,9 @@ class Newsletter(Base):
             week_number: 周数
 
         Returns:
-            格式化的周刊标题，如 "Signal Hunter 周刊 2026年第12周"
+            格式化的周刊标题，如 "Signal 周刊 2026年第12周"
         """
-        return f"Signal Hunter 周刊 {year}年第{week_number}周"
+        return f"Signal 周刊 {year}年第{week_number}周"
 
     def __repr__(self):
         return f"<Newsletter(id={self.id}, year={self.year}, week={self.week_number})>"
