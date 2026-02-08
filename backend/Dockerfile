@@ -35,6 +35,9 @@ WORKDIR /app
 # 从构建阶段复制已安装的包
 COPY --from=builder /root/.local /root/.local
 
+# 从构建阶段复制 Playwright 浏览器（确保版本与 pip 包匹配）
+COPY --from=builder /ms-playwright /ms-playwright
+
 # 确保 Python 能找到已安装的包
 ENV PATH=/root/.local/bin:$PATH
 
