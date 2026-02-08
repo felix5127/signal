@@ -90,6 +90,7 @@ async def run_article_pipeline(
 
     if not raw_signals:
         logger.info("article.scrape.empty")
+        await tracker.flush()
         return stats
 
     # ========== 2. URL 去重检查 ==========
@@ -123,6 +124,7 @@ async def run_article_pipeline(
 
     if not new_signals:
         logger.info("article.dedupe.all_duplicates")
+        await tracker.flush()
         return stats
 
     raw_signals = new_signals
@@ -155,6 +157,7 @@ async def run_article_pipeline(
 
     if not extracted_contents:
         logger.info("article.extract.empty")
+        await tracker.flush()
         return stats
 
     # ========== 4. 统一过滤 ==========
@@ -210,6 +213,7 @@ async def run_article_pipeline(
 
     if not filtered_items:
         logger.info("article.filter.all_rejected")
+        await tracker.flush()
         return stats
 
     # ========== dry_run 提前返回 ==========
@@ -220,6 +224,7 @@ async def run_article_pipeline(
                      filter_passed=stats.filter_passed_count,
                      filter_rejected=stats.filter_rejected_count,
                      would_analyze=len(filtered_items))
+        await tracker.flush()
         return stats
 
     # ========== 5. 深度分析 ==========
@@ -265,6 +270,7 @@ async def run_article_pipeline(
 
     if not analyzed_items:
         logger.info("article.analyze.empty")
+        await tracker.flush()
         return stats
 
     # ========== 6. 翻译（英文内容） ==========

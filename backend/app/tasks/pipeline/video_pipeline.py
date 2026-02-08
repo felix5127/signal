@@ -84,6 +84,7 @@ async def run_video_pipeline(
 
     if not raw_signals:
         print("[VideoPipeline] No videos scraped, exiting.\n")
+        await tracker.flush()
         return stats
 
     # ========== 2. URL 去重检查 ==========
@@ -116,6 +117,7 @@ async def run_video_pipeline(
 
         if not new_signals:
             print("[VideoPipeline] All videos already exist, exiting.\n")
+            await tracker.flush()
             return stats
 
         raw_signals = new_signals
@@ -152,6 +154,7 @@ async def run_video_pipeline(
                      duplicates=duplicate_count,
                      would_save=len(raw_signals),
                      would_transcribe=len(items_to_transcribe))
+        await tracker.flush()
         return stats
 
     # ========== 4. 存储到数据库 ==========

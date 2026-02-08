@@ -66,6 +66,7 @@ async def run_twitter_pipeline(
 
     if not raw_signals:
         print("[TwitterPipeline] No tweets scraped, exiting.\n")
+        await tracker.flush()
         return stats
 
     # ========== 2. URL 去重检查 ==========
@@ -98,6 +99,7 @@ async def run_twitter_pipeline(
 
         if not new_signals:
             print("[TwitterPipeline] All tweets already exist, exiting.\n")
+            await tracker.flush()
             return stats
 
         raw_signals = new_signals
@@ -111,6 +113,7 @@ async def run_twitter_pipeline(
                      scraped=stats.scraped_count,
                      duplicates=duplicate_count,
                      would_save=len(raw_signals))
+        await tracker.flush()
         return stats
 
     # ========== 3. 直接存储（跳过 LLM）==========
