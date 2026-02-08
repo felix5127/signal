@@ -1,4 +1,7 @@
-# Signal 设计系统
+# design-system/
+> L2 | 父级: ../CLAUDE.md
+
+## 职责
 
 基于 Figma 设计稿构建的完整设计系统，包含设计 Tokens、可复用组件和通用 Hooks。
 
@@ -33,7 +36,7 @@ design-system/
 
 ### 颜色系统
 
-从 Figma 提取的颜色：
+从 Figma 提取的颜色:
 
 | 用途 | 颜色值 | 说明 |
 |------|--------|------|
@@ -42,11 +45,11 @@ design-system/
 | 主文字 | `#CDCBFF` | 品牌淡紫（标题） |
 | 次要文字 | `#544A2E`, `#68706F` | 正文、辅助文字 |
 | 边框 | `rgba(186, 196, 192, 0.2)` | 默认边框 |
-| 品牌色 | `#6258FF` → `#E06AB2` → `#FB8569` | 渐变色 |
+| 品牌色 | `#6258FF` -> `#E06AB2` -> `#FB8569` | 渐变色 |
 
 ### 间距系统
 
-基于 8px 基准网格：
+基于 8px 基准网格:
 
 ```javascript
 spacing = {
@@ -79,110 +82,54 @@ borderRadius = {
 }
 ```
 
-## 组件使用示例
+## 组件
 
 ### Button
-
-```jsx
-import { Button } from '@/design-system/components/Button'
-
-// 主要按钮
-<Button variant="primary" onClick={handleClick}>
-  提交
-</Button>
-
-// 次要按钮
-<Button variant="secondary" leftIcon={<Icon />}>
-  取消
-</Button>
-
-// 加载状态
-<Button loading>
-  处理中...
-</Button>
-```
+- 5 种变体: primary, secondary, outline, ghost, link
+- 5 种尺寸
+- 支持 leftIcon, loading 状态
 
 ### Card
+- 含 5 个子组件: Card, CardHeader, CardTitle, CardContent, CardFooter
+- 支持 hoverable 属性
 
-```jsx
-import { Card, CardHeader, CardTitle, CardContent } from '@/design-system'
+### Badge / ScoreBadge
+- ScoreBadge 支持 score/maxScore 评分展示
 
-<Card hoverable>
-  <CardHeader>
-    <CardTitle>标题</CardTitle>
-  </CardHeader>
-  <CardContent>
-    内容...
-  </CardContent>
-</Card>
-```
+### Tag / TagGroup
+- 支持 removable + onRemove 回调
 
-### Badge
-
-```jsx
-import { Badge, ScoreBadge } from '@/design-system'
-
-<Badge color="primary">标签</Badge>
-<ScoreBadge score={4.5} maxScore={5} />
-```
-
-### Tag
-
-```jsx
-import { Tag, TagGroup } from '@/design-system'
-
-<TagGroup>
-  <Tag color="primary">React</Tag>
-  <Tag removable onRemove={() => {}}>TypeScript</Tag>
-</TagGroup>
-```
-
-## Hooks 使用示例
+## Hooks
 
 ### useTheme
-
-```jsx
-import { useTheme } from '@/design-system/hooks/useTheme'
-
-function Header() {
-  const { resolvedTheme, toggleTheme } = useTheme()
-  return (
-    <button onClick={toggleTheme}>
-      切换到 {resolvedTheme === 'dark' ? '浅色' : '深色'} 模式
-    </button>
-  )
-}
-```
+- 主题管理: light / dark / system
+- 导出: resolvedTheme, toggleTheme
 
 ### useMediaQuery
+- 响应式检测
+- 导出: useIsMobile()
+
+## Tailwind 集成
+
+设计系统 Tokens 已集成到 `tailwind.config.ts`:
 
 ```jsx
-import { useIsMobile } from '@/design-system/hooks/useMediaQuery'
-
-function Sidebar() {
-  const isMobile = useIsMobile()
-  return isMobile ? <MobileNav /> : <DesktopNav />
-}
-```
-
-## 集成到 Tailwind
-
-设计系统 Tokens 已集成到 `tailwind.config.ts`，可直接使用：
-
-```jsx
-// 使用自定义颜色
+// 自定义颜色
 <div className="bg-primary text-text-primary">
 
-// 使用自定义间距
+// 自定义间距
 <div className="p-container-lg gap-component-md">
 
-// 使用自定义圆角
+// 自定义圆角
 <div className="rounded-lg rounded-full">
 ```
 
-## 更新日志
+## 变更日志
 
-- **2025-01-02**: 初始版本，从 Figma 设计稿提取
-  - 颜色系统: 16+ 颜色值
-  - 组件: Button, Input, Card, Badge, Tag
-  - Hooks: useTheme, useMediaQuery
+### 2025-01-02 - 初始版本
+- 从 Figma 设计稿提取颜色系统 (16+ 颜色值)
+- 组件: Button, Input, Card, Badge, Tag
+- Hooks: useTheme, useMediaQuery
+
+## [PROTOCOL]
+变更时更新此头部，然后检查 ../CLAUDE.md

@@ -42,13 +42,9 @@ interface ResourceCardProps {
 
 // 来源名称映射
 const SOURCE_NAMES: Record<string, string> = {
-  hn: 'Hacker News',
-  github: 'GitHub',
-  huggingface: 'Hugging Face',
   twitter: 'Twitter',
-  arxiv: 'ArXiv',
-  producthunt: 'Product Hunt',
   blog: 'Blog',
+  podcast: 'Podcast',
 }
 
 // 格式化时间

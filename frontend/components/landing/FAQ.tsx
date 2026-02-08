@@ -100,11 +100,11 @@ export const signalHunterFAQs: FAQItem[] = [
   },
   {
     question: 'How often is the data updated?',
-    answer: 'Our system runs hourly, collecting the latest signals from Hacker News, GitHub Trending, arXiv, and Hugging Face. New content is typically processed and available within 30-60 minutes after publication.'
+    answer: 'Our system runs hourly, collecting the latest signals from Twitter, RSS blogs, and podcasts. New content is typically processed and available within 30-60 minutes after publication.'
   },
   {
     question: 'What sources do you track?',
-    answer: 'We currently track Hacker News frontpage, GitHub Trending repositories, arXiv new paper submissions, and Hugging Face new model releases. We\'re continuously adding more sources based on user feedback.'
+    answer: 'We currently track curated Twitter accounts, high-quality tech blogs via RSS, and AI/tech podcasts. We\'re continuously adding more sources based on user feedback.'
   },
   {
     question: 'Can I request custom sources or features?',

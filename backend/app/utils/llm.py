@@ -135,15 +135,19 @@ class LLMClient:
             Exception: 其他 API 调用失败（不重试）
         """
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
+            # kimi-k2.5 不允许自定义 temperature/top_p 等参数，传了会报错
+            kwargs = {
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=temperature or self.temperature,
-                max_tokens=max_tokens or self.max_tokens,
-            )
+                "max_tokens": max_tokens or self.max_tokens,
+            }
+            if not self.model.startswith("kimi-k2.5"):
+                kwargs["temperature"] = temperature or self.temperature
+
+            response = await self.client.chat.completions.create(**kwargs)
 
             # 统计 Token
             usage = response.usage

@@ -1,19 +1,19 @@
 """
-[INPUT]: 依赖 app.utils.llm (LLMClient), app.config
+[INPUT]: 依赖 app.utils.llm (LLMClient), 可选 services/ai_service.py (AIService)
 [OUTPUT]: 对外提供 PodcastAnalyzer 类，生成章节和 Q&A 数据
 [POS]: processors/ 的播客内容分析器，从转录文本提取结构化信息
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
 import json
-import logging
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
-from app.utils.llm import LLMClient
-from app.config import config
+import structlog
 
-logger = logging.getLogger(__name__)
+from app.utils.llm import LLMClient
+
+logger = structlog.get_logger("podcast_analyzer")
 
 
 # ============================================================
@@ -125,9 +125,10 @@ class PodcastAnalyzer:
 2. 问题要具有代表性，是听众可能关心的
 3. 回答要完整准确，忠于原文观点"""
 
-    def __init__(self):
-        """初始化分析器"""
+    def __init__(self, ai_service: Optional["AIService"] = None):
+        """初始化分析器，可选注入 AIService"""
         self.llm = LLMClient()
+        self._ai_service = ai_service
 
     async def analyze(
         self,
@@ -145,7 +146,7 @@ class PodcastAnalyzer:
             PodcastAnalysisResult: 分析结果
         """
         if not transcript or len(transcript) < 100:
-            logger.warning("[PodcastAnalyzer] 转录文本太短，跳过分析")
+            logger.warning("podcast_analyzer.analyze.skipped", reason="transcript_too_short")
             return PodcastAnalysisResult(chapters=[], qa_pairs=[])
 
         # 截取前 15000 字符（约 7500 字，避免超出 LLM 上下文限制）
@@ -172,15 +173,32 @@ class PodcastAnalyzer:
                 transcript=transcript,
                 duration=duration,
             )
-            response = await self.llm.chat(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
 
-            # 解析 JSON
-            data = self._parse_json_response(response)
+            # ── AIService 路径 (带 RETRY_THEN_SKIP 策略) ──
+            if self._ai_service is not None:
+                from app.services.ai_service import FailurePolicy
+                ai_result = await self._ai_service.call_json(
+                    system_prompt="你是一个专业的播客内容分析师。",
+                    user_prompt=prompt,
+                    failure_policy=FailurePolicy.RETRY_THEN_SKIP,
+                    task_id="podcast_chapters",
+                    temperature=0.3,
+                )
+                if ai_result.success and ai_result.data:
+                    data = ai_result.data
+                else:
+                    logger.warning("podcast_analyzer.chapters.skipped",
+                                   error=ai_result.error)
+                    return []
+            else:
+                # ── 旧路径 (向后兼容) ──
+                response = await self.llm.chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                )
+                data = self._parse_json_response(response)
+
             chapters = data.get("chapters", [])
-
             return [
                 Chapter(
                     time=ch.get("time", 0),
@@ -191,22 +209,39 @@ class PodcastAnalyzer:
                 if ch.get("title")
             ]
         except Exception as e:
-            logger.error(f"[PodcastAnalyzer] 提取章节失败: {e}")
+            logger.error("podcast_analyzer.chapters.failed", error=str(e))
             return []
 
     async def _extract_qa_pairs(self, transcript: str) -> List[QAPair]:
         """提取问答对"""
         try:
             prompt = self.QA_PROMPT.format(transcript=transcript)
-            response = await self.llm.chat(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
 
-            # 解析 JSON
-            data = self._parse_json_response(response)
+            # ── AIService 路径 (带 RETRY_THEN_SKIP 策略) ──
+            if self._ai_service is not None:
+                from app.services.ai_service import FailurePolicy
+                ai_result = await self._ai_service.call_json(
+                    system_prompt="你是一个专业的播客内容分析师。",
+                    user_prompt=prompt,
+                    failure_policy=FailurePolicy.RETRY_THEN_SKIP,
+                    task_id="podcast_qa",
+                    temperature=0.3,
+                )
+                if ai_result.success and ai_result.data:
+                    data = ai_result.data
+                else:
+                    logger.warning("podcast_analyzer.qa.skipped",
+                                   error=ai_result.error)
+                    return []
+            else:
+                # ── 旧路径 (向后兼容) ──
+                response = await self.llm.chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                )
+                data = self._parse_json_response(response)
+
             qa_pairs = data.get("qa_pairs", [])
-
             return [
                 QAPair(
                     question=qa.get("question", ""),
@@ -217,7 +252,7 @@ class PodcastAnalyzer:
                 if qa.get("question") and qa.get("answer")
             ]
         except Exception as e:
-            logger.error(f"[PodcastAnalyzer] 提取 Q&A 失败: {e}")
+            logger.error("podcast_analyzer.qa.failed", error=str(e))
             return []
 
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
@@ -234,7 +269,7 @@ class PodcastAnalyzer:
         try:
             return json.loads(json_str)
         except json.JSONDecodeError:
-            logger.warning("[PodcastAnalyzer] JSON 解析失败，尝试修复")
+            logger.warning("podcast_analyzer.json_parse.fallback")
             # 尝试找到 { 和 } 之间的内容
             start = json_str.find('{')
             end = json_str.rfind('}') + 1

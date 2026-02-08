@@ -328,7 +328,6 @@ class CacheWarmer:
                 popular_filters = [
                     SignalFilter(),  # 默认查询
                     SignalFilter(min_score=4),  # 高质量
-                    SignalFilter(source="github"),  # GitHub
                     SignalFilter(sort_by="final_score"),  # 热门排序
                 ]
 

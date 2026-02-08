@@ -12,41 +12,8 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
-class HackerNewsConfig(BaseSettings):
-    """Hacker News 数据源配置"""
-    enabled: bool = True
-    score_threshold: int = 80
-    keywords: List[str] = Field(
-        default_factory=lambda: ["AI", "LLM", "GPT", "ML", "model", "neural"]
-    )
-    max_items: int = 500
-
-
-class GitHubConfig(BaseSettings):
-    """GitHub 数据源配置"""
-    enabled: bool = False
-    min_stars_today: int = 50
-    max_items: int = 100
-    languages: List[str] = Field(
-        default_factory=lambda: ["Python", "JavaScript", "TypeScript", "Rust", "Go", "Java"]
-    )
-    exclude_patterns: List[str] = Field(
-        default_factory=lambda: ["awesome-", "cheatsheet", "tutorial-", "learn-", "resources"]
-    )
-    orgs_whitelist: List[str] = Field(
-        default_factory=lambda: ["openai", "anthropics", "google", "meta-llama", "microsoft"]
-    )
-
-
-class HuggingFaceConfig(BaseSettings):
-    """Hugging Face 数据源配置"""
-    enabled: bool = False
-    min_likes: int = 10
-    min_downloads: int = 100
-    max_items: int = 50  # 每次抓取最大条数
-    tasks: List[str] = Field(
-        default_factory=lambda: ["text-generation", "image-generation", "text-to-image"]
-    )
+# 已移除: HackerNewsConfig, GitHubConfig, HuggingFaceConfig, ArXivConfig, ProductHuntConfig, VideoConfig
+# 这些数据源的 scraper 代码已删除，配置类不再需要
 
 
 class TwitterConfig(BaseSettings):
@@ -60,30 +27,6 @@ class TwitterConfig(BaseSettings):
     # XGo.ing 相关配置
     use_xgoing: bool = True  # 是否使用 XGo.ing 服务 (从 OPML 读取)
     opml_path: str = "BestBlog/BestBlogs_RSS_Twitters.opml"  # Twitter OPML 文件路径
-
-
-class ArXivConfig(BaseSettings):
-    """ArXiv 数据源配置"""
-    enabled: bool = False
-    categories: List[str] = Field(
-        default_factory=lambda: ["cs.AI", "cs.LG", "cs.CL", "cs.CV"]
-    )
-    keywords: List[str] = Field(
-        default_factory=lambda: ["LLM", "GPT", "transformer"]
-    )
-    days_back: int = 7
-    max_results: int = 50
-
-
-class ProductHuntConfig(BaseSettings):
-    """Product Hunt 数据源配置"""
-    enabled: bool = False
-    min_upvotes: int = 100
-    categories: List[str] = Field(
-        default_factory=lambda: ["AI", "Developer Tools", "Productivity"]
-    )
-    days_back: int = 7
-    max_results: int = 50
 
 
 class BlogConfig(BaseSettings):
@@ -119,27 +62,14 @@ class PodcastConfig(BaseSettings):
         extra = "allow"  # 允许额外字段
 
 
-class VideoConfig(BaseSettings):
-    """视频数据源配置"""
-    enabled: bool = True  # 启用视频抓取
-    opml_path: str = "BestBlog/BestBlogs_RSS_Videos.opml"  # OPML 文件路径（相对路径）
-    max_items_per_feed: int = 1  # 每个 feed 最多抓取条目数（控制每日总量）
-    max_duration_seconds: int = 7200  # 最大视频时长（秒），默认 2 小时
-    transcribe_enabled: bool = True  # 是否启用转写
-    max_daily_items: int = 2  # 每日最多处理视频数（控制转写成本）
-    # YouTube 特殊配置
-    prefer_youtube_thumbnails: bool = True  # 是否使用 YouTube 高清缩略图
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "allow"  # 允许额外字段
-
-
 class TingwuConfig(BaseSettings):
     """通义听悟（Tingwu）配置"""
+    # HTTP API 认证 (用于 TingwuClient — agents/multimodal/)
     api_key: str = Field(default="", alias="TINGWU_API_KEY")
+    # 阿里云 SDK 认证 (用于 TranscriptionService — processors/)
+    access_key_id: str = Field(default="", alias="TINGWU_ACCESS_KEY_ID")
+    access_key_secret: str = Field(default="", alias="TINGWU_ACCESS_KEY_SECRET")
+    # 通义听悟项目 AppKey (两者共用)
     app_key: str = Field(default="", alias="TINGWU_APP_KEY")
     # API 端点
     base_url: str = "https://tingwu.aliyuncs.com"
@@ -286,15 +216,10 @@ class AppConfig(BaseSettings):
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
 
     # 子配置（从 config.yaml 加载）
-    hackernews: HackerNewsConfig = Field(default_factory=HackerNewsConfig)
-    github: GitHubConfig = Field(default_factory=GitHubConfig)
-    huggingface: HuggingFaceConfig = Field(default_factory=HuggingFaceConfig)
+    # 已移除: hackernews, github, huggingface, arxiv, producthunt, video (scraper 代码已删除)
     twitter: TwitterConfig = Field(default_factory=TwitterConfig)
-    arxiv: ArXivConfig = Field(default_factory=ArXivConfig)
-    producthunt: ProductHuntConfig = Field(default_factory=ProductHuntConfig)
     blog: BlogConfig = Field(default_factory=BlogConfig)
     podcast: PodcastConfig = Field(default_factory=PodcastConfig)
-    video: VideoConfig = Field(default_factory=VideoConfig)
     tingwu: TingwuConfig = Field(default_factory=TingwuConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
@@ -345,24 +270,13 @@ def load_config() -> AppConfig:
             if yaml_config:
                 if "sources" in yaml_config:
                     sources = yaml_config["sources"]
-                    if "hackernews" in sources:
-                        config.hackernews = HackerNewsConfig(**sources["hackernews"])
-                    if "github" in sources:
-                        config.github = GitHubConfig(**sources["github"])
-                    if "huggingface" in sources:
-                        config.huggingface = HuggingFaceConfig(**sources["huggingface"])
+                    # 已移除: hackernews, github, huggingface, arxiv, producthunt, video
                     if "twitter" in sources:
                         config.twitter = TwitterConfig(**sources["twitter"])
-                    if "arxiv" in sources:
-                        config.arxiv = ArXivConfig(**sources["arxiv"])
-                    if "producthunt" in sources:
-                        config.producthunt = ProductHuntConfig(**sources["producthunt"])
                     if "blog" in sources:
                         config.blog = BlogConfig(**sources["blog"])
                     if "podcast" in sources:
                         config.podcast = PodcastConfig(**sources["podcast"])
-                    if "video" in sources:
-                        config.video = VideoConfig(**sources["video"])
                 # 通义听悟配置（从 yaml 或环境变量加载）
                 if "tingwu" in yaml_config:
                     config.tingwu = TingwuConfig(**yaml_config["tingwu"])

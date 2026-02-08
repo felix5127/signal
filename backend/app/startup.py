@@ -1,12 +1,15 @@
 """
-[INPUT]: 依赖 scheduler_jobs 的所有定时任务函数, database 的 init_db, utils/cache 的 redis_cache
-[OUTPUT]: 对外提供 register_startup_events 函数
-[POS]: 应用启动/关闭事件处理，调度器初始化
+[INPUT]: 依赖 scheduler_jobs 的所有定时任务函数, database 的 init_db, utils/cache 的 redis_cache, config 的 AppConfig
+[OUTPUT]: 对外提供 register_startup_events, validate_config_on_startup 函数
+[POS]: 应用启动/关闭事件处理，调度器初始化，配置校验
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
+import os
 from datetime import datetime
 from typing import Optional
+
+import structlog
 
 try:
     from apscheduler.schedulers.background import BackgroundScheduler
@@ -17,9 +20,81 @@ except ImportError:
 
 from fastapi import FastAPI
 
+logger = structlog.get_logger("startup")
+
 # 全局变量
 scheduler: Optional[BackgroundScheduler] = None
 next_run_time: Optional[datetime] = None
+
+
+# ============================================================
+# 启动时配置校验
+# ============================================================
+
+def validate_config_on_startup():
+    """
+    启动时校验关键配置
+
+    校验项:
+    1. LLM API Key 存在
+    2. 转写 API 配置 (如果 podcast.transcribe_enabled=true)
+    3. OPML 文件存在且可访问
+    4. 数据库连接字符串格式
+
+    不会阻止启动，仅输出警告/错误日志。
+    """
+    from app.config import config
+
+    warnings: list[str] = []
+    errors: list[str] = []
+
+    # ── 1. LLM API Key ──
+    if not config.openai_api_key:
+        errors.append("OPENAI_API_KEY 未配置 (LLM 调用将全部失败)")
+
+    # ── 2. 转写配置 ──
+    if hasattr(config, "podcast") and config.podcast.transcribe_enabled:
+        try:
+            from app.processors.transcription_service import TranscriptionService
+            ts = TranscriptionService(config.tingwu)
+            missing = ts.validate_config()
+            if missing:
+                warnings.append(f"转写配置不完整: {', '.join(missing)}")
+        except ImportError:
+            warnings.append("TranscriptionService 模块不可用")
+
+    # ── 3. OPML 文件 ──
+    source_configs = [
+        ("blog", config.blog),
+        ("podcast", config.podcast),
+        ("twitter", config.twitter),
+    ]
+    for source_name, source_conf in source_configs:
+        if hasattr(source_conf, "enabled") and source_conf.enabled:
+            opml_path = getattr(source_conf, "opml_path", None)
+            if opml_path and not os.path.exists(opml_path):
+                warnings.append(f"{source_name} OPML 文件不存在: {opml_path}")
+
+    # ── 4. 数据库连接字符串 ──
+    if not config.database_url:
+        errors.append("DATABASE_URL 未配置")
+
+    # ── 输出结果 ──
+    for w in warnings:
+        logger.warning("config.validation.warning", message=w)
+
+    for e in errors:
+        logger.error("config.validation.error", message=e)
+
+    total_issues = len(warnings) + len(errors)
+    if total_issues == 0:
+        logger.info("config.validation.passed", message="所有关键配置校验通过")
+    else:
+        logger.info(
+            "config.validation.summary",
+            warnings=len(warnings),
+            errors=len(errors),
+        )
 
 
 def register_startup_events(app: FastAPI):
@@ -48,6 +123,9 @@ def register_startup_events(app: FastAPI):
         print("\n" + "=" * 60)
         print("Signal API Starting...")
         print("=" * 60 + "\n")
+
+        # 配置校验 (非阻塞)
+        validate_config_on_startup()
 
         # 初始化数据库
         init_db()

@@ -58,7 +58,7 @@ class Resource(Base):
     # ========== 类型与来源 ==========
     id = Column(Integer, primary_key=True, index=True)
     type = Column(String(20), nullable=False, index=True)  # article/podcast/tweet/video
-    source_name = Column(String(100), nullable=False)
+    source_name = Column(String(255), nullable=False)
     source_url = Column(Text)
     source_icon_url = Column(Text)
     thumbnail_url = Column(Text)  # 缩略图/封面 URL (播客/视频)
@@ -85,8 +85,8 @@ class Resource(Base):
     key_quotes_zh = Column(JSON)
 
     # ========== 分类与标签 ==========
-    domain = Column(String(50))
-    subdomain = Column(String(50))
+    domain = Column(String(100))
+    subdomain = Column(String(100))
     tags = Column(JSON)
 
     # ========== 评分 ==========

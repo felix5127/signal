@@ -26,7 +26,7 @@ class Source(Base):
     id = Column(Integer, primary_key=True)
 
     # 基础信息
-    name = Column(String(200), nullable=False)          # 数据源名称
+    name = Column(String(255), nullable=False)          # 数据源名称
     type = Column(String(50), nullable=False, index=True)  # blog/twitter/podcast/video
     url = Column(String(500), nullable=False, unique=True)  # RSS URL
 

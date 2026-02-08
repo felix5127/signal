@@ -1,7 +1,7 @@
 """
-[INPUT]: 依赖 database.get_db, models/resource, services/source_service, middlewares/auth, BackgroundTasks
-[OUTPUT]: 对外提供 /sources 热门来源 + 信号源管理 + 手动触发采集 API
-[POS]: API 路由层，热门来源统计 + 信号源状态查询/配置管理/采集记录/手动触发
+[INPUT]: 依赖 database.get_db, models/resource, services/source_service, middlewares/auth, BackgroundTasks, tasks/orchestrator
+[OUTPUT]: 对外提供 /sources 热门来源 + 信号源管理 + 手动触发采集 + 取消/状态查询 API
+[POS]: API 路由层，热门来源统计 + 信号源状态查询/配置管理/采集记录/手动触发 + 流水线取消与实时状态
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
@@ -284,9 +284,9 @@ async def get_source_feeds(
     """
     获取 OPML 中的 feed 列表
 
-    仅适用于使用 OPML 的信号源：twitter, blog, podcast, video
+    仅适用于使用 OPML 的信号源：twitter, blog, podcast
     """
-    opml_sources = ["twitter", "blog", "podcast", "video"]
+    opml_sources = ["twitter", "blog", "podcast"]
     if source_type not in opml_sources:
         return {
             "success": False,
@@ -311,33 +311,26 @@ async def get_source_feeds(
 # ========== 手动触发采集 API ==========
 
 
-def _run_pipeline_in_background(source_type: str):
+def _run_pipeline_in_background(source_type: str, dry_run: bool = False):
     """
     在后台线程运行对应的 pipeline
 
     支持的 source_type:
-    - hackernews: HackerNews
-    - github: GitHub Trending
-    - huggingface: HuggingFace
     - twitter: Twitter (XGoing)
-    - arxiv: arXiv 论文
-    - producthunt: Product Hunt
     - blog: Blog RSS
     - podcast: Podcast RSS
-    - video: Video/YouTube RSS
     """
     import structlog
     from app.config import config
     from app.tasks.pipeline import (
         run_article_pipeline,
         run_twitter_pipeline,
-        run_full_pipeline,
         run_podcast_pipeline,
-        run_video_pipeline,
     )
 
     logger = structlog.get_logger()
-    logger.info(f"[Trigger] Starting {source_type} pipeline in background")
+    mode = "dry-run" if dry_run else "normal"
+    logger.info(f"[Trigger] Starting {source_type} pipeline in background", mode=mode)
 
     # 创建新的事件循环来运行异步任务
     loop = asyncio.new_event_loop()
@@ -352,11 +345,6 @@ def _run_pipeline_in_background(source_type: str):
             loop.run_until_complete(run_article_pipeline(opml_path=opml_path))
         elif source_type == "podcast":
             loop.run_until_complete(run_podcast_pipeline())
-        elif source_type == "video":
-            loop.run_until_complete(run_video_pipeline())
-        elif source_type in ["hackernews", "github", "huggingface", "arxiv", "producthunt"]:
-            # 这些是 full_pipeline 的子类型
-            loop.run_until_complete(run_full_pipeline(source_types=[source_type]))
         else:
             logger.warning(f"[Trigger] Unknown source type: {source_type}")
     except Exception as e:
@@ -364,18 +352,22 @@ def _run_pipeline_in_background(source_type: str):
     finally:
         loop.close()
 
-    logger.info(f"[Trigger] {source_type} pipeline completed")
+    logger.info(f"[Trigger] {source_type} pipeline completed", mode=mode)
 
 
 @router.post("/trigger/{source_type}")
 async def trigger_source_pipeline(
     source_type: str,
     background_tasks: BackgroundTasks,
+    dry_run: bool = False,
     db: Session = Depends(get_db),
     user: str = Depends(get_current_user_optional),
 ):
     """
     手动触发指定信号源的采集
+
+    参数:
+    - dry_run: 试运行模式，执行采集+过滤但不写入数据库
 
     注意：
     - 采集在后台异步运行
@@ -400,9 +392,67 @@ async def trigger_source_pipeline(
         }
 
     # 在后台线程运行 pipeline
-    background_tasks.add_task(_run_pipeline_in_background, source_type)
+    background_tasks.add_task(_run_pipeline_in_background, source_type, dry_run)
+
+    mode = "dry-run" if dry_run else "normal"
+    return {
+        "success": True,
+        "message": f"Pipeline {source_type} triggered in {mode} mode. Check /runs for results.",
+    }
+
+
+# ========== 流水线控制 API ==========
+
+
+@router.post("/cancel/{source_type}")
+async def cancel_pipeline(
+    source_type: str,
+    user: str = Depends(get_current_user_optional),
+):
+    """
+    取消运行中的流水线
+
+    通过 CancellationToken 发出取消信号，流水线在下一个检查点优雅退出。
+    """
+    from app.tasks.orchestrator import orchestrator
+
+    if source_type not in SOURCE_TYPES:
+        return {
+            "success": False,
+            "error": f"Unknown source type: {source_type}. Valid types: {SOURCE_TYPES}",
+        }
+
+    cancelled = orchestrator.cancel(source_type)
+
+    if cancelled:
+        return {
+            "success": True,
+            "message": f"Cancel signal sent to {source_type} pipeline.",
+        }
+
+    return {
+        "success": False,
+        "error": f"No running pipeline for {source_type}.",
+    }
+
+
+@router.get("/pipeline-status")
+async def get_pipeline_status(
+    user: str = Depends(get_current_user_optional),
+):
+    """
+    获取所有流水线的实时状态
+
+    返回:
+    - running: 当前运行中的流水线 (含步骤、进度、耗时)
+    - history: 最近完成的流水线记录
+    """
+    from app.tasks.orchestrator import orchestrator
 
     return {
         "success": True,
-        "message": f"Pipeline {source_type} triggered successfully. Check /runs for results.",
+        "data": {
+            "running": orchestrator.get_all_status(),
+            "history": orchestrator.get_history(),
+        },
     }

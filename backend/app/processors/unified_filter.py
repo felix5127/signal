@@ -1,5 +1,5 @@
 """
-[INPUT]: 依赖 utils/llm.py (llm_client), services/prompt_service.py (PromptService)
+[INPUT]: 依赖 utils/llm.py (llm_client), services/ai_service.py (AIService), services/prompt_service.py (PromptService)
 [OUTPUT]: 对外提供 UnifiedFilter 类, FilterResult 数据类
 [POS]: 内容处理层，统一过滤器，合并 SignalFilter + InitialFilter
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -7,9 +7,16 @@
 
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+import structlog
 
 from app.utils.llm import llm_client
+
+if TYPE_CHECKING:
+    from app.services.ai_service import AIService
+
+logger = structlog.get_logger("unified_filter")
 
 
 @dataclass
@@ -57,14 +64,16 @@ class UnifiedFilter:
         "fluid simulation", "流体模拟",
     ]
 
-    def __init__(self, prompt_service=None):
+    def __init__(self, prompt_service=None, ai_service: Optional["AIService"] = None):
         """
         初始化过滤器
 
         Args:
             prompt_service: PromptService 实例（可选）
+            ai_service: AIService 实例（可选，提供统一失败策略）
         """
         self.prompt_service = prompt_service
+        self._ai_service = ai_service
 
     def _detect_language(self, text: str) -> str:
         """检测语言"""
@@ -186,6 +195,13 @@ class UnifiedFilter:
             content=content_truncated,
         )
 
+        # ── 新路径: 使用 AIService (统一失败策略) ──
+        if self._ai_service is not None:
+            return await self._llm_score_via_ai_service(
+                system_prompt, user_prompt, language, prompt_version,
+            )
+
+        # ── 旧路径: 直接调用 llm_client (向后兼容) ──
         try:
             response = await llm_client.call_json(
                 system_prompt,
@@ -216,6 +232,57 @@ class UnifiedFilter:
                 language=language,
                 prompt_version=prompt_version,
             )
+
+    async def _llm_score_via_ai_service(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        language: str,
+        prompt_version: int,
+    ) -> FilterResult:
+        """
+        通过 AIService 调用 LLM 评分
+
+        失败策略: REJECT — 失败时返回 score=0, passed=False
+        """
+        from app.services.ai_service import FailurePolicy
+
+        result = await self._ai_service.call_json(
+            system_prompt,
+            user_prompt,
+            failure_policy=FailurePolicy.REJECT,
+            temperature=0.3,
+        )
+
+        if not result.success:
+            logger.warning(
+                "filter.llm_score.rejected",
+                error=result.error,
+                language=language,
+            )
+            return FilterResult(
+                score=0,
+                reason=f"LLM 不可用: {(result.error or '')[:50]}",
+                passed=False,
+                is_whitelist=False,
+                language=language,
+                prompt_version=prompt_version,
+            )
+
+        # 解析 AIService 返回的 JSON
+        data = result.data or {}
+        score = int(data.get("score", 0))
+        score = max(0, min(5, score))
+        reason = data.get("reason", "")[:100]
+
+        return FilterResult(
+            score=score,
+            reason=reason,
+            passed=score >= self.PASS_THRESHOLD,
+            is_whitelist=False,
+            language=language,
+            prompt_version=prompt_version,
+        )
 
 
 # ============================================================

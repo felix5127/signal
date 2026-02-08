@@ -264,9 +264,9 @@ async def run_article_pipeline(
                     print(f"  -> Duplicate (skip): {signal.url}")
                     continue
 
-                # 获取来源信息
-                source_name = signal.metadata.get("source_name", "") if signal.metadata else ""
-                author = signal.metadata.get("author", "") if signal.metadata else ""
+                # 获取来源信息（截断防止 varchar 溢出）
+                source_name = (signal.metadata.get("source_name", "") if signal.metadata else "")[:255]
+                author = (signal.metadata.get("author", "") if signal.metadata else "")[:255]
 
                 # 获取来源图标
                 source_icon_url = FaviconFetcher.get_favicon(signal.url)
@@ -294,9 +294,9 @@ async def run_article_pipeline(
                     word_count=content.word_count,
                     read_time=content.read_time,
 
-                    # 分析结果
-                    one_sentence_summary=analysis.one_sentence_summary,
-                    one_sentence_summary_zh=translated.get("oneSentenceSummary") if translated else (analysis.one_sentence_summary if filter_result.language == "zh" else None),
+                    # 分析结果（截断防止 varchar 溢出）
+                    one_sentence_summary=(analysis.one_sentence_summary or "")[:500],
+                    one_sentence_summary_zh=(translated.get("oneSentenceSummary") if translated else (analysis.one_sentence_summary if filter_result.language == "zh" else None) or "")[:500],
                     summary=analysis.summary,
                     summary_zh=translated.get("summary") if translated else (analysis.summary if filter_result.language == "zh" else None),
                     main_points=[{"point": p.point, "explanation": p.explanation} for p in analysis.main_points],
@@ -304,9 +304,9 @@ async def run_article_pipeline(
                     key_quotes=analysis.key_quotes,
                     key_quotes_zh=translated.get("keyQuotes") if translated else (analysis.key_quotes if filter_result.language == "zh" else None),
 
-                    # 分类与标签
-                    domain=analysis.domain,
-                    subdomain=analysis.subdomain,
+                    # 分类与标签（截断防止 varchar 溢出）
+                    domain=(analysis.domain or "")[:100],
+                    subdomain=(analysis.subdomain or "")[:100],
                     tags=analysis.tags,
 
                     # 评分

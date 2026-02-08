@@ -31,7 +31,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <Hero
         headline="Discover High-Value Signals from the Noise"
-        subheadline="AI-powered technical intelligence platform that filters, analyzes, and summarizes the most valuable signals from Hacker News, GitHub, and arXiv—saving you 2 hours daily."
+        subheadline="AI-powered technical intelligence platform that filters, analyzes, and summarizes the most valuable signals from tech blogs, podcasts, and Twitter—saving you 2 hours daily."
         primaryCTA={{
           text: 'Get Started Free',
           href: '/resources'
@@ -48,9 +48,9 @@ export default function LandingPage() {
         title="Trusted by industry leaders"
         logos={[
           { name: 'Y Combinator', icon: <span className="text-2xl font-bold text-orange-600">Y</span> },
-          { name: 'Hacker News', icon: <span className="text-2xl font-bold text-orange-600">HN</span> },
-          { name: 'GitHub', icon: <span className="text-2xl font-bold text-gray-900">GH</span> },
-          { name: 'Product Hunt', icon: <span className="text-2xl font-bold text-orange-600">PH</span> },
+          { name: 'Twitter', icon: <span className="text-2xl font-bold text-blue-500">𝕏</span> },
+          { name: 'RSS', icon: <span className="text-2xl font-bold text-orange-500">RSS</span> },
+          { name: 'Podcasts', icon: <span className="text-2xl font-bold text-purple-600">🎙️</span> },
           { name: 'TechCrunch', icon: <span className="text-2xl font-bold text-green-600">TC</span> }
         ]}
       />
@@ -61,7 +61,7 @@ export default function LandingPage() {
         painPoints={[
           {
             title: 'Information Overload',
-            description: 'Drowning in endless HN posts, GitHub repos, and research papers, unable to identify what truly matters.'
+            description: 'Drowning in endless blog posts, tweets, and podcasts, unable to identify what truly matters.'
           },
           {
             title: 'Time-Consuming Filtering',
@@ -86,7 +86,7 @@ export default function LandingPage() {
           },
           {
             title: 'Real-Time Processing',
-            description: 'Automated hourly collection from HN, GitHub, arXiv, and Hugging Face ensures you never miss breaking developments.'
+            description: 'Automated hourly collection from Twitter, tech blogs, and podcasts ensures you never miss breaking developments.'
           },
           {
             title: 'Smart Scoring',
@@ -116,7 +116,7 @@ export default function LandingPage() {
           {
             step: 1,
             title: 'Data Collection',
-            description: 'Our system automatically monitors HN frontpage, GitHub Trending, arXiv new submissions, and Hugging Face releases every hour.'
+            description: 'Our system automatically monitors curated Twitter accounts, tech blogs via RSS, and AI podcasts every hour.'
           },
           {
             step: 2,
@@ -186,7 +186,7 @@ export default function LandingPage() {
           },
           {
             question: 'How often is the data updated?',
-            answer: 'Our system runs hourly, collecting the latest signals from Hacker News, GitHub Trending, arXiv, and Hugging Face. New content is typically processed and available within 30-60 minutes after publication.'
+            answer: 'Our system runs hourly, collecting the latest signals from Twitter, tech blogs, and podcasts. New content is typically processed and available within 30-60 minutes after publication.'
           }
         ]}
       />

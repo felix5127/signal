@@ -657,11 +657,16 @@ class Analyzer:
     1. analyze: 全文分析 - 生成摘要、观点、金句、分类、评分
     2. reflect: 检查反思 - 审核分析结果，提出改进建议
     3. refine: 优化改进 - 根据反思优化最终输出
+
+    支持可选 AIService 注入:
+    - ai_service 存在时: 使用 RETRY_THEN_SKIP 策略 (重试后跳过)
+    - ai_service 为 None: 使用旧版 llm_client (向后兼容)
     """
 
-    def __init__(self):
-        """初始化分析器"""
+    def __init__(self, ai_service: Optional["AIService"] = None):
+        """初始化分析器，可选注入 AIService"""
         self.llm = llm_client
+        self._ai_service = ai_service
         logger.info("[Analyzer] Initialized with LLM client")
 
     async def analyze(
@@ -700,6 +705,22 @@ class Analyzer:
             content=content
         )
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.RETRY_THEN_SKIP,
+                task_id=f"analyze_step1:{title[:30]}",
+                temperature=0.7,
+            )
+            if ai_result.success and ai_result.data:
+                logger.info(f"[Analyzer] Step 1 完成，评分: {ai_result.data.get('score', 'N/A')}")
+                return ai_result.data
+            raise Exception(f"分析失败: {ai_result.error}")
+
+        # ── 旧版 llm_client 路径 (向后兼容) ──
         try:
             result = await self.llm.call_json(
                 system_prompt=system_prompt,
@@ -754,6 +775,22 @@ class Analyzer:
             analysis=analysis_json
         )
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_text(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.RETRY_THEN_SKIP,
+                task_id=f"analyze_step2:{title[:30]}",
+                temperature=0.7,
+            )
+            if ai_result.success and ai_result.raw_response:
+                logger.info("[Analyzer] Step 2 完成")
+                return ai_result.raw_response
+            raise Exception(f"反思失败: {ai_result.error}")
+
+        # ── 旧版 llm_client 路径 (向后兼容) ──
         try:
             result = await self.llm.call(
                 system_prompt=system_prompt,
@@ -811,6 +848,22 @@ class Analyzer:
             reflection=reflection
         )
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.RETRY_THEN_SKIP,
+                task_id=f"analyze_step3:{title[:30]}",
+                temperature=0.7,
+            )
+            if ai_result.success and ai_result.data:
+                logger.info(f"[Analyzer] Step 3 完成，最终评分: {ai_result.data.get('score', 'N/A')}")
+                return ai_result.data
+            raise Exception(f"优化失败: {ai_result.error}")
+
+        # ── 旧版 llm_client 路径 (向后兼容) ──
         try:
             result = await self.llm.call_json(
                 system_prompt=system_prompt,

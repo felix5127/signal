@@ -30,7 +30,7 @@ services:
       # 数据持久化
       - signal-data:/app/data
       - ./config.yaml:/app/config.yaml:ro
-      - ./BestBlog:/app/BestBlog:ro
+      - ./backend/BestBlog:/app/BestBlog:ro
       # 开发模式：挂载源码支持热重载
       - ./backend/app:/app/app
       # 日志卷（可选，用于日志收集）

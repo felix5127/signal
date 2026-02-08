@@ -166,9 +166,9 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ clas
 function DailyReport({ digest }: { digest: DailyDigest }) {
   const stats = [
     { label: '今日信号总数', value: digest.total_signals },
-    { label: 'HackerNews', value: digest.top_hn.length },
-    { label: 'GitHub', value: digest.top_github.length },
-    { label: 'HuggingFace', value: digest.top_hf.length },
+    { label: '人工智能', value: digest.top_hn.length },
+    { label: '软件编程', value: digest.top_github.length },
+    { label: '商业科技', value: digest.top_hf.length },
   ]
 
   return (
@@ -182,14 +182,14 @@ function DailyReport({ digest }: { digest: DailyDigest }) {
 
       {digest.top_hn.length > 0 && (
         <section className="mb-10">
-          <SectionHeader icon={TrendingUp} title="HackerNews Top" />
+          <SectionHeader icon={TrendingUp} title="人工智能 Top" />
           <SignalList signals={digest.top_hn} showRank={false} />
         </section>
       )}
 
       {digest.top_github.length > 0 && (
         <section className="mb-10">
-          <SectionHeader icon={BarChart3} title="GitHub 精选" />
+          <SectionHeader icon={BarChart3} title="软件编程 精选" />
           <SignalList signals={digest.top_github} showRank={false} />
         </section>
       )}
@@ -197,8 +197,8 @@ function DailyReport({ digest }: { digest: DailyDigest }) {
       {digest.top_hf.length > 0 && (
         <section className="mb-10">
           <h3 className="h3 text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--border-default)] flex items-center gap-2">
-            <span className="text-[var(--color-primary)]">🤗</span>
-            HuggingFace 热门
+            <span className="text-[var(--color-primary)]">💼</span>
+            商业科技 热门
           </h3>
           <SignalList signals={digest.top_hf} showRank={false} />
         </section>

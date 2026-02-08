@@ -22,10 +22,10 @@ class RawSignal(BaseModel):
     - title: 标题
     - content: 原始内容（可选）
     - source_created_at: 原始发布时间
-    - metadata: 额外元数据（如 HN score, GitHub stars 等）
+    - metadata: 额外元数据
     """
 
-    source: str  # 'hn' | 'github' | 'huggingface'
+    source: str  # 'twitter' | 'blog' | 'podcast'
     source_id: Optional[str] = None
     url: str
     title: str
@@ -51,7 +51,7 @@ class BaseScraper(ABC):
         初始化爬虫
 
         Args:
-            source_name: 数据源名称 ('hn' | 'github' | 'huggingface')
+            source_name: 数据源名称 ('twitter' | 'blog' | 'podcast')
         """
         self.source_name = source_name
 

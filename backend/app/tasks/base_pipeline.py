@@ -190,7 +190,7 @@ class BasePipeline:
         记录流水线运行结果
 
         Args:
-            source_type: 数据源类型 (blog/twitter/podcast/video/hackernews)
+            source_type: 数据源类型 (twitter/blog/podcast)
             status: 运行状态 (success/partial/failed)
             error_message: 错误信息
         """

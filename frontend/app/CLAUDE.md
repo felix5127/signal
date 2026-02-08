@@ -11,6 +11,9 @@
 - 核心功能: 全局布局容器，包裹 Navbar、页面内容、Footer
 - 新增: MotionConfig 全局动画配置，支持 prefers-reduced-motion
 
+**globals.css**: 全局样式
+- 技术细节: Tailwind CSS 基础层 + 深色/浅色主题 CSS 变量
+
 **template.tsx**: 路由模板（页面过渡）
 - 技术细节: 客户端组件，对每个页面单独渲染
 - 导出: default function Template({ children })

@@ -22,13 +22,9 @@ interface AuthorInfoProps {
 
 // 来源名称映射
 const SOURCE_NAMES: Record<string, string> = {
-  hn: 'Hacker News',
-  github: 'GitHub',
-  huggingface: 'Hugging Face',
   twitter: 'Twitter / X',
-  arxiv: 'ArXiv',
-  producthunt: 'Product Hunt',
   blog: '博客',
+  podcast: '播客',
 }
 
 // 格式化阅读时间

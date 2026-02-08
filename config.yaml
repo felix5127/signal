@@ -12,62 +12,8 @@ network:
   rate_limit: 1  # 请求间隔（秒）
 
 # 数据源配置
+# 已移除: hackernews, github, huggingface, arxiv, producthunt, video (scraper 代码已删除)
 sources:
-  hackernews:
-    enabled: true
-    score_threshold: 30  # 进一步降低阈值 50→30，增加新闻数量
-    max_items: 20  # 每次抓取最大条数 (降低控制量)
-    keywords:
-      - AI
-      - LLM
-      - GPT
-      - ML
-      - model
-      - neural
-      - transformer
-      - diffusion
-      - fine-tuning
-      - RAG
-      - embedding
-      - Claude
-      - ChatGPT
-      - OpenAI
-      - Anthropic
-
-  github:
-    enabled: true  # 启用 GitHub 数据源
-    min_stars_today: 50  # 每日最少新增 Stars 数（用于趋势判断）
-    max_items: 10  # 每次抓取最大条数 (降低控制量)
-    languages:
-      - Python
-      - JavaScript
-      - TypeScript
-      - Rust
-      - Go
-      - Java
-    exclude_patterns:
-      - awesome-
-      - cheatsheet
-      - tutorial-
-      - learn-
-      - resources
-    orgs_whitelist:
-      - openai
-      - anthropics
-      - google
-      - meta-llama
-      - microsoft
-
-  huggingface:
-    enabled: true  # 启用 Hugging Face 数据源（无需 Token）
-    min_likes: 100  # 提高门槛 10→100，只收录重要模型
-    min_downloads: 1000  # 提高下载量要求 100→1000
-    max_items: 10  # 限制数量，避免模型占比过高
-    tasks:
-      - text-generation
-      - image-generation
-      - text-to-image
-
   twitter:
     enabled: true  # 启用 Twitter 数据源（通过 RSS Bridge，完全免费）
     opml_path: "BestBlog/BestBlogs_RSS_Twitters.opml"  # OPML 文件路径
@@ -102,33 +48,6 @@ sources:
       - transformer
     max_items_per_account: 3  # 每个账号最多抓取推文数 (15 accounts × 3 = 45 total)
 
-  arxiv:
-    enabled: true  # 启用 ArXiv 数据源（完全免费，无需 API key）
-    categories:  # 关注的论文分类
-      - cs.AI  # Artificial Intelligence
-      - cs.LG  # Machine Learning
-      - cs.CL  # Computation and Language
-      - cs.CV  # Computer Vision
-      - cs.NE  # Neural and Evolutionary Computing
-    keywords:  # 论文关键词过滤（留空则只按分类筛选）
-      []  # 禁用关键词过滤，只根据AI相关分类筛选
-    days_back: 30  # 抓取最近30天的论文
-    max_results: 20  # 最多返回论文数 (降低控制量)
-
-  producthunt:
-    enabled: true  # 启用 Product Hunt 数据源（需要 API key）
-    min_upvotes: 30  # 最少点赞数（从100降到30，更合理）
-    categories:  # 关注的产品分类
-      - AI
-      - Developer Tools
-      - Productivity
-      - Analytics
-      - Design Tools
-      - API
-      - Open Source
-    days_back: 30  # 抓取最近30天的产品
-    max_results: 10  # 最多返回产品数 (降低控制量)
-
   blog:
     enabled: true  # 启用博客/文章 RSS 数据源（完全免费，稳定可靠）
     opml_path: "BestBlog/BestBlogs_RSS_Articles.opml"  # 文章 OPML 文件路径
@@ -150,14 +69,6 @@ sources:
     max_duration_seconds: 7200  # 最大音频时长（秒），默认 2 小时
     transcribe_enabled: true  # 启用转写
     max_daily_items: 5  # 每日最多处理播客数
-
-  video:
-    enabled: false  # 视频功能已禁用，停止采集（保留已有数据）
-    opml_path: "BestBlog/BestBlogs_RSS_Videos.opml"  # 视频 OPML 文件路径
-    max_items_per_feed: 1  # 每个 feed 最多抓取条目数
-    max_duration_seconds: 7200  # 最大视频时长（秒），默认 2 小时
-    transcribe_enabled: true  # 启用转写
-    max_daily_items: 2  # 每日最多处理视频数
 
 # ❌ LLM配置已迁移至环境变量 (.env 文件)
 # 请在 .env 中配置以下变量:

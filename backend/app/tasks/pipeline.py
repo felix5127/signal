@@ -30,6 +30,7 @@ base_pipeline.py 提供了 BasePipeline 和 StepBasedPipeline 基类:
 from datetime import datetime
 from typing import List, Optional
 
+import structlog
 from sqlalchemy.orm import Session
 
 from app.config import config
@@ -38,7 +39,7 @@ from app.models.signal import Signal
 from app.models.resource import Resource
 from app.processors.filter import SignalFilter  # 保留，FullPipeline 仍在使用
 from app.processors.generator import SummaryGenerator
-from app.processors.initial_filter import InitialFilter, InitialFilterResult  # 保留，向后兼容
+# InitialFilter 已移除: 仅 pipeline/article_pipeline.py 使用，此文件不再需要
 from app.processors.unified_filter import UnifiedFilter, FilterResult
 from app.processors.deduper import Deduper
 from app.services.prompt_service import prompt_service
@@ -60,41 +61,24 @@ from app.services.source_service import SourceService
 from app.processors.podcast_analyzer import podcast_analyzer
 from app.services.data_tracker import DataTracker
 
-
-class PipelineStats:
-    """流水线统计数据"""
-
-    def __init__(self):
-        self.scraped_count = 0
-        self.filtered_count = 0
-        self.generated_count = 0
-        self.saved_count = 0
-        self.failed_count = 0
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
+logger = structlog.get_logger("pipeline")
 
 
-class ArticlePipelineStats:
-    """文章流水线统计数据"""
-
-    def __init__(self):
-        self.scraped_count = 0  # RSS 采集数
-        self.extracted_count = 0  # 全文提取成功数
-        self.extraction_failed_count = 0  # 全文提取失败数
-        self.filter_passed_count = 0  # 初评通过数
-        self.filter_rejected_count = 0  # 初评拒绝数
-        self.analyzed_count = 0  # 深度分析完成数
-        self.translated_count = 0  # 翻译完成数
-        self.saved_count = 0  # 保存成功数
-        self.failed_count = 0  # 处理失败数
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
+# 统计类统一定义在 pipeline/stats.py，避免重复
+from app.tasks.pipeline.stats import (
+    PipelineStats,
+    ArticlePipelineStats,
+    TwitterPipelineStats,
+    PodcastPipelineStats,
+    VideoPipelineStats,
+)
 
 
 async def run_article_pipeline(
     opml_path: Optional[str] = None,
     min_value_score: int = 3,
     use_full_analysis: bool = True,
+    dry_run: bool = False,
 ) -> ArticlePipelineStats:
     """
     运行文章处理流水线
@@ -112,18 +96,17 @@ async def run_article_pipeline(
         opml_path: OPML 文件路径（可选，默认使用 BestBlogs OPML）
         min_value_score: [DEPRECATED] 已弃用，UnifiedFilter 使用 PASS_THRESHOLD=3
         use_full_analysis: 是否使用完整三步分析，False 则使用快速单步分析
+        dry_run: 试运行模式，执行采集+去重+提取+过滤但不写入数据库
 
     Returns:
         ArticlePipelineStats 统计信息
     """
     stats = ArticlePipelineStats()
     tracker = DataTracker(pipeline="article")  # 数据追踪器
-    print(f"\n{'='*60}")
-    print(f"[ArticlePipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*60}\n")
+    logger.info("article.pipeline.started")
 
     # ========== 1. RSS 采集 ==========
-    print("[ArticlePipeline] Step 1: Scraping RSS feeds...")
+    logger.info("article.scrape.started")
 
     # 从配置获取每个 feed 的最大条目数
     max_items = config.blog.max_items_per_feed if hasattr(config, 'blog') else 3
@@ -131,14 +114,14 @@ async def run_article_pipeline(
     raw_signals = await rss_scraper.scrape()
     stats.scraped_count = len(raw_signals)
 
-    print(f"[ArticlePipeline] Scraped {stats.scraped_count} articles from RSS feeds\n")
+    logger.info("article.scrape.completed", count=stats.scraped_count)
 
     if not raw_signals:
-        print("[ArticlePipeline] No articles scraped, exiting.\n")
+        logger.info("article.scrape.empty")
         return stats
 
     # ========== 2. URL 去重检查 ==========
-    print("[ArticlePipeline] Step 2: Checking for duplicates...")
+    logger.info("article.dedupe.started", items_in=len(raw_signals))
 
     deduper = Deduper()
 
@@ -164,16 +147,16 @@ async def run_article_pipeline(
     new_signals = [item["signal"] for item in deduped_items]
     duplicate_count = len(raw_signals) - len(new_signals)
 
-    print(f"[ArticlePipeline] Found {duplicate_count} duplicates, {len(new_signals)} new articles\n")
+    logger.info("article.dedupe.completed", duplicates=duplicate_count, new_count=len(new_signals))
 
     if not new_signals:
-        print("[ArticlePipeline] All articles already exist, exiting.\n")
+        logger.info("article.dedupe.all_duplicates")
         return stats
 
     raw_signals = new_signals
 
     # ========== 3. 全文提取 ==========
-    print("[ArticlePipeline] Step 3: Extracting full content...")
+    logger.info("article.extract.started", items_in=len(raw_signals))
 
     content_extractor = ContentExtractor()
     extracted_contents: List[tuple[RawSignal, Optional[ExtractedContent]]] = []
@@ -193,18 +176,21 @@ async def run_article_pipeline(
 
         except Exception as e:
             stats.extraction_failed_count += 1
-            print(f"    -> Failed: {e}")
+            logger.warning("article.extract.item_failed", url=signal.url[:80], error=str(e))
 
-    print(f"\n[ArticlePipeline] Extracted {stats.extracted_count}/{len(raw_signals)} articles\n")
+    logger.info("article.extract.completed",
+                items_out=stats.extracted_count, failed=stats.extraction_failed_count)
 
     if not extracted_contents:
-        print("[ArticlePipeline] No content extracted, exiting.\n")
+        logger.info("article.extract.empty")
         return stats
 
     # ========== 4. 统一过滤 ==========
-    print("[ArticlePipeline] Step 4: Unified filtering (Rule + LLM)...")
+    logger.info("article.filter.started", items_in=len(extracted_contents))
 
-    unified_filter = UnifiedFilter(prompt_service=prompt_service)
+    from app.services.ai_service import AIService
+    ai_service = AIService()
+    unified_filter = UnifiedFilter(prompt_service=prompt_service, ai_service=ai_service)
     filtered_items: List[tuple[RawSignal, ExtractedContent, FilterResult]] = []
 
     for i, (signal, content) in enumerate(extracted_contents):
@@ -244,19 +230,28 @@ async def run_article_pipeline(
 
         except Exception as e:
             stats.failed_count += 1
-            print(f"    -> Error: {e}")
+            logger.error("article.filter.item_error", url=signal.url[:80], error=str(e))
 
-    print(
-        f"\n[ArticlePipeline] {stats.filter_passed_count}/{len(extracted_contents)} passed filter "
-        f"(threshold={unified_filter.PASS_THRESHOLD})\n"
-    )
+    logger.info("article.filter.completed",
+                passed=stats.filter_passed_count, rejected=stats.filter_rejected_count,
+                threshold=unified_filter.PASS_THRESHOLD)
 
     if not filtered_items:
-        print("[ArticlePipeline] No articles passed filter, exiting.\n")
+        logger.info("article.filter.all_rejected")
+        return stats
+
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("article.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     extracted=stats.extracted_count,
+                     filter_passed=stats.filter_passed_count,
+                     filter_rejected=stats.filter_rejected_count,
+                     would_analyze=len(filtered_items))
         return stats
 
     # ========== 5. 深度分析 ==========
-    print("[ArticlePipeline] Step 5: Deep analysis (3-step LLM)...")
+    logger.info("article.analyze.started", items_in=len(filtered_items))
 
     analyzer = Analyzer()
     analyzed_items: List[tuple[RawSignal, ExtractedContent, FilterResult, AnalysisResult]] = []
@@ -292,16 +287,16 @@ async def run_article_pipeline(
 
         except Exception as e:
             stats.failed_count += 1
-            print(f"    -> Error: {e}")
+            logger.error("article.analyze.item_error", url=signal.url[:80], error=str(e))
 
-    print(f"\n[ArticlePipeline] Analyzed {stats.analyzed_count}/{len(filtered_items)} articles\n")
+    logger.info("article.analyze.completed", items_out=stats.analyzed_count, items_in=len(filtered_items))
 
     if not analyzed_items:
-        print("[ArticlePipeline] No articles analyzed, exiting.\n")
+        logger.info("article.analyze.empty")
         return stats
 
     # ========== 6. 翻译（英文内容） ==========
-    print("[ArticlePipeline] Step 6: Translating English content...")
+    logger.info("article.translate.started", items_in=len(analyzed_items))
 
     translator = Translator()
     final_items: List[tuple[RawSignal, ExtractedContent, FilterResult, AnalysisResult, Optional[dict]]] = []
@@ -325,17 +320,17 @@ async def run_article_pipeline(
                 print(f"    -> Translation completed")
 
             except Exception as e:
-                print(f"    -> Translation error (using original): {e}")
+                logger.warning("article.translate.item_error", url=signal.url[:80], error=str(e))
                 translated_analysis = None
         else:
             print(f"  [{i+1}/{len(analyzed_items)}] Skipping (Chinese): {signal.title[:50]}...")
 
         final_items.append((signal, content, filter_result, analysis, translated_analysis))
 
-    print(f"\n[ArticlePipeline] Translated {stats.translated_count} English articles\n")
+    logger.info("article.translate.completed", translated=stats.translated_count)
 
     # ========== 7. 存储到数据库 ==========
-    print("[ArticlePipeline] Step 7: Saving to database...")
+    logger.info("article.save.started", items_in=len(final_items))
 
     db: Session = SessionLocal()
     try:
@@ -437,14 +432,14 @@ async def run_article_pipeline(
 
             except Exception as e:
                 stats.failed_count += 1
-                print(f"  -> Save error: {e}")
+                logger.error("article.save.item_error", url=signal.url[:80], error=str(e))
 
         db.commit()
-        print(f"\n[ArticlePipeline] Successfully saved {stats.saved_count} resources\n")
+        logger.info("article.save.completed", saved=stats.saved_count)
 
     except Exception as e:
         db.rollback()
-        print(f"\n[ArticlePipeline] Database error: {e}\n")
+        logger.error("article.save.db_error", error=str(e))
         stats.failed_count += len(final_items) - stats.saved_count
 
     finally:
@@ -455,19 +450,18 @@ async def run_article_pipeline(
     stats.total_input_tokens = token_usage["input"]
     stats.total_output_tokens = token_usage["output"]
 
-    print(f"{'='*60}")
-    print("[ArticlePipeline] Summary:")
-    print(f"  - RSS Scraped: {stats.scraped_count}")
-    print(f"  - Content Extracted: {stats.extracted_count} (failed: {stats.extraction_failed_count})")
-    print(f"  - Filter Passed: {stats.filter_passed_count} (rejected: {stats.filter_rejected_count})")
-    print(f"  - Analyzed: {stats.analyzed_count}")
-    print(f"  - Translated: {stats.translated_count}")
-    print(f"  - Saved: {stats.saved_count}")
-    print(f"  - Failed: {stats.failed_count}")
-    print(f"  - Input tokens: {stats.total_input_tokens:,}")
-    print(f"  - Output tokens: {stats.total_output_tokens:,}")
-    print(f"  - Total tokens: {stats.total_input_tokens + stats.total_output_tokens:,}")
-    print(f"{'='*60}\n")
+    logger.info("article.pipeline.summary",
+                scraped=stats.scraped_count,
+                extracted=stats.extracted_count,
+                extraction_failed=stats.extraction_failed_count,
+                filter_passed=stats.filter_passed_count,
+                filter_rejected=stats.filter_rejected_count,
+                analyzed=stats.analyzed_count,
+                translated=stats.translated_count,
+                saved=stats.saved_count,
+                failed=stats.failed_count,
+                input_tokens=stats.total_input_tokens,
+                output_tokens=stats.total_output_tokens)
 
     # 重置 Token 计数器
     llm_client.reset_token_counter()
@@ -488,18 +482,19 @@ async def run_article_pipeline(
         )
         record_db.close()
     except Exception as e:
-        print(f"[ArticlePipeline] Failed to record run: {e}")
+        logger.error("article.record_run.failed", error=str(e))
 
     # ========== 10. 写入追踪数据到飞书 ==========
-    print("[ArticlePipeline] Step 10: Flushing tracking data to Feishu...")
+    logger.info("article.tracking.flushing")
     # 保存统计数据（flush 后 records 会被清空）
     tracking_collected = tracker.collected_count
     tracking_filtered = tracker.filtered_count
     try:
         success_count = await tracker.flush()
-        print(f"[ArticlePipeline] Tracking: {tracking_collected} collected, {tracking_filtered} filtered -> {success_count} written to Feishu")
+        logger.info("article.tracking.flushed",
+                    collected=tracking_collected, filtered=tracking_filtered, written=success_count)
     except Exception as e:
-        print(f"[ArticlePipeline] Failed to flush tracking data (non-blocking): {e}")
+        logger.warning("article.tracking.flush_failed", error=str(e))
 
     return stats
 
@@ -750,24 +745,10 @@ async def run_full_pipeline(sources: list[str] | None = None) -> PipelineStats:
     return stats
 
 
-class TwitterPipelineStats:
-    """Twitter 流水线统计数据"""
-
-    def __init__(self):
-        self.scraped_count = 0  # XGoing 采集数
-        self.filter_passed_count = 0  # 初评通过数
-        self.filter_rejected_count = 0  # 初评拒绝数
-        self.analyzed_count = 0  # 分析完成数
-        self.translated_count = 0  # 翻译完成数
-        self.saved_count = 0  # 保存成功数
-        self.failed_count = 0  # 处理失败数
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
-
-
 async def run_twitter_pipeline(
     opml_path: Optional[str] = None,
     min_value_score: int = 2,
+    dry_run: bool = False,
 ) -> TwitterPipelineStats:
     """
     运行 Twitter 推文处理流水线（简化版：跳过 LLM 筛选，直接保存）
@@ -785,6 +766,7 @@ async def run_twitter_pipeline(
         TwitterPipelineStats 统计信息
     """
     stats = TwitterPipelineStats()
+    tracker = DataTracker(pipeline="twitter")
     print(f"\n{'='*60}")
     print(f"[TwitterPipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"[TwitterPipeline] Mode: Skip LLM, save all tweets")
@@ -820,8 +802,17 @@ async def run_twitter_pipeline(
             if existing:
                 existing_urls.add(signal.url)
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_urls]
+        # 过滤掉已存在的 + 追踪重复项
+        new_signals = []
+        for s in raw_signals:
+            if s.url in existing_urls:
+                source_name = (s.metadata or {}).get("source_name", "twitter")
+                tracker.track_filtered(
+                    title=s.title, url=s.url, source=source_name,
+                    reason="重复内容", stage="dedup",
+                )
+            else:
+                new_signals.append(s)
         duplicate_count = len(raw_signals) - len(new_signals)
 
         print(f"[TwitterPipeline] Found {duplicate_count} duplicates, {len(new_signals)} new tweets\n")
@@ -834,6 +825,14 @@ async def run_twitter_pipeline(
 
     finally:
         db.close()
+
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("twitter.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     duplicates=duplicate_count,
+                     would_save=len(raw_signals))
+        return stats
 
     # ========== 3. 直接存储（跳过 LLM）==========
     print("[TwitterPipeline] Step 3: Saving tweets directly (skipping LLM analysis)...")
@@ -870,6 +869,11 @@ async def run_twitter_pipeline(
                 db.add(resource)
                 db.commit()
                 stats.saved_count += 1
+                tracker.track_collected(
+                    title=signal.title, url=signal.url,
+                    source=metadata.get("source_name", "twitter"),
+                    reason="直接收录", stage="save",
+                )
                 print(f"    -> Saved")
 
             except Exception as e:
@@ -908,17 +912,13 @@ async def run_twitter_pipeline(
     except Exception as e:
         print(f"[TwitterPipeline] Failed to record run: {e}")
 
+    # ========== 飞书数据追踪 ==========
+    try:
+        await tracker.flush()
+    except Exception as e:
+        logger.warning("twitter.tracker.flush_failed", error=str(e))
+
     return stats
-
-
-class PodcastPipelineStats:
-    """播客流水线统计数据"""
-
-    def __init__(self):
-        self.scraped_count = 0  # RSS 采集数
-        self.transcribed_count = 0  # 转写成功数
-        self.saved_count = 0  # 保存成功数
-        self.failed_count = 0  # 处理失败数
 
 
 async def run_podcast_pipeline(
@@ -926,6 +926,7 @@ async def run_podcast_pipeline(
     max_items_per_feed: int = 2,
     enable_transcription: bool = True,
     max_daily_transcription: int = 5,
+    dry_run: bool = False,
 ) -> PodcastPipelineStats:
     """
     运行播客处理流水线（支持转写）
@@ -946,13 +947,11 @@ async def run_podcast_pipeline(
         PodcastPipelineStats 统计信息
     """
     stats = PodcastPipelineStats()
-    print(f"\n{'='*60}")
-    print(f"[PodcastPipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"[PodcastPipeline] Transcription: {'Enabled' if enable_transcription else 'Disabled'}")
-    print(f"{'='*60}\n")
+    tracker = DataTracker(pipeline="podcast")
+    logger.info("podcast.pipeline.started", transcription_enabled=enable_transcription)
 
     # ========== 1. RSS 采集 ==========
-    print("[PodcastPipeline] Step 1: Scraping podcasts from RSS feeds...")
+    logger.info("podcast.scrape.started")
 
     # 使用配置中的 OPML 路径
     if opml_path is None and hasattr(config, 'podcast') and hasattr(config.podcast, 'opml_path'):
@@ -965,14 +964,14 @@ async def run_podcast_pipeline(
     )
     stats.scraped_count = len(raw_signals)
 
-    print(f"[PodcastPipeline] Scraped {stats.scraped_count} podcast episodes\n")
+    logger.info("podcast.scrape.completed", count=stats.scraped_count)
 
     if not raw_signals:
-        print("[PodcastPipeline] No podcasts scraped, exiting.\n")
+        logger.info("podcast.scrape.empty")
         return stats
 
     # ========== 2. URL 去重检查 ==========
-    print("[PodcastPipeline] Step 2: Checking for duplicates...")
+    logger.info("podcast.dedupe.started", items_in=len(raw_signals))
 
     db: Session = SessionLocal()
     try:
@@ -984,14 +983,23 @@ async def run_podcast_pipeline(
             if existing:
                 existing_urls.add(signal.url)
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_urls]
+        # 过滤掉已存在的 + 追踪重复项
+        new_signals = []
+        for s in raw_signals:
+            if s.url in existing_urls:
+                source_name = (s.metadata or {}).get("podcast_name", "podcast")
+                tracker.track_filtered(
+                    title=s.title, url=s.url, source=source_name,
+                    reason="重复内容", stage="dedup",
+                )
+            else:
+                new_signals.append(s)
         duplicate_count = len(raw_signals) - len(new_signals)
 
-        print(f"[PodcastPipeline] Found {duplicate_count} duplicates, {len(new_signals)} new podcasts\n")
+        logger.info("podcast.dedupe.completed", duplicates=duplicate_count, new_count=len(new_signals))
 
         if not new_signals:
-            print("[PodcastPipeline] All podcasts already exist, exiting.\n")
+            logger.info("podcast.dedupe.all_duplicates")
             return stats
 
         raw_signals = new_signals
@@ -1002,29 +1010,55 @@ async def run_podcast_pipeline(
     # ========== 3. 音频转写（可选） ==========
     transcription_enabled = enable_transcription
     transcriber = None
+    new_transcription_service = None
+    use_new_transcriber = False
 
     if transcription_enabled:
+        # 优先尝试新版 TranscriptionService
         try:
-            from app.processors.transcriber import Transcriber
-            transcriber = Transcriber()
-
-            if not transcriber.access_key_id or not transcriber.access_key_secret:
-                print("[PodcastPipeline] Transcriber 未配置，跳过转写")
-                transcription_enabled = False
+            from app.processors.transcription_service import TranscriptionService
+            new_ts = TranscriptionService(config.tingwu)
+            if new_ts.is_available():
+                new_transcription_service = new_ts
+                use_new_transcriber = True
+                logger.info("podcast.transcription.using_new_service")
             else:
-                print("[PodcastPipeline] Transcriber 已初始化")
-
+                missing = new_ts.validate_config()
+                logger.warning("podcast.transcription.new_service_unavailable", missing=missing)
         except ImportError:
-            print("[PodcastPipeline] Transcriber 模块未找到，跳过转写")
-            transcription_enabled = False
+            pass
+
+        # 降级到旧版 Transcriber
+        if not use_new_transcriber:
+            try:
+                from app.processors.transcriber import Transcriber
+                transcriber = Transcriber()
+
+                if not transcriber.access_key_id or not transcriber.access_key_secret:
+                    logger.warning("podcast.transcription.legacy_not_configured")
+                    transcription_enabled = False
+                else:
+                    logger.info("podcast.transcription.using_legacy")
+
+            except ImportError:
+                logger.warning("podcast.transcription.module_not_found")
+                transcription_enabled = False
 
     # 限制转写数量
     items_to_transcribe = raw_signals[:max_daily_transcription] if transcription_enabled else []
 
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("podcast.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     duplicates=duplicate_count,
+                     would_save=len(raw_signals),
+                     would_transcribe=len(items_to_transcribe))
+        return stats
+
     # ========== 4. 存储到数据库 ==========
-    print(f"[PodcastPipeline] Step 3: Saving podcasts...")
-    if transcription_enabled:
-        print(f"[PodcastPipeline] Will transcribe {len(items_to_transcribe)}/{len(raw_signals)} episodes\n")
+    logger.info("podcast.save.started", items_in=len(raw_signals),
+                transcribe_count=len(items_to_transcribe))
 
     db: Session = SessionLocal()
     try:
@@ -1043,21 +1077,35 @@ async def run_podcast_pipeline(
                 if transcription_enabled and signal in items_to_transcribe and audio_url:
                     print(f"    -> Transcribing: {audio_url[:60]}...")
                     try:
-                        result = await transcriber.transcribe(
-                            media_url=audio_url,
-                            media_type="audio",
-                            max_wait=1800,  # 30分钟
-                            poll_interval=10,
-                        )
-                        if result:
+                        # ── 新版转写服务 ──
+                        if use_new_transcriber and new_transcription_service is not None:
+                            result = await new_transcription_service.transcribe(
+                                media_url=audio_url,
+                                media_type="audio",
+                                max_daily=max_daily_transcription,
+                            )
                             transcribed_text = result.text
                             transcribed_duration = result.duration
                             stats.transcribed_count += 1
                             print(f"    -> Transcription completed ({len(transcribed_text)} chars)")
-                        else:
-                            print(f"    -> Transcription failed")
+                        # ── 旧版转写器 ──
+                        elif transcriber is not None:
+                            result = await transcriber.transcribe(
+                                media_url=audio_url,
+                                media_type="audio",
+                                max_wait=1800,  # 30分钟
+                                poll_interval=10,
+                            )
+                            if result:
+                                transcribed_text = result.text
+                                transcribed_duration = result.duration
+                                stats.transcribed_count += 1
+                                print(f"    -> Transcription completed ({len(transcribed_text)} chars)")
+                            else:
+                                print(f"    -> Transcription failed")
                     except Exception as e:
-                        print(f"    -> Transcription error: {e}")
+                        logger.error("podcast.transcription.error",
+                                     url=audio_url[:80], error=str(e))
 
                 # ========== 播客内容分析 ==========
                 chapters = None
@@ -1079,7 +1127,8 @@ async def run_podcast_pipeline(
                         ]
                         print(f"    -> Analysis: {len(chapters)} chapters, {len(qa_pairs)} Q&A pairs")
                     except Exception as e:
-                        print(f"    -> Analysis error: {e}")
+                        logger.warning("podcast.analysis.error",
+                                       title=signal.title[:50], error=str(e))
 
                 # 创建 Resource 对象
                 resource = Resource(
@@ -1112,27 +1161,29 @@ async def run_podcast_pipeline(
                 db.add(resource)
                 db.commit()
                 stats.saved_count += 1
+                tracker.track_collected(
+                    title=signal.title, url=signal.url,
+                    source=metadata.get("podcast_name", "podcast"),
+                    reason="播客收录", stage="save",
+                )
                 print(f"    -> Saved")
 
             except Exception as e:
                 db.rollback()
                 stats.failed_count += 1
-                print(f"    -> Error: {e}")
+                logger.error("podcast.save.item_error", url=signal.url[:80], error=str(e))
 
-        print(f"\n[PodcastPipeline] Saved {stats.saved_count}/{len(raw_signals)} podcasts\n")
+        logger.info("podcast.save.completed", saved=stats.saved_count, total=len(raw_signals))
 
     finally:
         db.close()
 
     # ========== 统计 ==========
-    print(f"{'='*60}")
-    print("[PodcastPipeline] Summary:")
-    print(f"  - Scraped: {stats.scraped_count}")
-    print(f"  - Duplicates: {stats.scraped_count - len(raw_signals)}")
-    print(f"  - Transcribed: {stats.transcribed_count}")
-    print(f"  - Saved: {stats.saved_count}")
-    print(f"  - Failed: {stats.failed_count}")
-    print(f"{'='*60}\n")
+    logger.info("podcast.pipeline.summary",
+                scraped=stats.scraped_count,
+                transcribed=stats.transcribed_count,
+                saved=stats.saved_count,
+                failed=stats.failed_count)
 
     # ========== 记录采集结果 ==========
     try:
@@ -1148,19 +1199,15 @@ async def run_podcast_pipeline(
         )
         record_db.close()
     except Exception as e:
-        print(f"[PodcastPipeline] Failed to record run: {e}")
+        logger.error("podcast.record_run.failed", error=str(e))
+
+    # ========== 飞书数据追踪 ==========
+    try:
+        await tracker.flush()
+    except Exception as e:
+        logger.warning("podcast.tracker.flush_failed", error=str(e))
 
     return stats
-
-
-class VideoPipelineStats:
-    """视频流水线统计数据"""
-
-    def __init__(self):
-        self.scraped_count = 0  # RSS 采集数
-        self.transcribed_count = 0  # 转写成功数
-        self.saved_count = 0  # 保存成功数
-        self.failed_count = 0  # 处理失败数
 
 
 async def run_video_pipeline(
@@ -1168,6 +1215,7 @@ async def run_video_pipeline(
     max_items_per_feed: int = 1,
     enable_transcription: bool = True,
     max_daily_transcription: int = 2,
+    dry_run: bool = False,
 ) -> VideoPipelineStats:
     """
     运行视频处理流水线（支持转写）
@@ -1188,6 +1236,7 @@ async def run_video_pipeline(
         VideoPipelineStats 统计信息
     """
     stats = VideoPipelineStats()
+    tracker = DataTracker(pipeline="video")
     print(f"\n{'='*60}")
     print(f"[VideoPipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"[VideoPipeline] Transcription: {'Enabled' if enable_transcription else 'Disabled'}")
@@ -1226,8 +1275,17 @@ async def run_video_pipeline(
             if existing:
                 existing_urls.add(signal.url)
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_urls]
+        # 过滤掉已存在的 + 追踪重复项
+        new_signals = []
+        for s in raw_signals:
+            if s.url in existing_urls:
+                source_name = (s.metadata or {}).get("channel_name", "youtube")
+                tracker.track_filtered(
+                    title=s.title, url=s.url, source=source_name,
+                    reason="重复内容", stage="dedup",
+                )
+            else:
+                new_signals.append(s)
         duplicate_count = len(raw_signals) - len(new_signals)
 
         print(f"[VideoPipeline] Found {duplicate_count} duplicates, {len(new_signals)} new videos\n")
@@ -1262,6 +1320,15 @@ async def run_video_pipeline(
 
     # 限制转写数量（视频转写成本高，默认只转写2个）
     items_to_transcribe = raw_signals[:max_daily_transcription] if transcription_enabled else []
+
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("video.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     duplicates=duplicate_count,
+                     would_save=len(raw_signals),
+                     would_transcribe=len(items_to_transcribe))
+        return stats
 
     # ========== 4. 存储到数据库 ==========
     print(f"[VideoPipeline] Step 3: Saving videos...")
@@ -1356,6 +1423,11 @@ async def run_video_pipeline(
                 db.add(resource)
                 db.commit()
                 stats.saved_count += 1
+                tracker.track_collected(
+                    title=signal.title, url=signal.url,
+                    source=metadata.get("channel_name", "youtube"),
+                    reason="视频收录", stage="save",
+                )
                 print(f"    -> Saved")
 
             except Exception as e:
@@ -1393,5 +1465,11 @@ async def run_video_pipeline(
         record_db.close()
     except Exception as e:
         print(f"[VideoPipeline] Failed to record run: {e}")
+
+    # ========== 飞书数据追踪 ==========
+    try:
+        await tracker.flush()
+    except Exception as e:
+        logger.warning("video.tracker.flush_failed", error=str(e))
 
     return stats

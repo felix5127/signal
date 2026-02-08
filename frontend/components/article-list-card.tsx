@@ -40,13 +40,9 @@ interface ArticleListCardProps {
 }
 
 const SOURCE_NAMES: Record<string, string> = {
-  hn: 'Hacker News',
-  github: 'GitHub',
-  huggingface: 'HuggingFace',
   twitter: 'Twitter',
-  arxiv: 'ArXiv',
-  producthunt: 'Product Hunt',
   blog: 'Blog',
+  podcast: 'Podcast',
 }
 
 // 域名对应的颜色配置

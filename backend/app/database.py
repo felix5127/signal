@@ -139,6 +139,24 @@ def _run_schema_migrations():
                     print(f"[DB] Warning: Failed to add column {col_name}: {e}")
                 conn.rollback()
 
+        # 加宽过窄的 varchar 列（防止 StringDataRightTruncation）
+        column_widenings = [
+            ("resources", "source_name", "VARCHAR(255)"),
+            ("resources", "domain", "VARCHAR(100)"),
+            ("resources", "subdomain", "VARCHAR(100)"),
+            ("sources", "name", "VARCHAR(255)"),
+        ]
+        for table, col_name, col_type in column_widenings:
+            try:
+                conn.execute(text(
+                    f"ALTER TABLE {table} ALTER COLUMN {col_name} TYPE {col_type}"
+                ))
+                conn.commit()
+            except Exception as e:
+                if "does not exist" not in str(e).lower():
+                    pass  # 列类型已满足要求，忽略
+                conn.rollback()
+
         # 添加缺失的索引
         for idx_name, col_name in resource_indexes:
             try:

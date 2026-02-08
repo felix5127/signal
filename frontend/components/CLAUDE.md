@@ -46,9 +46,6 @@
 - 消费方: 研究工作台、资源详情页
 - 功能: 文本转播客、进度展示、音频播放、下载
 
-**README.md**: 组件目录说明文档
-- 内容: 组件使用指南和设计说明
-
 **resource-detail.tsx**: 资源详情页组件 (Mercury 风格重构)
 - 技术细节: Mercury.com 浅色系设计，Header 全宽 + Content Row 两栏布局
 - 导出: ResourceDetail({ resource, relatedResources })
@@ -70,6 +67,28 @@
 - 技术细节: 简洁卡片布局，支持标题、摘要、标签
 - 导出: ArticleListCard({ article })
 - 消费方: app/articles/page.tsx
+
+**resource-filter-bar.tsx**: 筛选栏组件
+- 技术细节: 时间/分类/排序/精选开关
+
+**pagination.tsx**: 分页组件
+
+**score-badge.tsx**: 评分徽章组件（支持精选标记）
+
+**deep-research-button.tsx**: 深度研究按钮组件
+- 消费方: 各详情页组件
+
+**markdown-renderer.tsx**: Markdown 渲染器
+
+**daily-news-tab.tsx**: 每日新闻 Tab（按日期分组、无限滚动）
+
+**weekly-report-tab.tsx**: 每周观察 Tab
+
+**main-points.tsx**: 主要观点组件（可展开/收起）
+
+**key-quotes.tsx**: 金句组件（引用样式）
+
+**tag-list.tsx**: 标签列表组件（可点击）
 
 ## 子目录
 

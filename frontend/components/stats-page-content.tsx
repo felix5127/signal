@@ -134,7 +134,7 @@ export default function StatsPage() {
                   return (
                     <div key={source} className="flex items-center gap-3">
                       <div className="min-w-[100px] text-sm font-medium text-[var(--ds-muted)]">
-                        {source === 'hn' ? 'Hacker News' : source}
+                        {source}
                       </div>
                       <div className="flex-1 h-8 bg-[var(--ds-surface-2)] rounded-lg overflow-hidden">
                         <div

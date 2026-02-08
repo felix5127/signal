@@ -20,24 +20,28 @@
 ## <directory>
 
 ### backend/ - Python 后端 (FastAPI + SQLAlchemy)
-- **app/api/** - REST API 路由 (resources, signals, newsletters, stats, feeds)
-- **app/models/** - 数据库模型 (Resource, Signal, Newsletter, Task)
+- **app/api/** - REST API 路由 (resources, digest, stats, feeds, admin)
+- **app/models/** - 数据库模型 (Resource, Signal, Newsletter, Task, Source)
 - **app/processors/** - 内容处理器 (analyzer, generator, translator, podcast_analyzer)
 - **app/scrapers/** - 数据抓取器 (rss, xgoing, podcast, video)
 - **app/tasks/** - 异步任务队列 (pipeline, digest, newsletter)
-- **app/services/** - 业务服务 (deep_research_service, cache_service)
+- **app/services/** - 业务服务 (resource, source, cache, deep_research, feishu, data_tracker)
+- **app/utils/** - 工具函数 (llm, cache, jina, logger)
+- **app/schemas/** - Pydantic 数据传输对象
+- **app/agents/** - AI Agent (mindmap, multimodal, podcast)
 
 ### frontend/ - Next.js 14 前端
-- **app/** - App Router 页面 (/, /newsletters, /resources, /signals, /stats, /feeds, /landing)
-- **components/ui/** - shadcn/ui 组件库 (30个组件，4个已升级微拟物设计)
-- **components/landing/** - Landing Page Sections (10个Section组件)
-- **components/effects/** - 视觉效果组件 (dither, dot-grid, flickering-grid)
+- **app/** - App Router 页面 (/, /articles, /podcasts, /tweets, /videos, /featured, /feeds, /stats)
+- **components/ui/** - shadcn/ui 组件库 (30+ 组件)
+- **components/landing/** - Landing Page Sections (10 个 Section 组件)
 - **components/detail/** - 详情页子组件 (FeaturedReason, AuthorInfo, AISidebar, ContentArea)
-- **components/podcast/** - 播客详情页组件 (AudioPlayer, ChapterOverview, TranscriptView, QARecap, ContentTabs)
-- **components/research/** - 研究工作台 (project-list, workspace)
-- **components/research/panels/** - 工作台面板组件 (SourcesPanel, ChatPanel, ResearchPanel)
+- **components/podcast/** - 播客详情页组件 (AudioPlayer, ChapterOverview, TranscriptView, QARecap)
+- **components/research/** - 研究工作台 (project-list, workspace, panels)
 - **lib/design-system/** - 设计系统令牌 (colors, spacing, typography)
 - **lib/motion.ts** - Apple 级 Spring 动画预设库
+
+### docs/ - 项目文档
+- **archive/** - 归档文档 (BestBlog/, ANIMATION_GUIDE, DEEP_RESEARCH_API 等)
 
 
 
@@ -174,6 +178,74 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## 法则
 极简 · 稳定 · 导航 · 版本精确
+
+
+
+ Agent Team Recipes
+
+> 以下 Recipe 供 Agent Team Lead 读取，用于理解如何组建和协调团队。
+> 使用方式：告诉 Claude "按照 {Recipe 名} 创建 agent team 来 {任务描述}"
+
+## Recipe: Full Pipeline（完整流水线）
+
+### 触发场景
+新 feature 开发、重大重构、技术方案落地
+
+### 团队结构
+
+| 角色 | 模型 | 权限 | 职责 |
+|------|------|------|------|
+| Lead | 默认 | delegate mode（纯协调，不写代码） | 拆任务、审批方案、控制修复轮、汇总结果 |
+| Researcher | Opus | 只读 | 调研代码/文档/依赖，产出 findings.md |
+| Architect | Opus | 只读 + 写设计文档 | 设计方案，产出 design.md，需 Lead 审批（plan approval） |
+| Developer | Sonnet | 读写代码 | 按设计实现，写测试，遇歧义 message Architect |
+| Reviewer | Opus | 只读 + 写报告 | 审查实现，按 CRITICAL/HIGH/MEDIUM 分级 |
+
+### 工作流
+
+```
+1. Lead 拆解任务，创建 task list（含依赖关系）
+2. Lead spawn Researcher (Opus) + Architect (Opus)
+   → Researcher 调研，产出 docs/research/findings.md
+   → Architect 可提前熟悉代码，但不产出设计直到 Research 完成
+3. Research 完成 → Architect 读取 findings.md 设计方案
+   → 如有遗漏，message Researcher 补充
+   → 产出 docs/architecture/design.md，提交 Lead 审批
+4. Lead 审批通过 → spawn Developer (Sonnet)
+   → Developer 按设计实现，遇歧义 message Architect
+   → 代码 + 测试完成
+5. Lead spawn Reviewer (Opus)
+   → Reviewer 对照 design.md 审查实现
+   → 产出 docs/review/report.md（CRITICAL/HIGH/MEDIUM）
+6. Lead 审阅报告
+   → 有 CRITICAL → Lead 指派 Developer 修复 → Reviewer 再审
+   → 无 CRITICAL → 流程结束，Lead 汇总
+```
+
+### 产出规范
+- Researcher → `docs/research/findings.md`（明确区分"已确认事实"和"未确认假设"）
+- Architect → `docs/architecture/design.md`（模块边界、接口定义、数据流）
+- Reviewer → `docs/review/report.md`（问题分级 + 修复建议）
+
+### 通信规则
+- Architect 发现调研不足 → message Researcher
+- Developer 遇设计歧义 → message Architect
+- Reviewer 发现架构级问题 → message Architect（不是 Developer）
+- 所有人完成任务 → 自动通知 Lead
+
+### 修复环路（Lead 控制）
+1. Reviewer 产出报告
+2. Lead 判断是否有 CRITICAL 级别问题
+3. 有 → Lead 指派 Developer 修复 → Reviewer 再审
+4. 无 → 流程结束
+
+### 约束
+- 每人只修改自己职责范围内的文件，禁止交叉编辑
+- Developer 不得自行决定设计变更
+- Reviewer 不得直接修改代码
+- Researcher 产出必须区分事实与假设
+
+
 
 ## [PROTOCOL]
 变更时更新此头部，然后检查子模块 CLAUDE.md

@@ -1,19 +1,22 @@
 """
-[INPUT]: 依赖 config, os, httpx
+[INPUT]: 依赖 config, os, httpx, database (SessionLocal), models (SourceRun)
 [OUTPUT]: 对外提供 SourceHealthChecker 健康检查服务
-[POS]: 业务逻辑层，检查各信号源的依赖和可用性
+[POS]: 业务逻辑层，检查各信号源的依赖和可用性 + RSS 可达性 + 历史健康评估
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import httpx
+import structlog
 
 from app.config import config
 from app.models.source_config import SOURCE_TYPES
+
+logger = structlog.get_logger("source_health")
 
 
 @dataclass
@@ -56,12 +59,9 @@ class SourceHealthChecker:
     """信号源健康检查器"""
 
     # API 端点（用于连通性检测）
+    # 已移除: hackernews, github, huggingface, arxiv, producthunt (scraper 代码已删除)
     API_ENDPOINTS = {
-        "hackernews": "https://hacker-news.firebaseio.com/v0/topstories.json",
-        "github": "https://api.github.com/rate_limit",
-        "huggingface": "https://huggingface.co/api/models",
-        "arxiv": "http://export.arxiv.org/api/query?search_query=all:electron&max_results=1",
-        "producthunt": "https://api.producthunt.com/v2/api/graphql",
+        # twitter, blog, podcast 使用 RSS/OPML，不需要 API 检测
     }
 
     def __init__(self, timeout: float = 10.0):
@@ -91,6 +91,16 @@ class SourceHealthChecker:
         if source_type in self.API_ENDPOINTS:
             api_check = await self._check_api(source_type)
             checks.append(api_check)
+
+        # 4. RSS Feed 可达性探测 (采样检查)
+        feed_check = await self._check_feed_reachability(source_type)
+        if feed_check:
+            checks.append(feed_check)
+
+        # 5. 基于历史运行记录的健康评估
+        history_check = self._check_source_history(source_type)
+        if history_check:
+            checks.append(history_check)
 
         # 汇总状态
         status, message = self._aggregate_status(checks)
@@ -274,6 +284,190 @@ class SourceHealthChecker:
                 status="error",
                 message=f"API 检查失败: {str(e)}",
             )
+
+    # ============================================================
+    # RSS Feed 可达性探测
+    # ============================================================
+
+    async def _check_feed_reachability(self, source_type: str) -> Optional[HealthCheck]:
+        """
+        抽样检查 RSS Feed 是否可达 (HTTP HEAD)
+
+        从 OPML 中取前 3 个 feed URL 做 HEAD 请求，
+        统计可达数量来判断整体健康状况。
+        """
+        opml_sources = ["twitter", "blog", "podcast", "video"]
+        if source_type not in opml_sources:
+            return None
+
+        # 获取 feed 列表
+        sources_cfg = getattr(config, "sources", None)
+        if not sources_cfg:
+            return None
+        source_cfg = getattr(sources_cfg, source_type, None)
+        if not source_cfg:
+            return None
+        opml_path = getattr(source_cfg, "opml_path", None)
+        if not opml_path or not os.path.exists(opml_path):
+            return None  # OPML 检查已在 _check_dependencies 中处理
+
+        try:
+            from app.scrapers.opml_parser import parse_opml
+            feeds = parse_opml(opml_path)
+        except Exception:
+            return None
+
+        if not feeds:
+            return None
+
+        # 抽样前 3 个 feed URL
+        sample_feeds = feeds[:3]
+        reachable = 0
+        unreachable_urls = []
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            for feed in sample_feeds:
+                url = feed.get("xmlUrl") or feed.get("url", "")
+                if not url:
+                    continue
+                try:
+                    resp = await client.head(url, follow_redirects=True)
+                    if resp.status_code < 400:
+                        reachable += 1
+                    else:
+                        unreachable_urls.append(url)
+                except Exception:
+                    unreachable_urls.append(url)
+
+        total = len(sample_feeds)
+        if total == 0:
+            return None
+
+        if reachable == total:
+            return HealthCheck(
+                name="feed_reachability",
+                status="ok",
+                message=f"抽样 {total} 个 Feed 全部可达",
+                details={"sampled": total, "reachable": reachable},
+            )
+        elif reachable > 0:
+            return HealthCheck(
+                name="feed_reachability",
+                status="warning",
+                message=f"抽样 {total} 个 Feed，{total - reachable} 个不可达",
+                details={
+                    "sampled": total,
+                    "reachable": reachable,
+                    "unreachable": unreachable_urls,
+                },
+            )
+        else:
+            return HealthCheck(
+                name="feed_reachability",
+                status="error",
+                message=f"抽样 {total} 个 Feed 全部不可达",
+                details={"sampled": total, "unreachable": unreachable_urls},
+            )
+
+    # ============================================================
+    # 基于历史的健康评估
+    # ============================================================
+
+    def _check_source_history(
+        self,
+        source_type: str,
+        hours: int = 24,
+    ) -> Optional[HealthCheck]:
+        """
+        基于最近 N 小时的 SourceRun 记录评估健康度
+
+        规则:
+        - 成功率 >= 80% → ok
+        - 成功率 >= 50% → warning
+        - 成功率 < 50%  → error
+        - 连续 3 次失败 → error (告警阈值)
+        - 无记录         → 跳过 (返回 None)
+        """
+        try:
+            from app.database import SessionLocal
+            from app.models.source_run import SourceRun
+        except Exception:
+            return None
+
+        db = SessionLocal()
+        try:
+            since = datetime.utcnow() - timedelta(hours=hours)
+            runs = (
+                db.query(SourceRun)
+                .filter(
+                    SourceRun.source_type == source_type,
+                    SourceRun.started_at >= since,
+                )
+                .order_by(SourceRun.started_at.desc())
+                .all()
+            )
+
+            if not runs:
+                return None  # 无历史记录，跳过此检查
+
+            total = len(runs)
+            success_count = sum(1 for r in runs if r.status == "success")
+            failed_count = sum(1 for r in runs if r.status == "failed")
+            success_rate = success_count / total
+
+            # 检查连续失败 (告警阈值: 3 次)
+            consecutive_failures = 0
+            for r in runs:
+                if r.status == "failed":
+                    consecutive_failures += 1
+                else:
+                    break
+
+            details = {
+                "total_runs": total,
+                "success": success_count,
+                "failed": failed_count,
+                "success_rate": round(success_rate * 100, 1),
+                "consecutive_failures": consecutive_failures,
+                "hours": hours,
+            }
+
+            # 连续 3 次失败 → 立即告警
+            if consecutive_failures >= 3:
+                return HealthCheck(
+                    name="history",
+                    status="error",
+                    message=f"连续 {consecutive_failures} 次采集失败",
+                    details=details,
+                )
+
+            if success_rate >= 0.8:
+                return HealthCheck(
+                    name="history",
+                    status="ok",
+                    message=f"近 {hours}h 成功率 {details['success_rate']}%",
+                    details=details,
+                )
+            elif success_rate >= 0.5:
+                return HealthCheck(
+                    name="history",
+                    status="warning",
+                    message=f"近 {hours}h 成功率 {details['success_rate']}%，需关注",
+                    details=details,
+                )
+            else:
+                return HealthCheck(
+                    name="history",
+                    status="error",
+                    message=f"近 {hours}h 成功率 {details['success_rate']}%，严重异常",
+                    details=details,
+                )
+        except Exception as e:
+            logger.warning("source_health.history.error",
+                           source_type=source_type, error=str(e))
+            return None
+        finally:
+            db.close()
 
     def _aggregate_status(self, checks: List[HealthCheck]) -> tuple[str, str]:
         """汇总检查结果"""

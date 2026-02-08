@@ -1,13 +1,17 @@
-# Input: 英文文本 / 分析结果 dict / 英文标题
-# Output: TranslationResult (原文 + 译文 + 问题列表) / 翻译后的分析结果 / 翻译后的标题
-# Position: LLM 翻译层，实现三步翻译流程（初译 → 检查反思 → 意译优化）+ 标题专用翻译
-# 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
+# [INPUT]: 依赖 utils/llm.py (llm_client), 可选 services/ai_service.py (AIService)
+# [OUTPUT]: 对外提供 Translator, TranslationResult
+# [POS]: LLM 翻译层，实现三步翻译流程（初译 → 检查反思 → 意译优化）+ 标题专用翻译
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 
 import json
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
+import structlog
+
 from app.utils.llm import llm_client
+
+logger = structlog.get_logger("translator")
 
 
 @dataclass
@@ -39,7 +43,15 @@ class Translator:
     - 技术名词翻译准确一致
     - 中文表达自然流畅
     - 保持原文风格和语气
+
+    支持可选 AIService 注入:
+    - ai_service 存在时: 使用 FALLBACK 策略 (翻译失败返回原文)
+    - ai_service 为 None: 使用旧版 llm_client (向后兼容)
     """
+
+    def __init__(self, ai_service: Optional["AIService"] = None):
+        """初始化翻译器，可选注入 AIService"""
+        self._ai_service = ai_service
 
     # ===== Step 1: 初次翻译 Prompt =====
     TRANSLATE_SYSTEM_PROMPT = """# AI 翻译专家
@@ -321,15 +333,29 @@ class Translator:
 
         user_prompt = self.TRANSLATE_USER_PROMPT.format(text=text)
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_text(
+                system_prompt=self.TRANSLATE_SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.FALLBACK,
+                task_id="translate_step1",
+                temperature=0.3,
+            )
+            # FALLBACK: 失败时 raw_response 为 fallback_value (None)
+            return (ai_result.raw_response or text).strip()
+
+        # ── 旧版 llm_client 路径 ──
         try:
             result = await llm_client.call(
                 self.TRANSLATE_SYSTEM_PROMPT,
                 user_prompt,
-                temperature=0.3  # 翻译任务使用较低温度保证准确性
+                temperature=0.3
             )
             return result.strip()
         except Exception as e:
-            print(f"[Translator] Step 1 (translate) failed: {e}")
+            logger.error("translator.step1.failed", error=str(e))
             raise
 
     async def check(self, original: str, translated: str) -> Dict[str, Any]:
@@ -353,16 +379,29 @@ class Translator:
             translated=translated
         )
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_json(
+                system_prompt=self.CHECK_SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.FALLBACK,
+                fallback_value={"issues": [], "summary": "检查跳过"},
+                task_id="translate_step2",
+                temperature=0.7,
+            )
+            return ai_result.data or {"issues": [], "summary": "检查失败"}
+
+        # ── 旧版 llm_client 路径 ──
         try:
             result = await llm_client.call_json(
                 self.CHECK_SYSTEM_PROMPT,
                 user_prompt,
-                temperature=0.7  # 检查任务使用较高温度以发现更多问题
+                temperature=0.7
             )
             return result
         except Exception as e:
-            print(f"[Translator] Step 2 (check) failed: {e}")
-            # 返回默认结果，继续流程
+            logger.warning("translator.step2.failed", error=str(e))
             return {"issues": [], "summary": "检查失败，将使用初次翻译结果"}
 
     async def refine(self, original: str, translated: str, issues: Dict[str, Any]) -> str:
@@ -395,16 +434,29 @@ class Translator:
             issues=issues_text
         )
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_text(
+                system_prompt=self.REFINE_SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.FALLBACK,
+                task_id="translate_step3",
+                temperature=0.3,
+            )
+            # FALLBACK: 失败时返回初次翻译
+            return (ai_result.raw_response or translated).strip()
+
+        # ── 旧版 llm_client 路径 ──
         try:
             result = await llm_client.call(
                 self.REFINE_SYSTEM_PROMPT,
                 user_prompt,
-                temperature=0.3  # 意译使用较低温度保证质量
+                temperature=0.3
             )
             return result.strip()
         except Exception as e:
-            print(f"[Translator] Step 3 (refine) failed: {e}")
-            # 返回初次翻译结果
+            logger.warning("translator.step3.failed", error=str(e))
             return translated
 
     async def full_translate(self, text: str) -> TranslationResult:
@@ -422,14 +474,12 @@ class Translator:
         if not text or not text.strip():
             return TranslationResult(original=text, translated="", issues=[])
 
-        print(f"[Translator] Starting 3-step translation for text ({len(text)} chars)...")
+        logger.info("translator.full_translate.started", text_len=len(text))
 
         # Step 1: 初次翻译
-        print("[Translator] Step 1: Initial translation...")
         translated = await self.translate(text)
 
         # Step 2: 检查反思
-        print("[Translator] Step 2: Checking translation quality...")
         check_result = await self.check(text, translated)
 
         # 提取问题列表
@@ -441,10 +491,9 @@ class Translator:
             ]
 
         # Step 3: 意译优化
-        print("[Translator] Step 3: Refining translation...")
         final_translated = await self.refine(text, translated, check_result)
 
-        print(f"[Translator] Translation completed. Issues found: {len(issues)}")
+        logger.info("translator.full_translate.completed", issues_found=len(issues))
 
         return TranslationResult(
             original=text,
@@ -473,13 +522,12 @@ class Translator:
         if not analysis:
             return {}
 
-        print(f"[Translator] Starting 3-step JSON translation...")
+        logger.info("translator.json_translate.started")
 
         # 将分析结果转为 JSON 字符串
         json_content = json.dumps(analysis, ensure_ascii=False, indent=2)
 
         # Step 1: 初次翻译
-        print("[Translator] Step 1: Initial JSON translation...")
         user_prompt = self.TRANSLATE_JSON_USER_PROMPT.format(json_content=json_content)
 
         try:
@@ -489,11 +537,10 @@ class Translator:
                 temperature=0.3
             )
         except Exception as e:
-            print(f"[Translator] Step 1 (JSON translate) failed: {e}")
+            logger.warning("translator.json_step1.failed", error=str(e))
             return analysis  # 返回原文
 
         # Step 2: 检查反思
-        print("[Translator] Step 2: Checking JSON translation quality...")
         user_prompt = self.CHECK_JSON_USER_PROMPT.format(
             original=json_content,
             translated=translated_raw
@@ -506,11 +553,10 @@ class Translator:
                 temperature=0.7
             )
         except Exception as e:
-            print(f"[Translator] Step 2 (JSON check) failed: {e}")
+            logger.warning("translator.json_step2.failed", error=str(e))
             check_result = "检查失败"
 
         # Step 3: 意译优化
-        print("[Translator] Step 3: Refining JSON translation...")
         user_prompt = self.REFINE_JSON_USER_PROMPT.format(
             original=json_content,
             translated=translated_raw,
@@ -523,15 +569,15 @@ class Translator:
                 user_prompt,
                 temperature=0.3
             )
-            print("[Translator] JSON translation completed successfully.")
+            logger.info("translator.json_translate.completed")
             return final_result
         except Exception as e:
-            print(f"[Translator] Step 3 (JSON refine) failed: {e}")
+            logger.warning("translator.json_step3.failed", error=str(e))
             # 尝试从初次翻译中提取 JSON
             try:
                 return self._extract_json_from_text(translated_raw)
             except Exception:
-                print("[Translator] Failed to extract JSON, returning original.")
+                logger.warning("translator.json_extract.failed")
                 return analysis
 
     def _extract_json_from_text(self, text: str) -> Dict[str, Any]:
@@ -612,17 +658,34 @@ class Translator:
 
         user_prompt = self.TRANSLATE_TITLE_USER_PROMPT.format(title=title)
 
+        # ── 新版 AIService 路径 ──
+        if self._ai_service is not None:
+            from app.services.ai_service import FailurePolicy
+            ai_result = await self._ai_service.call_text(
+                system_prompt=self.TRANSLATE_TITLE_SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                failure_policy=FailurePolicy.FALLBACK,
+                task_id="translate_title",
+                temperature=0.3,
+            )
+            translated = (ai_result.raw_response or title).strip()
+            logger.info("translator.title.completed",
+                        original=title[:50], translated=translated[:50])
+            return translated
+
+        # ── 旧版 llm_client 路径 ──
         try:
             result = await llm_client.call(
                 self.TRANSLATE_TITLE_SYSTEM_PROMPT,
                 user_prompt,
-                temperature=0.3  # 使用较低温度保证翻译质量
+                temperature=0.3
             )
             translated = result.strip()
-            print(f"[Translator] Title translated: '{title[:50]}...' -> '{translated[:50]}...'")
+            logger.info("translator.title.completed",
+                        original=title[:50], translated=translated[:50])
             return translated
         except Exception as e:
-            print(f"[Translator] Title translation failed: {e}")
+            logger.warning("translator.title.failed", error=str(e))
             return title  # 返回原标题
 
 

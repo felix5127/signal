@@ -78,9 +78,9 @@ export function FilterBar() {
             className="w-full px-3 py-2 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-bg)] text-[var(--ds-fg)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ds-ring)]"
           >
             <option value="">全部来源</option>
-            <option value="hn">Hacker News</option>
-            <option value="github">GitHub</option>
-            <option value="huggingface">Hugging Face</option>
+            <option value="twitter">Twitter</option>
+            <option value="blog">Blog</option>
+            <option value="podcast">Podcast</option>
           </select>
         </div>
 

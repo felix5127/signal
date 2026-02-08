@@ -64,37 +64,37 @@ def generate_daily_digest(target_date: str = None) -> DailyDigest:
         for r in all_resources:
             sources_breakdown[r.source_name] = sources_breakdown.get(r.source_name, 0) + 1
 
-        # 分源精选 (使用 Resource 表的 source_name 和 score)
-        # HN: source_name 可能是 "HN" 或 "hackernews"
+        # 分类精选 (按 domain 字段，已移除: HN/GitHub/HuggingFace/arXiv 源)
+        # 人工智能类
         top_hn = db.query(Resource).filter(
             Resource.created_at >= start_time,
             Resource.created_at <= end_time,
-            Resource.source_name.in_(["HN", "hackernews", "Hacker News"]),
+            Resource.domain == "人工智能",
             Resource.score >= 30
         ).order_by(desc(Resource.score)).limit(3).all()
 
-        # GitHub: source_name 可能是 "GITHUB" 或 "github"
+        # 软件编程类
         top_github = db.query(Resource).filter(
             Resource.created_at >= start_time,
             Resource.created_at <= end_time,
-            Resource.source_name.in_(["GITHUB", "github", "GitHub"]),
+            Resource.domain == "软件编程",
             Resource.score >= 30
         ).order_by(desc(Resource.score)).limit(3).all()
 
-        # HuggingFace
+        # 商业科技类
         top_hf = db.query(Resource).filter(
             Resource.created_at >= start_time,
             Resource.created_at <= end_time,
-            Resource.source_name.in_(["huggingface", "HuggingFace", "HF"]),
-            Resource.score >= 40  # HF 要求稍高
+            Resource.domain == "商业科技",
+            Resource.score >= 40
         ).order_by(desc(Resource.score)).limit(2).all()
 
-        # 其他源 (twitter, arxiv 等)
-        other_sources = ["twitter", "TWITTER", "arxiv", "arXiv", "reddit"]
+        # 其他领域
+        other_domains = ["产品设计", "生活方式", "职业成长"]
         top_other = db.query(Resource).filter(
             Resource.created_at >= start_time,
             Resource.created_at <= end_time,
-            Resource.source_name.in_(other_sources),
+            Resource.domain.in_(other_domains),
             Resource.score >= 30
         ).order_by(desc(Resource.score)).limit(2).all()
 
@@ -121,7 +121,7 @@ def generate_daily_digest(target_date: str = None) -> DailyDigest:
         db.commit()
         db.refresh(digest)
 
-        logger.info(f"[DailyDigest] {target_date} 生成成功: {len(top_hn)}条HN + {len(top_github)}条GitHub + {len(top_hf)}条HF")
+        logger.info(f"[DailyDigest] {target_date} 生成成功: {len(top_hn)}条AI + {len(top_github)}条软件 + {len(top_hf)}条商业")
 
         return digest
 
