@@ -1,5 +1,5 @@
 """
-[INPUT]: 依赖 scrapers/xgoing 的 XGoingScraper, models/resource 的 Resource, config 的配置
+[INPUT]: 依赖 scrapers/xgoing 的 XGoingScraper, models/resource 的 Resource, config 的配置, services/data_tracker 的 DataTracker
 [OUTPUT]: 对外提供 run_twitter_pipeline 函数
 [POS]: Twitter 采集流水线，跳过 LLM 直接存储推文
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -8,6 +8,7 @@
 from datetime import datetime
 from typing import Optional
 
+import structlog
 from sqlalchemy.orm import Session
 
 from app.config import config
@@ -16,12 +17,16 @@ from app.models.resource import Resource
 from app.scrapers.xgoing import XGoingScraper
 from app.scrapers.favicon import FaviconFetcher
 from app.services.source_service import SourceService
+from app.services.data_tracker import DataTracker
 from app.tasks.pipeline.stats import TwitterPipelineStats
+
+logger = structlog.get_logger("pipeline")
 
 
 async def run_twitter_pipeline(
     opml_path: Optional[str] = None,
     min_value_score: int = 2,
+    dry_run: bool = False,
 ) -> TwitterPipelineStats:
     """
     运行 Twitter 推文处理流水线（简化版：跳过 LLM 筛选，直接保存）
@@ -34,11 +39,13 @@ async def run_twitter_pipeline(
     Args:
         opml_path: OPML 文件路径（可选，默认使用配置中的路径）
         min_value_score: 已废弃，保留参数兼容性
+        dry_run: 仅模拟运行，不写入数据库
 
     Returns:
         TwitterPipelineStats 统计信息
     """
     stats = TwitterPipelineStats()
+    tracker = DataTracker(pipeline="twitter")
     print(f"\n{'='*60}")
     print(f"[TwitterPipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"[TwitterPipeline] Mode: Skip LLM, save all tweets")
@@ -74,8 +81,17 @@ async def run_twitter_pipeline(
             if existing:
                 existing_urls.add(signal.url)
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_urls]
+        # 过滤掉已存在的 + 追踪重复项
+        new_signals = []
+        for s in raw_signals:
+            if s.url in existing_urls:
+                source_name = (s.metadata or {}).get("source_name", "twitter")
+                tracker.track_filtered(
+                    title=s.title, url=s.url, source=source_name,
+                    reason="重复内容", stage="dedup",
+                )
+            else:
+                new_signals.append(s)
         duplicate_count = len(raw_signals) - len(new_signals)
 
         print(f"[TwitterPipeline] Found {duplicate_count} duplicates, {len(new_signals)} new tweets\n")
@@ -88,6 +104,14 @@ async def run_twitter_pipeline(
 
     finally:
         db.close()
+
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("twitter.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     duplicates=duplicate_count,
+                     would_save=len(raw_signals))
+        return stats
 
     # ========== 3. 直接存储（跳过 LLM）==========
     print("[TwitterPipeline] Step 3: Saving tweets directly (skipping LLM analysis)...")
@@ -124,6 +148,11 @@ async def run_twitter_pipeline(
                 db.add(resource)
                 db.commit()
                 stats.saved_count += 1
+                tracker.track_collected(
+                    title=signal.title, url=signal.url,
+                    source=metadata.get("source_name", "twitter"),
+                    reason="直接收录", stage="save",
+                )
                 print(f"    -> Saved")
 
             except Exception as e:
@@ -161,5 +190,11 @@ async def run_twitter_pipeline(
         record_db.close()
     except Exception as e:
         print(f"[TwitterPipeline] Failed to record run: {e}")
+
+    # ========== 飞书数据追踪 ==========
+    try:
+        await tracker.flush()
+    except Exception as e:
+        logger.warning("twitter.tracker.flush_failed", error=str(e))
 
     return stats

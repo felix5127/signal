@@ -338,13 +338,13 @@ def _run_pipeline_in_background(source_type: str, dry_run: bool = False):
 
     try:
         if source_type == "twitter":
-            loop.run_until_complete(run_twitter_pipeline())
+            loop.run_until_complete(run_twitter_pipeline(dry_run=dry_run))
         elif source_type == "blog":
             # 使用 blog 配置中的 OPML 路径
             opml_path = getattr(config.blog, 'opml_path', None)
-            loop.run_until_complete(run_article_pipeline(opml_path=opml_path))
+            loop.run_until_complete(run_article_pipeline(opml_path=opml_path, dry_run=dry_run))
         elif source_type == "podcast":
-            loop.run_until_complete(run_podcast_pipeline())
+            loop.run_until_complete(run_podcast_pipeline(dry_run=dry_run))
         else:
             logger.warning(f"[Trigger] Unknown source type: {source_type}")
     except Exception as e:

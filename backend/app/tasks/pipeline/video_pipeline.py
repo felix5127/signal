@@ -1,4 +1,4 @@
-# Input: Video RSS/OPML, VideoScraper, Transcriber, PodcastAnalyzer
+# Input: Video RSS/OPML, VideoScraper, Transcriber, PodcastAnalyzer, DataTracker
 # Output: Resource 记录 (含 transcript, chapters, qa_pairs)
 # Position: 视频处理流水线
 # 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
@@ -17,6 +17,7 @@
 from datetime import datetime
 from typing import Optional
 
+import structlog
 from sqlalchemy.orm import Session
 
 from app.config import config
@@ -25,8 +26,11 @@ from app.models.resource import Resource
 from app.scrapers.video import VideoScraper
 from app.scrapers.favicon import FaviconFetcher
 from app.services.source_service import SourceService
+from app.services.data_tracker import DataTracker
 from app.processors.podcast_analyzer import podcast_analyzer
 from app.tasks.pipeline.stats import VideoPipelineStats
+
+logger = structlog.get_logger("pipeline")
 
 
 async def run_video_pipeline(
@@ -34,6 +38,7 @@ async def run_video_pipeline(
     max_items_per_feed: int = 1,
     enable_transcription: bool = True,
     max_daily_transcription: int = 2,
+    dry_run: bool = False,
 ) -> VideoPipelineStats:
     """
     运行视频处理流水线（支持转写）
@@ -49,11 +54,13 @@ async def run_video_pipeline(
         max_items_per_feed: 每个视频源最多抓取条目数
         enable_transcription: 是否启用转写
         max_daily_transcription: 每日最多转写数量（控制成本）
+        dry_run: 仅模拟运行，不写入数据库
 
     Returns:
         VideoPipelineStats 统计信息
     """
     stats = VideoPipelineStats()
+    tracker = DataTracker(pipeline="video")
     print(f"\n{'='*60}")
     print(f"[VideoPipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"[VideoPipeline] Transcription: {'Enabled' if enable_transcription else 'Disabled'}")
@@ -92,8 +99,17 @@ async def run_video_pipeline(
             if existing:
                 existing_urls.add(signal.url)
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_urls]
+        # 过滤掉已存在的 + 追踪重复项
+        new_signals = []
+        for s in raw_signals:
+            if s.url in existing_urls:
+                source_name = (s.metadata or {}).get("channel_name", "youtube")
+                tracker.track_filtered(
+                    title=s.title, url=s.url, source=source_name,
+                    reason="重复内容", stage="dedup",
+                )
+            else:
+                new_signals.append(s)
         duplicate_count = len(raw_signals) - len(new_signals)
 
         print(f"[VideoPipeline] Found {duplicate_count} duplicates, {len(new_signals)} new videos\n")
@@ -128,6 +144,15 @@ async def run_video_pipeline(
 
     # 限制转写数量（视频转写成本高，默认只转写2个）
     items_to_transcribe = raw_signals[:max_daily_transcription] if transcription_enabled else []
+
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("video.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     duplicates=duplicate_count,
+                     would_save=len(raw_signals),
+                     would_transcribe=len(items_to_transcribe))
+        return stats
 
     # ========== 4. 存储到数据库 ==========
     print(f"[VideoPipeline] Step 3: Saving videos...")
@@ -222,6 +247,11 @@ async def run_video_pipeline(
                 db.add(resource)
                 db.commit()
                 stats.saved_count += 1
+                tracker.track_collected(
+                    title=signal.title, url=signal.url,
+                    source=metadata.get("channel_name", "youtube"),
+                    reason="视频收录", stage="save",
+                )
                 print(f"    -> Saved")
 
             except Exception as e:
@@ -259,5 +289,11 @@ async def run_video_pipeline(
         record_db.close()
     except Exception as e:
         print(f"[VideoPipeline] Failed to record run: {e}")
+
+    # ========== 飞书数据追踪 ==========
+    try:
+        await tracker.flush()
+    except Exception as e:
+        logger.warning("video.tracker.flush_failed", error=str(e))
 
     return stats

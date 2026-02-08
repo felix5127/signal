@@ -8,15 +8,16 @@
 
 流程:
 1. RSS 采集 - 使用 PodcastScraper 从 OPML 获取播客元数据
-2. URL 去重 - 检查数据库中是否已存在
-3. 音频转写 - 使用通义听悟转写音频内容 (可选)
+2. URL 去重 - 检查数据库中是否已存在 + DataTracker 追踪重复项
+3. 音频转写 - 使用通义听悟转写音频内容 (可选，双路径: 新版 TranscriptionService → 旧版 Transcriber)
 4. 内容分析 - 使用 PodcastAnalyzer 生成章节和 Q&A
-5. 存储到数据库 - 保存到 Resource 表
+5. 存储到数据库 - 保存到 Resource 表 + DataTracker 追踪收录
 """
 
 from datetime import datetime
 from typing import Optional
 
+import structlog
 from sqlalchemy.orm import Session
 
 from app.config import config
@@ -25,8 +26,11 @@ from app.models.resource import Resource
 from app.scrapers.podcast import PodcastScraper
 from app.scrapers.favicon import FaviconFetcher
 from app.services.source_service import SourceService
+from app.services.data_tracker import DataTracker
 from app.processors.podcast_analyzer import podcast_analyzer
 from app.tasks.pipeline.stats import PodcastPipelineStats
+
+logger = structlog.get_logger("pipeline")
 
 
 async def run_podcast_pipeline(
@@ -34,6 +38,7 @@ async def run_podcast_pipeline(
     max_items_per_feed: int = 2,
     enable_transcription: bool = True,
     max_daily_transcription: int = 5,
+    dry_run: bool = False,
 ) -> PodcastPipelineStats:
     """
     运行播客处理流水线（支持转写）
@@ -49,18 +54,17 @@ async def run_podcast_pipeline(
         max_items_per_feed: 每个播客源最多抓取条目数
         enable_transcription: 是否启用转写
         max_daily_transcription: 每日最多转写数量（控制成本）
+        dry_run: 仅运行采集+去重+转写设置，不实际写入数据库
 
     Returns:
         PodcastPipelineStats 统计信息
     """
     stats = PodcastPipelineStats()
-    print(f"\n{'='*60}")
-    print(f"[PodcastPipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"[PodcastPipeline] Transcription: {'Enabled' if enable_transcription else 'Disabled'}")
-    print(f"{'='*60}\n")
+    tracker = DataTracker(pipeline="podcast")
+    logger.info("podcast.pipeline.started", transcription_enabled=enable_transcription)
 
     # ========== 1. RSS 采集 ==========
-    print("[PodcastPipeline] Step 1: Scraping podcasts from RSS feeds...")
+    logger.info("podcast.scrape.started")
 
     # 使用配置中的 OPML 路径
     if opml_path is None and hasattr(config, 'podcast') and hasattr(config.podcast, 'opml_path'):
@@ -73,14 +77,14 @@ async def run_podcast_pipeline(
     )
     stats.scraped_count = len(raw_signals)
 
-    print(f"[PodcastPipeline] Scraped {stats.scraped_count} podcast episodes\n")
+    logger.info("podcast.scrape.completed", count=stats.scraped_count)
 
     if not raw_signals:
-        print("[PodcastPipeline] No podcasts scraped, exiting.\n")
+        logger.info("podcast.scrape.empty")
         return stats
 
     # ========== 2. URL 去重检查 ==========
-    print("[PodcastPipeline] Step 2: Checking for duplicates...")
+    logger.info("podcast.dedupe.started", items_in=len(raw_signals))
 
     db: Session = SessionLocal()
     try:
@@ -92,14 +96,23 @@ async def run_podcast_pipeline(
             if existing:
                 existing_urls.add(signal.url)
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_urls]
+        # 过滤掉已存在的 + 追踪重复项
+        new_signals = []
+        for s in raw_signals:
+            if s.url in existing_urls:
+                source_name = (s.metadata or {}).get("podcast_name", "podcast")
+                tracker.track_filtered(
+                    title=s.title, url=s.url, source=source_name,
+                    reason="重复内容", stage="dedup",
+                )
+            else:
+                new_signals.append(s)
         duplicate_count = len(raw_signals) - len(new_signals)
 
-        print(f"[PodcastPipeline] Found {duplicate_count} duplicates, {len(new_signals)} new podcasts\n")
+        logger.info("podcast.dedupe.completed", duplicates=duplicate_count, new_count=len(new_signals))
 
         if not new_signals:
-            print("[PodcastPipeline] All podcasts already exist, exiting.\n")
+            logger.info("podcast.dedupe.all_duplicates")
             return stats
 
         raw_signals = new_signals
@@ -110,35 +123,62 @@ async def run_podcast_pipeline(
     # ========== 3. 音频转写（可选） ==========
     transcription_enabled = enable_transcription
     transcriber = None
+    new_transcription_service = None
+    use_new_transcriber = False
 
     if transcription_enabled:
+        # 优先尝试新版 TranscriptionService
         try:
-            from app.processors.transcriber import Transcriber
-            transcriber = Transcriber()
-
-            if not transcriber.access_key_id or not transcriber.access_key_secret:
-                print("[PodcastPipeline] Transcriber 未配置，跳过转写")
-                transcription_enabled = False
+            from app.processors.transcription_service import TranscriptionService
+            new_ts = TranscriptionService(config.tingwu)
+            if new_ts.is_available():
+                new_transcription_service = new_ts
+                use_new_transcriber = True
+                logger.info("podcast.transcription.using_new_service")
             else:
-                print("[PodcastPipeline] Transcriber 已初始化")
-
+                missing = new_ts.validate_config()
+                logger.warning("podcast.transcription.new_service_unavailable", missing=missing)
         except ImportError:
-            print("[PodcastPipeline] Transcriber 模块未找到，跳过转写")
-            transcription_enabled = False
+            pass
+
+        # 降级到旧版 Transcriber
+        if not use_new_transcriber:
+            try:
+                from app.processors.transcriber import Transcriber
+                transcriber = Transcriber()
+
+                if not transcriber.access_key_id or not transcriber.access_key_secret:
+                    logger.warning("podcast.transcription.legacy_not_configured")
+                    transcription_enabled = False
+                else:
+                    logger.info("podcast.transcription.using_legacy")
+
+            except ImportError:
+                logger.warning("podcast.transcription.module_not_found")
+                transcription_enabled = False
 
     # 限制转写数量
     items_to_transcribe = raw_signals[:max_daily_transcription] if transcription_enabled else []
 
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("podcast.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     duplicates=duplicate_count,
+                     would_save=len(raw_signals),
+                     would_transcribe=len(items_to_transcribe))
+        return stats
+
     # ========== 4. 存储到数据库 ==========
-    print(f"[PodcastPipeline] Step 3: Saving podcasts...")
-    if transcription_enabled:
-        print(f"[PodcastPipeline] Will transcribe {len(items_to_transcribe)}/{len(raw_signals)} episodes\n")
+    logger.info("podcast.save.started", items_in=len(raw_signals),
+                transcribe_count=len(items_to_transcribe))
 
     db: Session = SessionLocal()
     try:
         for i, signal in enumerate(raw_signals):
             try:
-                print(f"  [{i+1}/{len(raw_signals)}] Processing: {signal.title[:50]}...")
+                logger.debug("podcast.save.processing", index=i + 1, total=len(raw_signals),
+                             title=signal.title[:50])
 
                 # 获取播客元数据
                 metadata = signal.metadata or {}
@@ -149,29 +189,37 @@ async def run_podcast_pipeline(
                 transcribed_duration = 0
 
                 if transcription_enabled and signal in items_to_transcribe and audio_url:
-                    print(f"    -> Transcribing: {audio_url[:60]}...")
                     try:
-                        result = await transcriber.transcribe(
-                            media_url=audio_url,
-                            media_type="audio",
-                            max_wait=1800,  # 30分钟
-                            poll_interval=10,
-                        )
-                        if result:
+                        # ── 新版转写服务 ──
+                        if use_new_transcriber and new_transcription_service is not None:
+                            result = await new_transcription_service.transcribe(
+                                media_url=audio_url,
+                                media_type="audio",
+                                max_daily=max_daily_transcription,
+                            )
                             transcribed_text = result.text
                             transcribed_duration = result.duration
                             stats.transcribed_count += 1
-                            print(f"    -> Transcription completed ({len(transcribed_text)} chars)")
-                        else:
-                            print(f"    -> Transcription failed")
+                        # ── 旧版转写器 ──
+                        elif transcriber is not None:
+                            result = await transcriber.transcribe(
+                                media_url=audio_url,
+                                media_type="audio",
+                                max_wait=1800,  # 30分钟
+                                poll_interval=10,
+                            )
+                            if result:
+                                transcribed_text = result.text
+                                transcribed_duration = result.duration
+                                stats.transcribed_count += 1
                     except Exception as e:
-                        print(f"    -> Transcription error: {e}")
+                        logger.error("podcast.transcription.error",
+                                     url=audio_url[:80], error=str(e))
 
                 # ========== 播客内容分析 ==========
                 chapters = None
                 qa_pairs = None
                 if transcribed_text and len(transcribed_text) >= 100:
-                    print(f"    -> Analyzing podcast content...")
                     try:
                         analysis = await podcast_analyzer.analyze(
                             transcript=transcribed_text,
@@ -185,9 +233,11 @@ async def run_podcast_pipeline(
                             {"question": qa.question, "answer": qa.answer, "timestamp": qa.timestamp}
                             for qa in analysis.qa_pairs
                         ]
-                        print(f"    -> Analysis: {len(chapters)} chapters, {len(qa_pairs)} Q&A pairs")
+                        logger.info("podcast.analysis.completed",
+                                    chapters=len(chapters), qa_pairs=len(qa_pairs))
                     except Exception as e:
-                        print(f"    -> Analysis error: {e}")
+                        logger.warning("podcast.analysis.error",
+                                       title=signal.title[:50], error=str(e))
 
                 # 创建 Resource 对象
                 resource = Resource(
@@ -220,27 +270,28 @@ async def run_podcast_pipeline(
                 db.add(resource)
                 db.commit()
                 stats.saved_count += 1
-                print(f"    -> Saved")
+                tracker.track_collected(
+                    title=signal.title, url=signal.url,
+                    source=metadata.get("podcast_name", "podcast"),
+                    reason="播客收录", stage="save",
+                )
 
             except Exception as e:
                 db.rollback()
                 stats.failed_count += 1
-                print(f"    -> Error: {e}")
+                logger.error("podcast.save.item_error", url=signal.url[:80], error=str(e))
 
-        print(f"\n[PodcastPipeline] Saved {stats.saved_count}/{len(raw_signals)} podcasts\n")
+        logger.info("podcast.save.completed", saved=stats.saved_count, total=len(raw_signals))
 
     finally:
         db.close()
 
     # ========== 统计 ==========
-    print(f"{'='*60}")
-    print("[PodcastPipeline] Summary:")
-    print(f"  - Scraped: {stats.scraped_count}")
-    print(f"  - Duplicates: {stats.scraped_count - len(raw_signals)}")
-    print(f"  - Transcribed: {stats.transcribed_count}")
-    print(f"  - Saved: {stats.saved_count}")
-    print(f"  - Failed: {stats.failed_count}")
-    print(f"{'='*60}\n")
+    logger.info("podcast.pipeline.summary",
+                scraped=stats.scraped_count,
+                transcribed=stats.transcribed_count,
+                saved=stats.saved_count,
+                failed=stats.failed_count)
 
     # ========== 记录采集结果 ==========
     try:
@@ -256,6 +307,12 @@ async def run_podcast_pipeline(
         )
         record_db.close()
     except Exception as e:
-        print(f"[PodcastPipeline] Failed to record run: {e}")
+        logger.error("podcast.record_run.failed", error=str(e))
+
+    # ========== 飞书数据追踪 ==========
+    try:
+        await tracker.flush()
+    except Exception as e:
+        logger.warning("podcast.tracker.flush_failed", error=str(e))
 
     return stats

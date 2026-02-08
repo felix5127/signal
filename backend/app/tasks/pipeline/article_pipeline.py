@@ -1,6 +1,6 @@
 # Input: RSS OPML 文件, RawSignal 数据
 # Output: 数据库中的 Resource 记录
-# Position: 文章流水线模块，处理 RSS 采集 → 全文提取 → 分析 → 翻译 → 存储
+# Position: 文章流水线模块，处理 RSS 采集 → 去重(Deduper) → 全文提取 → 统一过滤(UnifiedFilter) → 深度分析 → 翻译 → 存储 → 飞书追踪(DataTracker)
 # 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
 
 """
@@ -8,23 +8,29 @@
 
 完整的文章处理流程：
 1. RSS 采集 - 使用 RSSScraper 获取 RSS 源的文章列表
-2. URL 去重 - 检查数据库中是否已存在
+2. URL 去重 - 使用 Deduper 进行三层去重（URL + 标题相似度 + 内容指纹）
 3. 全文提取 - 使用 ContentExtractor 提取文章全文 (Playwright)
-4. 初评过滤 - 使用 InitialFilter 进行规则+LLM初评，过滤低价值内容
+4. 统一过滤 - 使用 UnifiedFilter 进行规则+LLM过滤，>=3 分通过
 5. 深度分析 - 使用 Analyzer 进行三步深度分析
 6. 翻译 - 英文内容使用 Translator 翻译分析结果
 7. 存储 - 保存到 Resource 表
+8. Token 统计 - 记录 LLM 用量
+9. 采集记录 - SourceService.record_run()
+10. 飞书追踪 - DataTracker.flush() 写入飞书多维表格
 """
 
 from datetime import datetime
 from typing import List, Optional
 
+import structlog
 from sqlalchemy.orm import Session
 
 from app.config import config
 from app.database import SessionLocal
 from app.models.resource import Resource
-from app.processors.initial_filter import InitialFilter, InitialFilterResult
+from app.processors.unified_filter import UnifiedFilter, FilterResult
+from app.processors.deduper import Deduper
+from app.services.prompt_service import prompt_service
 from app.processors.analyzer import Analyzer, AnalysisResult
 from app.processors.translator import Translator
 from app.scrapers.rss import RSSScraper
@@ -32,76 +38,97 @@ from app.scrapers.content_extractor import ContentExtractor, ExtractedContent
 from app.scrapers.base import RawSignal
 from app.scrapers.favicon import FaviconFetcher
 from app.utils.llm import llm_client
+from app.services.source_service import SourceService
+from app.services.data_tracker import DataTracker
 
 from app.tasks.pipeline.stats import ArticlePipelineStats
+
+logger = structlog.get_logger("pipeline")
 
 
 async def run_article_pipeline(
     opml_path: Optional[str] = None,
     min_value_score: int = 3,
     use_full_analysis: bool = True,
-    resource_type: str = "article",
+    dry_run: bool = False,
 ) -> ArticlePipelineStats:
     """
     运行文章处理流水线
 
+    流程：
+    1. RSS 采集 - 使用 RSSScraper 获取 RSS 源的文章列表
+    2. URL 去重 - 使用 Deduper 进行三层去重（URL + 标题相似度 + 内容指纹）
+    3. 全文提取 - 使用 ContentExtractor 提取文章全文 (Playwright)
+    4. 统一过滤 - 使用 UnifiedFilter 进行规则+LLM过滤，>=3 分通过
+    5. 深度分析 - 使用 Analyzer 进行三步深度分析
+    6. 翻译 - 英文内容使用 Translator 翻译分析结果
+    7. 存储 - 保存到 Resource 表
+
     Args:
         opml_path: OPML 文件路径（可选，默认使用 BestBlogs OPML）
-        min_value_score: 初评最低通过分数（0-5），默认 3 分
+        min_value_score: [DEPRECATED] 已弃用，UnifiedFilter 使用 PASS_THRESHOLD=3
         use_full_analysis: 是否使用完整三步分析，False 则使用快速单步分析
-        resource_type: 资源类型（article/podcast/video），默认 article
+        dry_run: 试运行模式，执行采集+去重+提取+过滤但不写入数据库
 
     Returns:
         ArticlePipelineStats 统计信息
     """
     stats = ArticlePipelineStats()
-    print(f"\n{'='*60}")
-    print(f"[ArticlePipeline] Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*60}\n")
+    tracker = DataTracker(pipeline="article")  # 数据追踪器
+    logger.info("article.pipeline.started")
 
     # ========== 1. RSS 采集 ==========
-    print("[ArticlePipeline] Step 1: Scraping RSS feeds...")
+    logger.info("article.scrape.started")
 
-    rss_scraper = RSSScraper(opml_path=opml_path)
+    # 从配置获取每个 feed 的最大条目数
+    max_items = config.blog.max_items_per_feed if hasattr(config, 'blog') else 3
+    rss_scraper = RSSScraper(opml_path=opml_path, max_items_per_feed=max_items)
     raw_signals = await rss_scraper.scrape()
     stats.scraped_count = len(raw_signals)
 
-    print(f"[ArticlePipeline] Scraped {stats.scraped_count} articles from RSS feeds\n")
+    logger.info("article.scrape.completed", count=stats.scraped_count)
 
     if not raw_signals:
-        print("[ArticlePipeline] No articles scraped, exiting.\n")
+        logger.info("article.scrape.empty")
         return stats
 
     # ========== 2. URL 去重检查 ==========
-    print("[ArticlePipeline] Step 2: Checking for duplicates...")
+    logger.info("article.dedupe.started", items_in=len(raw_signals))
 
-    db: Session = SessionLocal()
-    try:
-        # 获取已存在的 URL hash
-        existing_hashes = set()
-        for signal in raw_signals:
-            url_hash = Resource.generate_url_hash(signal.url)
-            existing = db.query(Resource).filter(Resource.url_hash == url_hash).first()
-            if existing:
-                existing_hashes.add(signal.url)
+    deduper = Deduper()
 
-        # 过滤掉已存在的
-        new_signals = [s for s in raw_signals if s.url not in existing_hashes]
-        duplicate_count = len(raw_signals) - len(new_signals)
+    # 批量去重
+    items_for_dedup = [{"url": s.url, "title": s.title, "signal": s} for s in raw_signals]
+    deduped_items = deduper.dedupe_batch(items_for_dedup)
 
-        print(f"[ArticlePipeline] Found {duplicate_count} duplicates, {len(new_signals)} new articles\n")
+    # 构建去重后的 URL 集合
+    deduped_urls = {item["url"] for item in deduped_items}
 
-        if not new_signals:
-            print("[ArticlePipeline] All articles already exist, exiting.\n")
-            return stats
+    # 追踪被过滤的重复项
+    for signal in raw_signals:
+        if signal.url not in deduped_urls:
+            source_name = signal.metadata.get("source_name", "RSS") if signal.metadata else "RSS"
+            tracker.track_filtered(
+                title=signal.title,
+                url=signal.url,
+                source=source_name,
+                reason="重复内容",
+                stage="dedup",
+            )
 
-        raw_signals = new_signals
+    new_signals = [item["signal"] for item in deduped_items]
+    duplicate_count = len(raw_signals) - len(new_signals)
 
-    finally:
-        db.close()
+    logger.info("article.dedupe.completed", duplicates=duplicate_count, new_count=len(new_signals))
+
+    if not new_signals:
+        logger.info("article.dedupe.all_duplicates")
+        return stats
+
+    raw_signals = new_signals
 
     # ========== 3. 全文提取 ==========
-    print("[ArticlePipeline] Step 3: Extracting full content...")
+    logger.info("article.extract.started", items_in=len(raw_signals))
 
     content_extractor = ContentExtractor()
     extracted_contents: List[tuple[RawSignal, Optional[ExtractedContent]]] = []
@@ -121,19 +148,22 @@ async def run_article_pipeline(
 
         except Exception as e:
             stats.extraction_failed_count += 1
-            print(f"    -> Failed: {e}")
+            logger.warning("article.extract.item_failed", url=signal.url[:80], error=str(e))
 
-    print(f"\n[ArticlePipeline] Extracted {stats.extracted_count}/{len(raw_signals)} articles\n")
+    logger.info("article.extract.completed",
+                items_out=stats.extracted_count, failed=stats.extraction_failed_count)
 
     if not extracted_contents:
-        print("[ArticlePipeline] No content extracted, exiting.\n")
+        logger.info("article.extract.empty")
         return stats
 
-    # ========== 4. 初评过滤 ==========
-    print("[ArticlePipeline] Step 4: Initial filtering (Rule + LLM)...")
+    # ========== 4. 统一过滤 ==========
+    logger.info("article.filter.started", items_in=len(extracted_contents))
 
-    initial_filter = InitialFilter()
-    filtered_items: List[tuple[RawSignal, ExtractedContent, InitialFilterResult]] = []
+    from app.services.ai_service import AIService
+    ai_service = AIService()
+    unified_filter = UnifiedFilter(prompt_service=prompt_service, ai_service=ai_service)
+    filtered_items: List[tuple[RawSignal, ExtractedContent, FilterResult]] = []
 
     for i, (signal, content) in enumerate(extracted_contents):
         try:
@@ -142,40 +172,61 @@ async def run_article_pipeline(
             # 获取来源名称
             source_name = signal.metadata.get("source_name", "") if signal.metadata else ""
 
-            # 进行初评
-            filter_result = await initial_filter.filter(
+            # 检查是否白名单源（暂时都不是白名单，后续从 Source 表获取）
+            source_is_whitelist = False
+
+            filter_result = await unified_filter.filter(
                 title=signal.title,
                 content=content.markdown,
                 url=signal.url,
-                source=source_name,
+                source_name=source_name,
+                source_is_whitelist=source_is_whitelist,
             )
 
-            if filter_result.ignore or filter_result.value < min_value_score:
+            if not filter_result.passed:
                 stats.filter_rejected_count += 1
-                print(f"    -> Rejected: {filter_result.reason} (value={filter_result.value})")
+                print(f"    -> Rejected: {filter_result.reason} (score={filter_result.score})")
+                # 追踪被过滤的内容
+                tracker.track_filtered(
+                    title=signal.title,
+                    url=signal.url,
+                    source=source_name or "RSS",
+                    reason=filter_result.reason,
+                    stage="llm",
+                    score=filter_result.score,
+                )
             else:
                 filtered_items.append((signal, content, filter_result))
                 stats.filter_passed_count += 1
-                print(f"    -> Passed: value={filter_result.value}, lang={filter_result.language}")
+                print(f"    -> Passed: score={filter_result.score}, lang={filter_result.language}")
 
         except Exception as e:
             stats.failed_count += 1
-            print(f"    -> Error: {e}")
+            logger.error("article.filter.item_error", url=signal.url[:80], error=str(e))
 
-    print(
-        f"\n[ArticlePipeline] {stats.filter_passed_count}/{len(extracted_contents)} passed filter "
-        f"(min_value={min_value_score})\n"
-    )
+    logger.info("article.filter.completed",
+                passed=stats.filter_passed_count, rejected=stats.filter_rejected_count,
+                threshold=unified_filter.PASS_THRESHOLD)
 
     if not filtered_items:
-        print("[ArticlePipeline] No articles passed filter, exiting.\n")
+        logger.info("article.filter.all_rejected")
+        return stats
+
+    # ========== dry_run 提前返回 ==========
+    if dry_run:
+        logger.info("article.pipeline.dry_run_complete",
+                     scraped=stats.scraped_count,
+                     extracted=stats.extracted_count,
+                     filter_passed=stats.filter_passed_count,
+                     filter_rejected=stats.filter_rejected_count,
+                     would_analyze=len(filtered_items))
         return stats
 
     # ========== 5. 深度分析 ==========
-    print("[ArticlePipeline] Step 5: Deep analysis (3-step LLM)...")
+    logger.info("article.analyze.started", items_in=len(filtered_items))
 
     analyzer = Analyzer()
-    analyzed_items: List[tuple[RawSignal, ExtractedContent, InitialFilterResult, AnalysisResult]] = []
+    analyzed_items: List[tuple[RawSignal, ExtractedContent, FilterResult, AnalysisResult]] = []
 
     for i, (signal, content, filter_result) in enumerate(filtered_items):
         try:
@@ -208,19 +259,19 @@ async def run_article_pipeline(
 
         except Exception as e:
             stats.failed_count += 1
-            print(f"    -> Error: {e}")
+            logger.error("article.analyze.item_error", url=signal.url[:80], error=str(e))
 
-    print(f"\n[ArticlePipeline] Analyzed {stats.analyzed_count}/{len(filtered_items)} articles\n")
+    logger.info("article.analyze.completed", items_out=stats.analyzed_count, items_in=len(filtered_items))
 
     if not analyzed_items:
-        print("[ArticlePipeline] No articles analyzed, exiting.\n")
+        logger.info("article.analyze.empty")
         return stats
 
     # ========== 6. 翻译（英文内容） ==========
-    print("[ArticlePipeline] Step 6: Translating English content...")
+    logger.info("article.translate.started", items_in=len(analyzed_items))
 
     translator = Translator()
-    final_items: List[tuple[RawSignal, ExtractedContent, InitialFilterResult, AnalysisResult, Optional[dict]]] = []
+    final_items: List[tuple[RawSignal, ExtractedContent, FilterResult, AnalysisResult, Optional[dict]]] = []
 
     for i, (signal, content, filter_result, analysis) in enumerate(analyzed_items):
         translated_analysis = None
@@ -241,17 +292,17 @@ async def run_article_pipeline(
                 print(f"    -> Translation completed")
 
             except Exception as e:
-                print(f"    -> Translation error (using original): {e}")
+                logger.warning("article.translate.item_error", url=signal.url[:80], error=str(e))
                 translated_analysis = None
         else:
             print(f"  [{i+1}/{len(analyzed_items)}] Skipping (Chinese): {signal.title[:50]}...")
 
         final_items.append((signal, content, filter_result, analysis, translated_analysis))
 
-    print(f"\n[ArticlePipeline] Translated {stats.translated_count} English articles\n")
+    logger.info("article.translate.completed", translated=stats.translated_count)
 
     # ========== 7. 存储到数据库 ==========
-    print("[ArticlePipeline] Step 7: Saving to database...")
+    logger.info("article.save.started", items_in=len(final_items))
 
     db: Session = SessionLocal()
     try:
@@ -277,7 +328,7 @@ async def run_article_pipeline(
                 # 构建 Resource 记录
                 resource = Resource(
                     # 类型与来源
-                    type=resource_type,
+                    type="article",
                     source_name=source_name,
                     source_url="",  # RSS 源 URL（可从 OPML 获取）
                     source_icon_url=source_icon_url,
@@ -313,6 +364,11 @@ async def run_article_pipeline(
                     score=analysis.score,
                     is_featured=Resource.should_be_featured(analysis.score),
 
+                    # LLM 过滤结果
+                    llm_score=filter_result.score,
+                    llm_reason=filter_result.reason,
+                    llm_prompt_version=filter_result.prompt_version,
+
                     # 状态
                     language=filter_result.language,
                     status="published",
@@ -322,11 +378,12 @@ async def run_article_pipeline(
                     analyzed_at=datetime.now(),
 
                     # 元数据
-                    metadata={
-                        "initial_filter": {
-                            "value": filter_result.value,
-                            "summary": filter_result.summary,
+                    extra_metadata={
+                        "unified_filter": {
+                            "score": filter_result.score,
                             "reason": filter_result.reason,
+                            "is_whitelist": filter_result.is_whitelist,
+                            "prompt_version": filter_result.prompt_version,
                         },
                         "rss_metadata": signal.metadata,
                     },
@@ -339,16 +396,26 @@ async def run_article_pipeline(
                     f"(score={analysis.score}, domain={analysis.domain})"
                 )
 
+                # 追踪收录的内容
+                tracker.track_collected(
+                    title=signal.title,
+                    url=signal.url,
+                    source=source_name or "RSS",
+                    reason=f"LLM 评分 {filter_result.score} 分，深度分析评分 {analysis.score}",
+                    stage="save",
+                    score=analysis.score,
+                )
+
             except Exception as e:
                 stats.failed_count += 1
-                print(f"  -> Save error: {e}")
+                logger.error("article.save.item_error", url=signal.url[:80], error=str(e))
 
         db.commit()
-        print(f"\n[ArticlePipeline] Successfully saved {stats.saved_count} resources\n")
+        logger.info("article.save.completed", saved=stats.saved_count)
 
     except Exception as e:
         db.rollback()
-        print(f"\n[ArticlePipeline] Database error: {e}\n")
+        logger.error("article.save.db_error", error=str(e))
         stats.failed_count += len(final_items) - stats.saved_count
 
     finally:
@@ -359,21 +426,50 @@ async def run_article_pipeline(
     stats.total_input_tokens = token_usage["input"]
     stats.total_output_tokens = token_usage["output"]
 
-    print(f"{'='*60}")
-    print("[ArticlePipeline] Summary:")
-    print(f"  - RSS Scraped: {stats.scraped_count}")
-    print(f"  - Content Extracted: {stats.extracted_count} (failed: {stats.extraction_failed_count})")
-    print(f"  - Filter Passed: {stats.filter_passed_count} (rejected: {stats.filter_rejected_count})")
-    print(f"  - Analyzed: {stats.analyzed_count}")
-    print(f"  - Translated: {stats.translated_count}")
-    print(f"  - Saved: {stats.saved_count}")
-    print(f"  - Failed: {stats.failed_count}")
-    print(f"  - Input tokens: {stats.total_input_tokens:,}")
-    print(f"  - Output tokens: {stats.total_output_tokens:,}")
-    print(f"  - Total tokens: {stats.total_input_tokens + stats.total_output_tokens:,}")
-    print(f"{'='*60}\n")
+    logger.info("article.pipeline.summary",
+                scraped=stats.scraped_count,
+                extracted=stats.extracted_count,
+                extraction_failed=stats.extraction_failed_count,
+                filter_passed=stats.filter_passed_count,
+                filter_rejected=stats.filter_rejected_count,
+                analyzed=stats.analyzed_count,
+                translated=stats.translated_count,
+                saved=stats.saved_count,
+                failed=stats.failed_count,
+                input_tokens=stats.total_input_tokens,
+                output_tokens=stats.total_output_tokens)
 
     # 重置 Token 计数器
     llm_client.reset_token_counter()
+
+    # ========== 9. 记录采集结果 ==========
+    try:
+        record_db = SessionLocal()
+        source_service = SourceService(record_db)
+        source_service.record_run(
+            source_type="blog",
+            status="success" if stats.failed_count == 0 else "partial",
+            fetched_count=stats.scraped_count,
+            rule_filtered_count=stats.extracted_count,
+            dedup_filtered_count=stats.filter_passed_count,
+            llm_filtered_count=stats.analyzed_count,
+            saved_count=stats.saved_count,
+            error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
+        )
+        record_db.close()
+    except Exception as e:
+        logger.error("article.record_run.failed", error=str(e))
+
+    # ========== 10. 写入追踪数据到飞书 ==========
+    logger.info("article.tracking.flushing")
+    # 保存统计数据（flush 后 records 会被清空）
+    tracking_collected = tracker.collected_count
+    tracking_filtered = tracker.filtered_count
+    try:
+        success_count = await tracker.flush()
+        logger.info("article.tracking.flushed",
+                    collected=tracking_collected, filtered=tracking_filtered, written=success_count)
+    except Exception as e:
+        logger.warning("article.tracking.flush_failed", error=str(e))
 
     return stats
