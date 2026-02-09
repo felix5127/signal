@@ -13,11 +13,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Loader2,
   AlertCircle,
-  Menu,
   X,
 } from 'lucide-react'
 import Navbar from '@/components/navbar'
-import { SourcesPanel, ChatPanel, StudioPanel, type Source } from './panels'
+import { SourcesPanel, ChatPanel, StudioPanel, type Source, type ChatMessage } from './panels'
 
 // ============================================================
 // 类型定义
@@ -39,52 +38,39 @@ interface Output {
   output_type: string
   title: string
   content?: string
+  content_format?: string
   created_at: string
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: string
-}
-
 // ============================================================
-// API 工具
+// API 配置
 // ============================================================
 
-const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-// ============================================================
-// Mercury 风格颜色
-// ============================================================
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 const COLORS = {
   background: '#FBFCFD',
   primary: '#1E3A5F',
-  border: 'rgba(0, 0, 0, 0.06)',
 }
 
 // ============================================================
-// 工作台组件 - NotebookLM 风格三栏布局
+// 工作台组件 — NotebookLM 风格三栏布局
 // ============================================================
 
 export default function Workspace({ projectId }: { projectId: string }) {
-  const apiUrl = getApiUrl()
 
   // ============================================================
   // 核心状态
   // ============================================================
+
   const [project, setProject] = useState<Project | null>(null)
   const [sources, setSources] = useState<Source[]>([])
   const [outputs, setOutputs] = useState<Output[]>([])
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
 
   // 选中的来源
   const [selectedSources, setSelectedSources] = useState<string[]>([])
-
-  // 对话状态
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [sessionId, setSessionId] = useState<string | null>(null)
 
   // 面板折叠状态
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
@@ -100,46 +86,58 @@ export default function Workspace({ projectId }: { projectId: string }) {
 
   const fetchProject = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/research/projects/${projectId}`)
+      const res = await fetch(`${API_URL}/api/research/projects/${projectId}`)
       if (res.ok) {
         const data = await res.json()
         setProject(data)
       }
-    } catch (e) {
-      console.error('Failed to fetch project:', e)
+    } catch {
+      // 静默失败
     }
-  }, [apiUrl, projectId])
+  }, [projectId])
 
   const fetchSources = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/research/projects/${projectId}/sources`)
+      const res = await fetch(`${API_URL}/api/research/projects/${projectId}/sources`)
       if (res.ok) {
         const data = await res.json()
         setSources(data)
-        // 默认全选所有来源
         setSelectedSources(data.map((s: Source) => s.id))
       }
-    } catch (e) {
-      console.error('Failed to fetch sources:', e)
+    } catch {
+      // 静默失败
     }
-  }, [apiUrl, projectId])
+  }, [projectId])
 
   const fetchOutputs = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/research/projects/${projectId}/outputs`)
+      const res = await fetch(`${API_URL}/api/research/projects/${projectId}/outputs`)
       if (res.ok) {
         const data = await res.json()
         setOutputs(data)
       }
-    } catch (e) {
-      console.error('Failed to fetch outputs:', e)
+    } catch {
+      // 静默失败
     }
-  }, [apiUrl, projectId])
+  }, [projectId])
 
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/research/projects/${projectId}/chat/messages`)
+      if (res.ok) {
+        const data = await res.json()
+        setChatMessages(data)
+      }
+    } catch {
+      // 静默失败
+    }
+  }, [projectId])
+
+  // 初始加载
   useEffect(() => {
-    Promise.all([fetchProject(), fetchSources(), fetchOutputs()])
+    Promise.all([fetchProject(), fetchSources(), fetchOutputs(), fetchMessages()])
       .finally(() => setLoading(false))
-  }, [fetchProject, fetchSources, fetchOutputs])
+  }, [fetchProject, fetchSources, fetchOutputs, fetchMessages])
 
   // ============================================================
   // 状态变更回调
@@ -147,12 +145,12 @@ export default function Workspace({ projectId }: { projectId: string }) {
 
   const handleSourcesChange = useCallback((newSources: Source[]) => {
     setSources(newSources)
-    fetchProject() // 刷新项目统计
+    fetchProject()
   }, [fetchProject])
 
   const handleOutputsChange = useCallback((newOutputs: Output[]) => {
     setOutputs(newOutputs)
-    fetchProject() // 刷新项目统计
+    fetchProject()
   }, [fetchProject])
 
   // ============================================================
@@ -187,7 +185,7 @@ export default function Workspace({ projectId }: { projectId: string }) {
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: COLORS.background }}>
       {/* ================================================================ */}
-      {/* 全局 Navbar - 设计稿要求 */}
+      {/* 全局 Navbar */}
       {/* ================================================================ */}
       <Navbar />
 
@@ -196,7 +194,7 @@ export default function Workspace({ projectId }: { projectId: string }) {
       {/* ================================================================ */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* ============================================================ */}
-        {/* 左侧面板 - 来源 (300px) */}
+        {/* 左侧面板 — 来源 (300px) */}
         {/* ============================================================ */}
 
         {/* 移动端遮罩 */}
@@ -221,7 +219,6 @@ export default function Workspace({ projectId }: { projectId: string }) {
             ${leftPanelOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
         >
-          {/* 移动端关闭按钮 */}
           <button
             onClick={() => setLeftPanelOpen(false)}
             className="lg:hidden absolute top-3 right-3 p-2 rounded-lg hover:bg-gray-200 z-50 bg-white shadow-md"
@@ -243,7 +240,7 @@ export default function Workspace({ projectId }: { projectId: string }) {
         </aside>
 
         {/* ============================================================ */}
-        {/* 中间面板 - 对话 (flex-1) */}
+        {/* 中间面板 — 对话 (flex-1) */}
         {/* ============================================================ */}
         <main className="flex-1 min-w-0 flex flex-col">
           <ChatPanel
@@ -252,13 +249,12 @@ export default function Workspace({ projectId }: { projectId: string }) {
             sourceCount={sources.length}
             messages={chatMessages}
             onMessagesChange={setChatMessages}
-            sessionId={sessionId}
-            onSessionIdChange={setSessionId}
+            onRefreshMessages={fetchMessages}
           />
         </main>
 
         {/* ============================================================ */}
-        {/* 右侧面板 - Studio (320px) */}
+        {/* 右侧面板 — Studio (320px) */}
         {/* ============================================================ */}
 
         {/* 移动端遮罩 */}
@@ -283,7 +279,6 @@ export default function Workspace({ projectId }: { projectId: string }) {
             ${rightPanelOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
           `}
         >
-          {/* 移动端关闭按钮 */}
           <button
             onClick={() => setRightPanelOpen(false)}
             className="lg:hidden absolute top-3 left-3 p-2 rounded-lg hover:bg-gray-200 z-50 bg-white shadow-md"

@@ -1,7 +1,7 @@
 """
 [INPUT]: 依赖 tavily-python, config.py
 [OUTPUT]: 对外提供 TavilySearchTool 类，支持网络搜索
-[POS]: agents/tools/ 的搜索工具，被 ResearchAgent 消费
+[POS]: agents/tools/ 的搜索工具，被 research/tools.py 和 ResearchSDKService 消费
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 

@@ -11,7 +11,7 @@ from app.agents.tools.vector_search import VectorSearchTool
 from app.agents.embeddings.bailian_embedding import BailianEmbeddingService, embedding_service
 from app.agents.multimodal.tingwu_client import TingwuClient, tingwu_client
 from app.agents.multimodal.source_processor import SourceProcessor, source_processor
-from app.agents.research.agent import ResearchAgent
+from app.agents.research.sdk_service import ResearchSDKService, research_sdk_service
 from app.agents.podcast.synthesizer import PodcastSynthesizer, podcast_synthesizer
 from app.agents.podcast.cosyvoice_client import CosyVoiceClient, cosyvoice_client
 from app.agents.mindmap.agent import MindmapAgent, mindmap_agent
@@ -31,8 +31,9 @@ __all__ = [
     "tingwu_client",
     "SourceProcessor",
     "source_processor",
-    # Agent
-    "ResearchAgent",
+    # 研究 Agent (Claude SDK)
+    "ResearchSDKService",
+    "research_sdk_service",
     # 播客生成
     "PodcastSynthesizer",
     "podcast_synthesizer",

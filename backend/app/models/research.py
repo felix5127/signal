@@ -395,3 +395,53 @@ class AgentTask(Base):
 
     def __repr__(self):
         return f"<AgentTask(id={self.id}, type={self.task_type}, status={self.status})>"
+
+
+# ============================================================
+# ChatMessage - 独立对话消息
+# ============================================================
+class ChatMessage(Base):
+    """
+    对话消息表 — 独立存储每条消息
+
+    取代 ChatSession.messages JSONB 嵌套存储。
+    支持星标消息和引用来源。
+
+    references 格式:
+    [{"title": "来源标题", "url": "https://...", "type": "source|web"}]
+    """
+
+    __tablename__ = "chat_messages"
+
+    # ========== 主键 ==========
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # ========== 外键 ==========
+    project_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("research_projects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # ========== 消息内容 ==========
+    role = Column(String(20), nullable=False)  # user / assistant
+    content = Column(Text, nullable=False)
+
+    # ========== 功能字段 ==========
+    starred = Column(Boolean, default=False)
+    references = Column(JSONB, default=list)
+
+    # ========== 时间 ==========
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # ========== 关系 ==========
+    project = relationship("ResearchProject", backref="chat_messages")
+
+    # ========== 索引 ==========
+    __table_args__ = (
+        Index("idx_chatmsg_project_id", "project_id"),
+        Index("idx_chatmsg_created", "created_at", postgresql_using="btree"),
+    )
+
+    def __repr__(self):
+        return f"<ChatMessage(id={self.id}, role={self.role}, starred={self.starred})>"

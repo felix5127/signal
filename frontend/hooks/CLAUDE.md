@@ -9,6 +9,13 @@
 - 消费方: 需要显示通知的组件
 - 依赖: sonner
 
+**use-sse.ts**: SSE 流式通信 Hook
+- 技术细节: 使用 fetch + ReadableStream (非 EventSource，因需 POST + JSON body)
+- 导出: useSSE() hook, Reference 类型
+- 消费方: ChatPanel (对话流式输出), StudioPanel (报告/思维导图生成)
+- 支持事件: text/tool_start/tool_end/done/error
+- 返回: { content, isStreaming, error, references, activeTools, start, stop }
+
 ## 依赖关系
 
 ### 外部依赖
@@ -37,6 +44,12 @@ function MyComponent() {
 ```
 
 ## 变更日志
+
+### 2026-02-09 - SSE 流式通信 Hook
+- 新增 use-sse.ts: 通用 SSE 流式通信 Hook
+- 支持 5 种事件类型 (text/tool_start/tool_end/done/error)
+- 支持流中断和组件卸载清理
+- 被 ChatPanel 和 StudioPanel 消费
 
 ### 2025-01-10 - 创建 Toast Hook
 - ✅ 创建 use-toast.ts

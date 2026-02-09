@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 projectId, outputs 数组, onOutputsChange 回调
+ * [INPUT]: 依赖 projectId, outputs 数组, onOutputsChange 回调, useSSE Hook
  * [OUTPUT]: 对外提供 StudioPanel 组件 (NotebookLM 风格右侧 Studio 面板)
  * [POS]: components/research/panels 的右侧 Studio 面板
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -7,27 +7,22 @@
 
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronRight,
   ChevronDown,
-  Plus,
   Loader2,
-  CheckCircle2,
   Clock,
   FileText,
   Headphones,
   Video,
   Network,
   FileBarChart,
-  Image as ImageIcon,
   Presentation,
-  StickyNote,
   Trash2,
-  Search,
-  BookOpen,
 } from 'lucide-react'
+import { useSSE } from '@/hooks/use-sse'
 
 // ============================================================
 // 类型定义
@@ -38,13 +33,7 @@ interface Output {
   output_type: string
   title: string
   content?: string
-  created_at: string
-}
-
-interface Note {
-  id: string
-  title: string
-  content: string
+  content_format?: string
   created_at: string
 }
 
@@ -57,13 +46,23 @@ interface StudioPanelProps {
 }
 
 // ============================================================
-// API 工具
+// API 配置
 // ============================================================
 
-const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 // ============================================================
-// 工具网格项配置 - 设计稿: 2x2 布局，4个工具
+// 设计稿占位笔记
+// ============================================================
+
+const SAMPLE_NOTES = [
+  { id: '1', title: 'Reinforcement Learning Theory ...', meta: '5 个来源 · 2 天前' },
+  { id: '2', title: '自动驾驶中的感知与决策前沿技术...', meta: 'Briefing Doc · 14 个来源 · 2 天前' },
+  { id: '3', title: '强化学习算法与训练框架深度解析', meta: 'Briefing Doc · 5 个来源 · 2 天前' },
+]
+
+// ============================================================
+// 工具网格配置 — 2x2 布局
 // ============================================================
 
 const STUDIO_TOOLS = [
@@ -73,7 +72,7 @@ const STUDIO_TOOLS = [
     icon: Network,
     bgColor: '#FEF3E8',
     iconColor: '#D97706',
-    description: '生成思维导图',
+    enabled: true,
   },
   {
     id: 'report',
@@ -81,7 +80,7 @@ const STUDIO_TOOLS = [
     icon: FileBarChart,
     bgColor: '#F0FDF4',
     iconColor: '#16A34A',
-    description: '生成研究报告',
+    enabled: true,
   },
   {
     id: 'presentation',
@@ -89,7 +88,7 @@ const STUDIO_TOOLS = [
     icon: Presentation,
     bgColor: '#F8F9FA',
     iconColor: '#1E3A5F',
-    description: '生成演示文稿',
+    enabled: false,
   },
   {
     id: 'audio',
@@ -97,12 +96,12 @@ const STUDIO_TOOLS = [
     icon: Headphones,
     bgColor: '#EEF2FF',
     iconColor: '#4F46E5',
-    description: '生成音频总结',
+    enabled: false,
   },
 ]
 
 // ============================================================
-// 工具卡片组件
+// 子组件: 工具卡片
 // ============================================================
 
 interface ToolCardProps {
@@ -116,10 +115,10 @@ function ToolCard({ tool, onClick, isLoading }: ToolCardProps) {
 
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={tool.enabled ? { scale: 1.02 } : undefined}
+      whileTap={tool.enabled ? { scale: 0.98 } : undefined}
       onClick={onClick}
-      disabled={isLoading}
+      disabled={!tool.enabled || isLoading}
       className="flex flex-col items-start gap-2 p-4 rounded-xl h-20
         transition-all hover:shadow-sm
         disabled:opacity-50 disabled:cursor-not-allowed"
@@ -130,23 +129,38 @@ function ToolCard({ tool, onClick, isLoading }: ToolCardProps) {
       ) : (
         <Icon className="w-5 h-5" style={{ color: tool.iconColor }} />
       )}
-      <span className="text-xs font-normal text-[#272735]">{tool.name}</span>
+      <div className="flex flex-col">
+        <span className="text-xs font-normal text-[#272735]">{tool.name}</span>
+        {!tool.enabled && (
+          <span className="text-[10px] text-gray-400">即将推出</span>
+        )}
+      </div>
     </motion.button>
   )
 }
 
 // ============================================================
-// 输出项组件
+// 子组件: 输出项 (可展开)
 // ============================================================
+
+const OUTPUT_ICONS: Record<string, typeof FileText> = {
+  report: FileBarChart,
+  research_report: FileBarChart,
+  mindmap: Network,
+  audio: Headphones,
+  video: Video,
+}
 
 function OutputItem({
   output,
   isExpanded,
   onToggle,
+  onDelete,
 }: {
   output: Output
   isExpanded: boolean
   onToggle: () => void
+  onDelete: () => void
 }) {
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -158,32 +172,19 @@ function OutputItem({
     })
   }
 
-  const getOutputIcon = (type: string) => {
-    switch (type) {
-      case 'research_report':
-        return <FileBarChart className="w-4 h-4" />
-      case 'audio':
-        return <Headphones className="w-4 h-4" />
-      case 'video':
-        return <Video className="w-4 h-4" />
-      case 'mindmap':
-        return <Network className="w-4 h-4" />
-      default:
-        return <FileText className="w-4 h-4" />
-    }
-  }
+  const Icon = OUTPUT_ICONS[output.output_type] || FileText
 
   return (
     <motion.div
       layout
-      className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition-shadow"
+      className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition-shadow"
     >
       <button
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-gray-50 transition-colors"
       >
         <div className="mt-0.5 text-[#1E3A5F]">
-          {getOutputIcon(output.output_type)}
+          <Icon className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-medium text-[#1E3A5F] line-clamp-2">
@@ -196,12 +197,21 @@ function OutputItem({
             </span>
           </div>
         </div>
-        <div className="mt-0.5 text-gray-400">
-          {isExpanded ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
+        <div className="flex items-center gap-1 mt-0.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            className="p-1 rounded-md opacity-0 group-hover:opacity-100
+              hover:bg-red-50 transition-all"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-red-400 hover:text-red-500" />
+          </button>
+          <div className="text-gray-400">
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </div>
         </div>
       </button>
 
@@ -213,13 +223,10 @@ function OutputItem({
             exit={{ opacity: 0, height: 0 }}
             className="border-t border-gray-100"
           >
-            <div className="px-4 py-3 bg-gray-50 max-h-48 overflow-y-auto">
-              <div
-                className="text-xs text-gray-600 prose prose-xs max-w-none leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: output.content.replace(/\n/g, '<br>'),
-                }}
-              />
+            <div className="px-4 py-3 bg-gray-50 max-h-64 overflow-y-auto">
+              <pre className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                {output.content}
+              </pre>
             </div>
           </motion.div>
         )}
@@ -229,36 +236,7 @@ function OutputItem({
 }
 
 // ============================================================
-// 笔记项组件
-// ============================================================
-
-function NoteItem({
-  note,
-  onDelete,
-}: {
-  note: Note
-  onDelete: () => void
-}) {
-  return (
-    <div className="group flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-200
-      hover:shadow-sm transition-all">
-      <StickyNote className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-700 line-clamp-2">{note.content}</p>
-      </div>
-      <button
-        onClick={onDelete}
-        className="p-1 rounded-md opacity-0 group-hover:opacity-100
-          hover:bg-red-50 transition-all shrink-0"
-      >
-        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-      </button>
-    </div>
-  )
-}
-
-// ============================================================
-// 主组件
+// 主组件: StudioPanel
 // ============================================================
 
 export default function StudioPanel({
@@ -268,21 +246,13 @@ export default function StudioPanel({
   isCollapsed = false,
   onToggleCollapse,
 }: StudioPanelProps) {
-  const apiUrl = getApiUrl()
 
   // 状态
   const [expandedOutputId, setExpandedOutputId] = useState<string | null>(null)
   const [generatingTool, setGeneratingTool] = useState<string | null>(null)
-  const [notes, setNotes] = useState<Note[]>([])
+  const wasStreamingRef = useRef(false)
 
-  // Deep Research 状态
-  const [researchQuery, setResearchQuery] = useState('')
-  const [researching, setResearching] = useState(false)
-  const [researchProgress, setResearchProgress] = useState<{
-    phase: string
-    message: string
-    progress: number
-  } | null>(null)
+  const sse = useSSE()
 
   // ============================================================
   // 获取输出列表
@@ -290,125 +260,66 @@ export default function StudioPanel({
 
   const fetchOutputs = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/research/projects/${projectId}/outputs`)
+      const res = await fetch(`${API_URL}/api/research/projects/${projectId}/outputs`)
       if (res.ok) {
         const data = await res.json()
         onOutputsChange(data)
       }
-    } catch (e) {
-      console.error('Failed to fetch outputs:', e)
+    } catch {
+      // 静默失败
     }
-  }, [apiUrl, projectId, onOutputsChange])
+  }, [projectId, onOutputsChange])
 
   // ============================================================
-  // 工具生成
+  // 流式结束处理: 刷新输出列表
   // ============================================================
 
-  const handleToolClick = async (toolId: string) => {
-    if (generatingTool) return
+  useEffect(() => {
+    const wasStreaming = wasStreamingRef.current
+    wasStreamingRef.current = sse.isStreaming
+
+    if (wasStreaming && !sse.isStreaming) {
+      setGeneratingTool(null)
+      fetchOutputs()
+    }
+  }, [sse.isStreaming, fetchOutputs])
+
+  // ============================================================
+  // 工具点击 — 启动 SSE 生成
+  // ============================================================
+
+  const handleToolClick = (toolId: string) => {
+    if (toolId !== 'report' && toolId !== 'mindmap') return
+    if (sse.isStreaming || generatingTool) return
 
     setGeneratingTool(toolId)
 
-    // 模拟生成过程
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const endpoint = toolId === 'report'
+      ? `${API_URL}/api/research/projects/${projectId}/generate/report`
+      : `${API_URL}/api/research/projects/${projectId}/generate/mindmap`
 
-    setGeneratingTool(null)
-    fetchOutputs()
+    sse.start(endpoint, {})
   }
 
   // ============================================================
-  // 深度研究 (SSE)
+  // 删除输出
   // ============================================================
 
-  const handleStartResearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!researchQuery.trim() || researching) return
-
-    setResearching(true)
-    setResearchProgress(null)
-
+  const handleDeleteOutput = async (outputId: string) => {
     try {
-      const res = await fetch(`${apiUrl}/api/research/projects/${projectId}/research`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: researchQuery,
-          include_web_search: true,
-          max_iterations: 5,
-        }),
+      const res = await fetch(`${API_URL}/api/research/outputs/${outputId}`, {
+        method: 'DELETE',
       })
-
-      if (!res.ok) {
-        throw new Error('Research request failed')
+      if (res.ok) {
+        onOutputsChange(outputs.filter(o => o.id !== outputId))
       }
-
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
-
-      if (!reader) {
-        throw new Error('No response body')
-      }
-
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6))
-
-              if (data.phase) {
-                setResearchProgress(data)
-              }
-
-              if (data.output) {
-                fetchOutputs()
-              }
-            } catch {
-              // 忽略解析错误
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Research failed:', e)
-    } finally {
-      setResearching(false)
-      setResearchQuery('')
+    } catch {
+      // 静默失败
     }
   }
 
   // ============================================================
-  // 添加笔记
-  // ============================================================
-
-  const handleAddNote = () => {
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: '新笔记',
-      content: '',
-      created_at: new Date().toISOString(),
-    }
-    setNotes([newNote, ...notes])
-  }
-
-  // ============================================================
-  // 删除笔记
-  // ============================================================
-
-  const handleDeleteNote = (noteId: string) => {
-    setNotes(notes.filter((n) => n.id !== noteId))
-  }
-
-  // ============================================================
-  // 渲染
+  // 折叠态渲染
   // ============================================================
 
   if (isCollapsed) {
@@ -424,16 +335,13 @@ export default function StudioPanel({
     )
   }
 
-  // 设计稿: 3条示例笔记
-  const sampleNotes = [
-    { id: '1', title: 'Reinforcement Learning Theory ...', meta: '5 个来源 · 2 天前' },
-    { id: '2', title: '自动驾驶中的感知与决策前沿技术...', meta: 'Briefing Doc · 14 个来源 · 2 天前' },
-    { id: '3', title: '强化学习算法与训练框架深度解析', meta: 'Briefing Doc · 5 个来源 · 2 天前' },
-  ]
+  // ============================================================
+  // 完整渲染
+  // ============================================================
 
   return (
     <div className="w-[320px] bg-white border-l border-[#E8E5E0] flex flex-col h-full overflow-hidden">
-      {/* Header - 设计稿: "Studio" + 折叠图标 */}
+      {/* Header */}
       <div className="px-5 py-5">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-[#272735] text-base">Studio</h2>
@@ -449,7 +357,7 @@ export default function StudioPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5">
-        {/* 工具网格 - 设计稿: 2x2 布局 */}
+        {/* 工具网格 — 2x2 */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {STUDIO_TOOLS.map((tool) => (
             <ToolCard
@@ -461,17 +369,65 @@ export default function StudioPanel({
           ))}
         </div>
 
-        {/* 相关笔记 - 设计稿: 标题 + 笔记列表 */}
+        {/* 生成进度 */}
+        {generatingTool && sse.isStreaming && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Loader2 className="w-4 h-4 animate-spin text-[#1E3A5F]" />
+              <span className="text-xs font-medium text-[#272735]">
+                正在生成{generatingTool === 'report' ? '报告' : '思维导图'}...
+              </span>
+            </div>
+            {sse.content && (
+              <p className="text-xs text-gray-500 line-clamp-3">
+                {sse.content.slice(0, 200)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 生成错误 */}
+        {sse.error && !sse.isStreaming && (
+          <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200">
+            <p className="text-xs text-red-600">生成失败，请重试</p>
+          </div>
+        )}
+
+        {/* 研究输出列表 */}
+        {outputs.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-[#272735] mb-3">
+              研究输出 ({outputs.length})
+            </h3>
+            <div className="space-y-2">
+              {outputs.map(output => (
+                <OutputItem
+                  key={output.id}
+                  output={output}
+                  isExpanded={expandedOutputId === output.id}
+                  onToggle={() =>
+                    setExpandedOutputId(
+                      expandedOutputId === output.id ? null : output.id
+                    )
+                  }
+                  onDelete={() => handleDeleteOutput(output.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 相关笔记 (设计稿占位) */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-[#272735]">相关笔记</h3>
           </div>
 
           <div className="space-y-0">
-            {sampleNotes.map((note, index) => (
+            {SAMPLE_NOTES.map((note, index) => (
               <div
                 key={note.id}
-                className={`py-3 ${index < sampleNotes.length - 1 ? 'border-b border-[#E8E5E0]' : ''}`}
+                className={`py-3 ${index < SAMPLE_NOTES.length - 1 ? 'border-b border-[#E8E5E0]' : ''}`}
               >
                 <h4 className="text-[13px] font-medium text-[#272735] mb-1 line-clamp-1">
                   {note.title}

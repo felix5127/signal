@@ -1,5 +1,5 @@
 """
-[INPUT]: 依赖 agents/research, models/research, services/storage, database
+[INPUT]: 依赖 agents/research/sdk_service, models/research, services/storage, database
 [OUTPUT]: 对外提供研究助手 API 端点
 [POS]: api/ 的研究助手路由，被 main.py 注册
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -16,19 +16,17 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.models.research import (
     ResearchProject,
     ResearchSource,
     ResearchOutput,
-    ChatSession,
-    AgentTask,
+    ChatMessage,
     SourceEmbedding,
 )
-from app.agents.research.agent import ResearchAgent, ChatAgent
+from app.agents.research.sdk_service import research_sdk_service
 from app.agents.embeddings.bailian_embedding import embedding_service, TextSplitter
 from app.services.storage_service import storage_service
-from app.agents.multimodal.source_processor import source_processor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/research", tags=["研究助手"])
@@ -80,24 +78,27 @@ class SourceResponse(BaseModel):
         from_attributes = True
 
 
-class ResearchRequest(BaseModel):
-    """研究请求"""
-    query: str = Field(..., min_length=1, max_length=2000)
-    include_web_search: bool = True
-    max_iterations: int = Field(default=5, ge=1, le=10)
-
-
-class ChatRequest(BaseModel):
-    """对话请求"""
+class ChatStreamRequest(BaseModel):
+    """对话流式请求"""
     message: str = Field(..., min_length=1, max_length=5000)
-    session_id: Optional[UUID] = None
 
 
-class ChatResponse(BaseModel):
-    """对话响应"""
-    session_id: UUID
-    message: str
-    response: str
+class ChatMessageResponse(BaseModel):
+    """对话消息响应"""
+    id: UUID
+    role: str
+    content: str
+    starred: bool
+    references: List[dict]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class GenerateRequest(BaseModel):
+    """生成请求"""
+    topic: Optional[str] = None
 
 
 # ============================================================
@@ -228,28 +229,23 @@ async def add_source(
 
     # 异步处理 (如果是文本，直接生成嵌入)
     if data.content and data.source_type == "text":
-        # 使用 BackgroundTasks 异步生成嵌入
-        from fastapi import BackgroundTasks
         import asyncio
 
-        async def generate_text_embeddings(source_id: UUID, text: str, db_session: Session):
-            """异步生成文本嵌入"""
+        async def generate_text_embeddings(source_id: UUID, text: str):
+            """异步生成文本嵌入 — 使用独立 DB session"""
+            bg_db = SessionLocal()
             try:
                 if not embedding_service.is_available:
                     logger.warning("Embedding service not available")
                     return
 
-                # 分块
                 splitter = TextSplitter()
                 chunks = splitter.split_text(text, chunk_size=1000, overlap=100)
-
                 if not chunks:
                     return
 
-                # 批量生成嵌入
                 embeddings = await embedding_service.embed_texts(chunks)
 
-                # 存储到数据库
                 for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
                     source_embedding = SourceEmbedding(
                         source_id=source_id,
@@ -257,21 +253,22 @@ async def add_source(
                         chunk_text=chunk,
                         embedding=embedding,
                     )
-                    db_session.add(source_embedding)
+                    bg_db.add(source_embedding)
 
-                # 更新源状态
-                src = db_session.query(ResearchSource).filter(ResearchSource.id == source_id).first()
+                src = bg_db.query(ResearchSource).filter(ResearchSource.id == source_id).first()
                 if src:
                     src.processing_status = "completed"
 
-                db_session.commit()
+                bg_db.commit()
                 logger.info(f"Generated {len(embeddings)} embeddings for source {source_id}")
 
             except Exception as e:
+                bg_db.rollback()
                 logger.error(f"Failed to generate embeddings for source {source_id}: {e}")
+            finally:
+                bg_db.close()
 
-        # 创建新的事件循环任务
-        asyncio.create_task(generate_text_embeddings(source.id, data.content, db))
+        asyncio.create_task(generate_text_embeddings(source.id, data.content))
 
     logger.info(f"Added source to project {project_id}: {source.id}")
 
@@ -377,106 +374,73 @@ async def delete_source(
 
 
 # ============================================================
-# 研究 API
+# 对话 API (SSE 流式)
 # ============================================================
-@router.post("/projects/{project_id}/research")
-async def start_research(
+@router.post("/projects/{project_id}/chat")
+async def chat_stream(
     project_id: UUID,
-    data: ResearchRequest,
+    request: ChatStreamRequest,
     db: Session = Depends(get_db),
 ):
     """
-    发起研究任务 (SSE 流式响应)
+    项目内对话 (SSE 流式)
 
     返回 Server-Sent Events 流:
-    - event: progress - 进度更新
-    - event: result - 最终结果
+    - event: text - 增量文本
+    - event: done - 完成 (包含 references)
     - event: error - 错误信息
     """
-    # 验证项目
+    # 验证项目存在
     project = db.query(ResearchProject).filter(ResearchProject.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # 获取项目材料作为上下文
-    sources = db.query(ResearchSource).filter(
-        ResearchSource.project_id == project_id,
-        ResearchSource.processing_status == "completed",
-    ).limit(10).all()
+    # 检查 SDK 可用性
+    if not research_sdk_service.is_available:
+        raise HTTPException(status_code=503, detail="研究服务不可用")
 
-    context_parts = []
-    for source in sources:
-        if source.summary:
-            context_parts.append(f"## {source.title}\n{source.summary}")
-
-    context = "\n\n".join(context_parts) if context_parts else None
-
-    # 创建任务记录
-    task = AgentTask(
-        project_id=project_id,
-        task_type="research",
-        status="running",
-        input_data={"query": data.query},
-    )
-    db.add(task)
+    # 保存用户消息
+    user_msg = ChatMessage(project_id=project_id, role="user", content=request.message)
+    db.add(user_msg)
     db.commit()
-    db.refresh(task)
 
-    async def generate_stream():
-        agent = ResearchAgent()
+    async def event_generator():
+        full_content = ""
+        all_references = []
+        saved = False
+
         try:
-            async for progress in agent.research_stream(
-                project_id=project_id,
-                query=data.query,
-                context=context,
-                max_iterations=data.max_iterations,
+            async for event in research_sdk_service.chat_stream(
+                project_id=str(project_id),
+                message=request.message,
             ):
-                # 发送进度
-                event_data = {
-                    "phase": progress.phase,
-                    "message": progress.message,
-                    "progress": progress.progress,
-                }
-                yield f"event: progress\ndata: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+                if event.event == "text":
+                    delta = json.loads(event.data).get("delta", "")
+                    full_content += delta
+                elif event.event == "done":
+                    done_data = json.loads(event.data)
+                    all_references = done_data.get("references", [])
 
-                # 如果完成，发送结果
-                if progress.data and "output" in progress.data:
-                    result_data = {
-                        "success": True,
-                        "output": progress.data["output"],
-                    }
-                    yield f"event: result\ndata: {json.dumps(result_data, ensure_ascii=False)}\n\n"
-
-                    # 保存输出
-                    output = ResearchOutput(
+                yield event.serialize()
+        finally:
+            # 无论正常结束还是客户端断开，都保存已生成的内容
+            if full_content and not saved:
+                saved = True
+                save_db = SessionLocal()
+                try:
+                    ai_msg = ChatMessage(
                         project_id=project_id,
-                        output_type="report",
-                        title=f"研究报告: {data.query[:50]}",
-                        content=progress.data["output"],
+                        role="assistant",
+                        content=full_content,
+                        references=all_references,
                     )
-                    db.add(output)
-
-                    # 更新任务
-                    task.status = "completed"
-                    task.output_data = {"output_id": str(output.id)}
-
-                    # 更新项目
-                    project.output_count += 1
-                    project.last_researched_at = datetime.utcnow()
-
-                    db.commit()
-
-        except Exception as e:
-            logger.error(f"Research stream error: {e}")
-            error_data = {"error": str(e)}
-            yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
-
-            task.status = "failed"
-            task.error_message = str(e)
-            db.commit()
+                    save_db.add(ai_msg)
+                    save_db.commit()
+                finally:
+                    save_db.close()
 
     return StreamingResponse(
-        generate_stream(),
+        event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -486,90 +450,204 @@ async def start_research(
     )
 
 
-# ============================================================
-# 对话 API
-# ============================================================
-@router.post("/projects/{project_id}/chat", response_model=ChatResponse)
-async def chat(
+@router.get("/projects/{project_id}/chat/messages", response_model=List[ChatMessageResponse])
+async def list_chat_messages(
     project_id: UUID,
-    data: ChatRequest,
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
-    """项目内对话"""
-    from app.agents.llm.kimi_client import Message
+    """获取对话历史消息"""
+    messages = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.project_id == project_id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
-    # 验证项目
+    # 反转顺序 (从旧到新)
+    messages.reverse()
+
+    return messages
+
+
+@router.post("/projects/{project_id}/messages/{message_id}/star")
+async def star_message(
+    project_id: UUID,
+    message_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """切换消息星标状态"""
+    message = db.query(ChatMessage).filter(
+        ChatMessage.id == message_id,
+        ChatMessage.project_id == project_id,
+    ).first()
+
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # 切换星标
+    message.starred = not message.starred
+
+    db.commit()
+    db.refresh(message)
+
+    return {
+        "id": str(message.id),
+        "starred": message.starred,
+    }
+
+
+# ============================================================
+# 生成 API (SSE 流式)
+# ============================================================
+@router.post("/projects/{project_id}/generate/report")
+async def generate_report_stream(
+    project_id: UUID,
+    request: GenerateRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    生成研究报告 (SSE 流式)
+
+    返回 Server-Sent Events 流:
+    - event: progress - 进度更新
+    - event: text - 增量文本
+    - event: done - 完成
+    - event: error - 错误信息
+    """
+    # 验证项目存在
     project = db.query(ResearchProject).filter(ResearchProject.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # 获取或创建会话
-    if data.session_id:
-        session = db.query(ChatSession).filter(ChatSession.id == data.session_id).first()
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-    else:
-        session = ChatSession(
-            project_id=project_id,
-            title=data.message[:50],
-        )
-        db.add(session)
-        db.flush()
+    # 检查 SDK 可用性
+    if not research_sdk_service.is_available:
+        raise HTTPException(status_code=503, detail="研究服务不可用")
 
-    # 构建历史消息
-    history = []
-    if session.messages:
-        for msg in session.messages:
-            history.append(Message(role=msg["role"], content=msg["content"]))
+    async def event_generator():
+        full_content = ""
+        saved = False
 
-    # 调用 Agent
-    agent = ChatAgent()
-    result = await agent.chat(
-        project_id=project_id,
-        message=data.message,
-        history=history if history else None,
+        try:
+            async for event in research_sdk_service.report_stream(
+                project_id=str(project_id),
+                topic=request.topic,
+            ):
+                if event.event == "text":
+                    delta = json.loads(event.data).get("delta", "")
+                    full_content += delta
+
+                yield event.serialize()
+        finally:
+            # 无论正常结束还是客户端断开，都保存已生成的报告
+            if full_content and not saved:
+                saved = True
+                save_db = SessionLocal()
+                try:
+                    output = ResearchOutput(
+                        project_id=project_id,
+                        output_type="report",
+                        title=request.topic or f"研究报告 - {datetime.utcnow().strftime('%Y-%m-%d')}",
+                        content=full_content,
+                        content_format="markdown",
+                    )
+                    save_db.add(output)
+
+                    proj = save_db.query(ResearchProject).filter(
+                        ResearchProject.id == project_id
+                    ).first()
+                    if proj:
+                        proj.output_count += 1
+                        proj.last_researched_at = datetime.utcnow()
+
+                    save_db.commit()
+                finally:
+                    save_db.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
-    # 更新会话
-    messages = session.messages or []
-    messages.append({"role": "user", "content": data.message, "timestamp": datetime.utcnow().isoformat()})
-    messages.append({"role": "assistant", "content": result.content, "timestamp": datetime.utcnow().isoformat()})
-    session.messages = messages
-    session.message_count = len(messages)
-    session.tokens_used += result.usage.get("total_tokens", 0)
 
-    db.commit()
-    db.refresh(session)
-
-    return ChatResponse(
-        session_id=session.id,
-        message=data.message,
-        response=result.content,
-    )
-
-
-@router.get("/projects/{project_id}/chat/sessions")
-async def list_chat_sessions(
+@router.post("/projects/{project_id}/generate/mindmap")
+async def generate_mindmap_stream(
     project_id: UUID,
+    request: GenerateRequest,
     db: Session = Depends(get_db),
 ):
-    """获取对话会话列表"""
-    sessions = (
-        db.query(ChatSession)
-        .filter(ChatSession.project_id == project_id)
-        .order_by(ChatSession.updated_at.desc())
-        .all()
-    )
+    """
+    生成思维导图 (SSE 流式)
 
-    return [
-        {
-            "id": str(s.id),
-            "title": s.title,
-            "message_count": s.message_count,
-            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
-        }
-        for s in sessions
-    ]
+    返回 Server-Sent Events 流:
+    - event: progress - 进度更新
+    - event: text - 增量文本
+    - event: done - 完成
+    - event: error - 错误信息
+    """
+    # 验证项目存在
+    project = db.query(ResearchProject).filter(ResearchProject.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # 检查 SDK 可用性
+    if not research_sdk_service.is_available:
+        raise HTTPException(status_code=503, detail="研究服务不可用")
+
+    async def event_generator():
+        full_content = ""
+        saved = False
+
+        try:
+            async for event in research_sdk_service.mindmap_stream(
+                project_id=str(project_id),
+                topic=request.topic,
+            ):
+                if event.event == "text":
+                    delta = json.loads(event.data).get("delta", "")
+                    full_content += delta
+
+                yield event.serialize()
+        finally:
+            # 无论正常结束还是客户端断开，都保存已生成的思维导图
+            if full_content and not saved:
+                saved = True
+                save_db = SessionLocal()
+                try:
+                    output = ResearchOutput(
+                        project_id=project_id,
+                        output_type="mindmap",
+                        title=request.topic or f"思维导图 - {datetime.utcnow().strftime('%Y-%m-%d')}",
+                        content=full_content,
+                        content_format="mermaid",
+                    )
+                    save_db.add(output)
+
+                    proj = save_db.query(ResearchProject).filter(
+                        ResearchProject.id == project_id
+                    ).first()
+                    if proj:
+                        proj.output_count += 1
+
+                    save_db.commit()
+                finally:
+                    save_db.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ============================================================
@@ -620,3 +698,25 @@ async def get_output(
         "content_format": output.content_format,
         "created_at": output.created_at.isoformat() if output.created_at else None,
     }
+
+
+@router.delete("/outputs/{output_id}")
+async def delete_output(
+    output_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """删除输出"""
+    output = db.query(ResearchOutput).filter(ResearchOutput.id == output_id).first()
+
+    if not output:
+        raise HTTPException(status_code=404, detail="Output not found")
+
+    # 更新项目统计
+    project = db.query(ResearchProject).filter(ResearchProject.id == output.project_id).first()
+    if project:
+        project.output_count = max(0, project.output_count - 1)
+
+    db.delete(output)
+    db.commit()
+
+    return {"success": True}

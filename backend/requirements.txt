@@ -23,6 +23,7 @@ langchain-core>=0.3.0  # LangChain 核心
 tiktoken>=0.5.0  # Token 计数
 tavily-python>=0.3.0  # Tavily 搜索 API
 dashscope>=1.14.0  # 阿里云百炼 SDK (嵌入/TTS)
+anthropic>=0.40.0  # Anthropic Claude SDK (研究模块)
 
 # 定时任务
 apscheduler>=3.10.0

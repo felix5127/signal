@@ -1,7 +1,7 @@
 """
 [INPUT]: 依赖 openai (OpenAI 兼容 SDK), config.py, httpx
 [OUTPUT]: 对外提供 KimiClient 类，支持 Kimi K2 系列模型 + Tool Calling
-[POS]: agents/llm/ 的核心 LLM 客户端，被 ResearchAgent/ChatAgent 消费
+[POS]: agents/llm/ 的核心 LLM 客户端，被 Pipeline 和 MindmapAgent 消费
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 

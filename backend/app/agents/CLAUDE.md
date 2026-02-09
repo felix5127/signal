@@ -2,21 +2,21 @@
 > L2 | 父级: backend/app/CLAUDE.md
 
 ## 职责
-研究助手 Agent 系统，包含 LLM 客户端、工具集、嵌入服务和核心 Agent 实现。
+Agent 系统，包含 LLM 客户端、工具集、嵌入服务、研究 Agent 和播客生成。
 
 ## 成员清单
-llm/: LLM 客户端模块 (Kimi K2)
+llm/: LLM 客户端模块 (Kimi K2，Pipeline 使用)
 tools/: Agent 工具集 (Tavily 搜索, 向量搜索)
 embeddings/: 嵌入服务模块 (百炼 通用文本向量-v3)
 multimodal/: 多模态处理模块 (听悟转写, 源材料处理)
-research/: 研究 Agent (ResearchAgent, ChatAgent)
-chat/: 对话 Agent (ChatAgent 重导出)
+research/: 研究 Agent (Claude SDK — sdk_service, tools, prompts, session_store)
+mindmap/: 概念图生成 Agent (MindmapAgent，被 api/mindmap.py 使用)
 podcast/: 播客生成模块 (大纲/对话/TTS/合成)
 
 ## 模块详情
 
 ### llm/kimi_client.py
-- **KimiClient**: Kimi K2 LLM 客户端
+- **KimiClient**: Kimi K2 LLM 客户端 (Pipeline 继续使用)
   - 支持模型: kimi-k2-thinking-turbo (研究), kimi-k2-turbo-preview (对话)
   - 功能: chat(), chat_stream(), research(), summarize(), chat_turn()
   - Tool Calling: OpenAI 兼容格式
@@ -42,13 +42,26 @@ podcast/: 播客生成模块 (大纲/对话/TTS/合成)
   - split_text(): 按分隔符分块
   - split_by_sentences(): 按句子分块
 
-### research/agent.py
-- **ResearchAgent**: 研究 Agent
-  - research(): 执行研究任务
-  - research_stream(): 流式执行
-  - 工具: tavily_search, vector_search
-- **ChatAgent**: 对话 Agent
-  - chat(): 项目内问答
+### research/ (Claude SDK 架构)
+- **sdk_service.py**: ResearchSDKService — 核心服务层
+  - chat_stream(): SSE 流式对话 (claude-sonnet-4-5)
+  - report_stream(): SSE 流式报告生成 (claude-opus-4-6)
+  - mindmap_stream(): SSE 流式思维导图 (claude-sonnet-4-5)
+  - 使用智谱 BigModel Anthropic 兼容代理
+- **tools.py**: 5 个 Anthropic 格式工具定义
+  - search_vectors: 项目知识库向量搜索
+  - tavily_search: 网络搜索
+  - list_sources: 列出项目源材料
+  - read_source: 读取源材料内容
+  - save_output: 保存研究输出
+- **prompts.py**: Agent 系统提示词 + 模型配置常量
+- **session_store.py**: 会话历史加载 (从 ChatMessage 表)
+
+### mindmap/agent.py
+- **MindmapAgent**: 概念图生成 Agent (Kimi 驱动)
+  - generate_mindmap(): 生成 Mermaid 格式图表
+  - generate_summary_mindmap(): 生成摘要思维导图
+  - 被 api/mindmap.py 端点直接使用
 
 ### podcast/
 - **cosyvoice_client.py**: CosyVoice TTS 客户端
@@ -64,16 +77,20 @@ podcast/: 播客生成模块 (大纲/对话/TTS/合成)
   - generate_podcast_stream(): 流式生成
 
 ## 数据流
+
+### 研究模块 (Claude SDK)
 ```
-用户查询
+用户查询 (SSE POST)
     ↓
-ResearchAgent.research()
+ResearchSDKService.chat_stream()
     ↓
-KimiClient.chat() + Tools
-    ├── TavilySearchTool.search() → 网络搜索结果
-    └── VectorSearchTool.search() → 项目材料
+Anthropic API (智谱代理) + Tool Use 循环
+    ├── search_vectors → pgvector 向量搜索
+    ├── tavily_search → 网络搜索
+    ├── list_sources / read_source → 源材料读取
+    └── save_output → 保存研究输出到 DB
     ↓
-综合生成研究报告
+SSE 事件流 (text/tool_start/tool_end/done/error)
 ```
 
 ### 播客生成流
@@ -91,8 +108,19 @@ CosyVoiceClient.synthesize_dialogue()
 
 ## 配置
 环境变量:
-- KIMI_API_KEY: Kimi K2 API Key
-- TAVILY_API_KEY: Tavily API Key
-- DASHSCOPE_API_KEY: 百炼 API Key
+- ANTHROPIC_API_KEY: Claude API Key (研究模块，通过智谱代理)
+- MOONSHOT_API_KEY: Kimi K2 API Key (Pipeline + 概念图)
+- TAVILY_API_KEY: Tavily API Key (研究 + Pipeline 共用)
+- DASHSCOPE_API_KEY: 百炼 API Key (嵌入服务)
+
+## 变更日志
+
+### 2026-02-09 - Claude SDK 迁移 (研究模块)
+- 新增 sdk_service.py, tools.py, prompts.py, session_store.py
+- 删除旧 agent.py (ResearchAgent + ChatAgent，使用 Kimi)
+- 删除 chat/ 目录 (仅含 ChatAgent 重导出)
+- __init__.py 改为导出 ResearchSDKService
+- 研究模块从 Kimi → Claude (智谱 Anthropic 兼容代理)
+- Pipeline/概念图/播客继续使用 Kimi
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
