@@ -113,11 +113,22 @@ export function TweetCard({ resource, className }: TweetCardProps) {
 
   const displayTitle = resource.title_translated || resource.title
 
-  const displayContent =
+  // 摘要内容 (收起时显示)
+  const summaryContent =
     resource.summary && !resource.summary.includes('<div') ? resource.summary :
     resource.one_sentence_summary_zh && !resource.one_sentence_summary_zh.includes('<div') ? resource.one_sentence_summary_zh :
     resource.one_sentence_summary ? extractTextFromHtml(resource.one_sentence_summary) :
     displayTitle
+
+  // 全文内容 (展开时显示)
+  const fullContent = resource.content_markdown
+    ? extractTextFromHtml(resource.content_markdown)
+    : null
+
+  // 是否有全文可展开 (全文存在且比摘要长)
+  const hasFullContent = fullContent !== null && fullContent.length > summaryContent.length
+
+  const displayContent = isExpanded && fullContent ? fullContent : summaryContent
 
   const { name, handle } = extractUserInfo(resource.url, resource.author)
   const timeAgo = formatTweetTime(resource.published_at || resource.created_at)
@@ -230,26 +241,28 @@ export function TweetCard({ resource, className }: TweetCardProps) {
             {displayContent}
           </div>
 
-          {/* 显示全文按钮 - 设计稿: 始终显示 */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsExpanded(!isExpanded)
-            }}
-            className="flex items-center gap-1 py-1 mt-2 mb-2"
-          >
-            {isExpanded ? (
-              <ChevronUp className="w-3.5 h-3.5" style={{ color: '#1E3A5F' }} />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" style={{ color: '#1E3A5F' }} />
-            )}
-            <span
-              className="text-[13px] font-medium"
-              style={{ color: '#1E3A5F' }}
+          {/* 显示全文按钮 - 仅在有全文可展开时显示 */}
+          {hasFullContent && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsExpanded(!isExpanded)
+              }}
+              className="flex items-center gap-1 py-1 mt-2 mb-2"
             >
-              {isExpanded ? '收起' : '显示全文'}
-            </span>
-          </button>
+              {isExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5" style={{ color: '#1E3A5F' }} />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" style={{ color: '#1E3A5F' }} />
+              )}
+              <span
+                className="text-[13px] font-medium"
+                style={{ color: '#1E3A5F' }}
+              >
+                {isExpanded ? '收起' : '显示全文'}
+              </span>
+            </button>
+          )}
 
           {/* 底部互动按钮 */}
           <div className="flex items-center justify-between max-w-md text-[var(--text-muted)]">
