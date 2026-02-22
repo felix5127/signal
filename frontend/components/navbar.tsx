@@ -12,12 +12,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
-// 导航项配置 - 按设计稿顺序: 首页/文章/播客/推文 (视频功能已禁用)
+// 导航项配置 - 首页/文章/推文/播客
 const NAV_ITEMS = [
   { id: 'home', label: '首页', href: '/', icon: Home },
   { id: 'articles', label: '文章', href: '/articles', icon: FileText },
-  { id: 'podcasts', label: '播客', href: '/podcasts', icon: Mic },
   { id: 'tweets', label: '推文', href: '/tweets', icon: Twitter },
+  { id: 'podcasts', label: '播客', href: '/podcasts', icon: Mic },
 ] as const
 
 export default function Navbar() {
@@ -70,7 +70,7 @@ export default function Navbar() {
                 <Link key={item.id} href={item.href}>
                   <span
                     className={cn(
-                      "text-sm font-medium transition-colors duration-200",
+                      "text-[15px] font-medium transition-colors duration-200",
                       isActive
                         ? "text-[#1E3A5F]"
                         : "text-[#6B6B6B] hover:text-[#272735]"
