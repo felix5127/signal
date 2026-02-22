@@ -6,11 +6,8 @@
 """
 
 from app.agents.tools.tavily_search import TavilySearchTool, tavily_tool
-from app.agents.tools.vector_search import VectorSearchTool, vector_search_tool
 
 __all__ = [
     "TavilySearchTool",
     "tavily_tool",
-    "VectorSearchTool",
-    "vector_search_tool",
 ]

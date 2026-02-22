@@ -6,11 +6,8 @@
 """
 
 from app.agents.multimodal.tingwu_client import TingwuClient, tingwu_client
-from app.agents.multimodal.source_processor import SourceProcessor, source_processor
 
 __all__ = [
     "TingwuClient",
     "tingwu_client",
-    "SourceProcessor",
-    "source_processor",
 ]

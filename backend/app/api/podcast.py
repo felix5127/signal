@@ -1,5 +1,5 @@
 """
-[INPUT]: 依赖 agents/podcast, models/research, services/storage
+[INPUT]: 依赖 agents/podcast, services/storage
 [OUTPUT]: 对外提供播客生成 API 端点
 [POS]: api/ 的播客路由，被 main.py 注册
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -8,15 +8,11 @@
 import json
 import logging
 from typing import Optional, List
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models.research import ResearchProject, ResearchOutput
 from app.agents.podcast.synthesizer import podcast_synthesizer, PodcastPhase
 from app.services.storage_service import storage_service
 
@@ -35,13 +31,6 @@ class PodcastRequest(BaseModel):
     target_duration: int = Field(default=600, ge=120, le=3600, description="目标时长(秒)")
     host_voice: Optional[str] = Field(default="longxiaochun", description="主持人音色")
     guest_voice: Optional[str] = Field(default="longxiaoxia", description="嘉宾音色")
-
-
-class PodcastFromProjectRequest(BaseModel):
-    """从项目生成播客"""
-    output_id: UUID = Field(..., description="研究输出 ID")
-    title: Optional[str] = None
-    target_duration: int = Field(default=600, ge=120, le=3600)
 
 
 class PodcastResponse(BaseModel):
@@ -181,65 +170,6 @@ async def generate_podcast_stream(
             "X-Accel-Buffering": "no",
         },
     )
-
-
-@router.post("/from-project", response_model=PodcastResponse)
-async def generate_podcast_from_project(
-    data: PodcastFromProjectRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    从研究输出生成播客
-
-    使用已生成的研究报告作为内容来源。
-    """
-    # 获取研究输出
-    output = db.query(ResearchOutput).filter(ResearchOutput.id == data.output_id).first()
-    if not output:
-        raise HTTPException(status_code=404, detail="研究输出不存在")
-
-    if not output.content:
-        raise HTTPException(status_code=400, detail="研究输出没有内容")
-
-    if not podcast_synthesizer.is_available:
-        raise HTTPException(
-            status_code=503,
-            detail="播客生成服务不可用"
-        )
-
-    try:
-        result = await podcast_synthesizer.generate_podcast(
-            research_content=output.content,
-            target_duration=data.target_duration,
-            title=data.title or output.title,
-        )
-
-        if result.success:
-            # 上传到 R2
-            audio_url = None
-            if result.audio_path:
-                upload_result = await storage_service.upload_from_path(
-                    result.audio_path,
-                    f"podcasts/project_{output.project_id}/{output.id}.mp3",
-                )
-                if upload_result.get("success"):
-                    audio_url = upload_result.get("url")
-
-            return PodcastResponse(
-                success=True,
-                audio_url=audio_url,
-                duration_seconds=result.duration_seconds,
-                title=result.outline.title if result.outline else output.title,
-            )
-        else:
-            return PodcastResponse(
-                success=False,
-                error=result.error,
-            )
-
-    except Exception as e:
-        logger.error(f"Podcast from project failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/voices")

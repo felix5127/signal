@@ -1,5 +1,5 @@
 """
-[INPUT]: 依赖 agents/mindmap, models/research
+[INPUT]: 依赖 agents/mindmap
 [OUTPUT]: 对外提供概念图生成 API 端点
 [POS]: api/ 的概念图路由，被 main.py 注册
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -7,14 +7,10 @@
 
 import logging
 from typing import Optional
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models.research import ResearchOutput
 from app.agents.mindmap.agent import mindmap_agent, DiagramType
 
 logger = logging.getLogger(__name__)
@@ -30,13 +26,6 @@ class MindmapRequest(BaseModel):
     content: str = Field(..., min_length=50, max_length=50000, description="研究内容")
     diagram_type: str = Field(default="mindmap", description="图表类型")
     focus: Optional[str] = Field(None, max_length=100, description="聚焦主题")
-
-
-class MindmapFromOutputRequest(BaseModel):
-    """从研究输出生成概念图"""
-    output_id: UUID = Field(..., description="研究输出 ID")
-    diagram_type: str = Field(default="mindmap")
-    focus: Optional[str] = None
 
 
 class MindmapResponse(BaseModel):
@@ -84,51 +73,6 @@ async def generate_mindmap(data: MindmapRequest):
 
     except Exception as e:
         logger.error(f"Mindmap generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/from-output", response_model=MindmapResponse)
-async def generate_mindmap_from_output(
-    data: MindmapFromOutputRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    从研究输出生成概念图
-
-    使用已生成的研究报告作为内容来源。
-    """
-    # 获取研究输出
-    output = db.query(ResearchOutput).filter(ResearchOutput.id == data.output_id).first()
-    if not output:
-        raise HTTPException(status_code=404, detail="研究输出不存在")
-
-    if not output.content:
-        raise HTTPException(status_code=400, detail="研究输出没有内容")
-
-    try:
-        # 解析图表类型
-        try:
-            diagram_type = DiagramType(data.diagram_type)
-        except ValueError:
-            diagram_type = DiagramType.MINDMAP
-
-        result = await mindmap_agent.generate_mindmap(
-            content=output.content,
-            diagram_type=diagram_type,
-            focus=data.focus or output.title,
-        )
-
-        return MindmapResponse(
-            success=result.success,
-            diagram_type=result.diagram_type.value,
-            mermaid_code=result.mermaid_code,
-            title=result.title,
-            description=result.description,
-            error=result.error,
-        )
-
-    except Exception as e:
-        logger.error(f"Mindmap from output failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -1,7 +1,7 @@
 """
-[INPUT]: 依赖 api/* 的所有路由 (含 admin/*, research, podcast, mindmap, search, export, auth), middlewares 的错误处理, startup 的事件注册
+[INPUT]: 依赖 api/* 的所有路由 (含 admin/*, auth), middlewares 的错误处理, startup 的事件注册
 [OUTPUT]: 对外提供 app (FastAPI 应用实例)
-[POS]: FastAPI 应用入口，负责创建应用、注册路由 (20 路由模块)、配置中间件
+[POS]: FastAPI 应用入口，负责创建应用、注册路由、配置中间件
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
@@ -22,7 +22,6 @@ from app.api.signals import router as signals_router
 from app.api.stats import router as stats_router
 from app.api.newsletters import router as newsletters_router
 from app.api.tasks import router as tasks_router
-from app.api.search import router as search_router
 
 from app.api.auth import router as auth_router
 
@@ -66,7 +65,6 @@ app.include_router(signals_router, prefix="/api", tags=["signals"])
 app.include_router(stats_router, prefix="/api", tags=["stats"])
 app.include_router(newsletters_router, prefix="/api", tags=["newsletters"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
-app.include_router(search_router, prefix="/api", tags=["search"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 # Admin API 路由
