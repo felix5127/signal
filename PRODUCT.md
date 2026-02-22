@@ -193,12 +193,8 @@
 - [x] 中英翻译
 - [x] Web 前端展示
 
-### Phase 2: 深度研究 (已完成)
-- [x] 深度研究报告生成
-- [x] 研究工作台 (NotebookLM 风格三栏布局)
-- [x] 向量检索 (pgvector)
-- [x] Claude SDK 对话 (智谱 Anthropic 代理)
-- [x] 管理后台
+### Phase 2: 管理后台 (已完成)
+- [x] 管理后台 (数据源管理/审核/统计)
 
 ### Phase 3: 多模态输出 (进行中)
 - [x] 播客生成
@@ -223,9 +219,9 @@
 |------|----------|
 | **前端** | Next.js 14 + TailwindCSS + shadcn/ui |
 | **后端** | FastAPI + SQLAlchemy + APScheduler |
-| **数据库** | PostgreSQL 15 + pgvector |
+| **数据库** | PostgreSQL 15 |
 | **缓存** | Redis 7 |
-| **AI** | Claude (研究) + Kimi K2 (Pipeline) + 百炼 Embedding |
+| **AI** | Kimi K2 (Pipeline) + 百炼 (Embedding + TTS) |
 | **搜索** | Tavily API |
 | **容器** | Docker + Docker Compose |
 | **部署** | Railway + Cloudflare Pages |
@@ -235,7 +231,7 @@
 ```
 ┌────────────┐     ┌────────────┐     ┌────────────┐
 │  Frontend  │ ←→  │  Backend   │ ←→  │ PostgreSQL │
-│  Next.js   │     │  FastAPI   │     │  + pgvector │
+│  Next.js   │     │  FastAPI   │     │             │
 └────────────┘     └────────────┘     └────────────┘
                          ↑                   ↑
                          │                   │
@@ -271,8 +267,6 @@
 | **Signal** | 高价值技术信息片段 |
 | **Resource** | v2 核心数据模型，支持 article/podcast/tweet/video |
 | **LLM Score** | AI 对内容质量的 0-5 分评价 |
-| **Deep Research** | 基于搜索增强的深度研究报告 |
-| **Research Project** | 研究工作台中的项目单元 |
 
 ### B. 相关链接
 
