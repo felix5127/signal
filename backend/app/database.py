@@ -16,9 +16,6 @@ from app.config import config
 is_sqlite = config.database_url.startswith("sqlite:")
 is_postgresql = config.database_url.startswith("postgresql:")
 
-# pgvector 数据库扩展是否可用 (在 init_db 中检测)
-PGVECTOR_DB_AVAILABLE = False
-
 if is_sqlite:
     # SQLite 配置
     engine = create_engine(
@@ -105,14 +102,6 @@ def _run_schema_migrations():
         # 精选理由
         ("featured_reason", "TEXT"),
         ("featured_reason_zh", "TEXT"),
-        # 深度研究
-        ("deep_research", "TEXT"),
-        ("deep_research_generated_at", "TIMESTAMP"),
-        ("deep_research_tokens", "INTEGER"),
-        ("deep_research_cost", "FLOAT"),
-        ("deep_research_strategy", "VARCHAR(20)"),
-        ("deep_research_sources", "TEXT"),
-        ("deep_research_metadata", "TEXT"),
         # 时间戳
         ("analyzed_at", "TIMESTAMP"),
         # 元数据
@@ -178,54 +167,14 @@ def init_db():
 
     在应用启动时调用一次
     """
-    global PGVECTOR_DB_AVAILABLE
-
-    # 导入核心模型 (不依赖 pgvector)
+    # 导入核心模型
     from app.models import signal  # noqa: F401
     from app.models import resource  # noqa: F401
     from app.models import source  # noqa: F401
     from app.models import prompt  # noqa: F401
     from app.models import review  # noqa: F401
 
-    # PostgreSQL: 检测并启用 pgvector 扩展 (用于向量搜索)
-    if is_postgresql:
-        with engine.connect() as conn:
-            try:
-                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                conn.commit()
-                PGVECTOR_DB_AVAILABLE = True
-                print("[DB] pgvector extension enabled")
-            except Exception as e:
-                # 扩展不可用 (Railway 等平台可能不支持)
-                PGVECTOR_DB_AVAILABLE = False
-                print(f"[DB] pgvector not available: {e}")
-                print("[DB] Research assistant features will be disabled")
-                conn.rollback()
-
-    # 需要 pgvector 的表名列表
-    PGVECTOR_TABLES = {
-        "research_projects",
-        "research_sources",
-        "source_embeddings",
-        "research_outputs",
-        "chat_sessions",
-        "agent_tasks",
-    }
-
-    if PGVECTOR_DB_AVAILABLE:
-        # pgvector 可用: 创建所有表
-        from app.models import research  # noqa: F401
-        print("[DB] Research models registered")
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-    else:
-        # pgvector 不可用: 仅创建核心表，跳过研究助手表
-        tables_to_create = [
-            table for table in Base.metadata.sorted_tables
-            if table.name not in PGVECTOR_TABLES
-        ]
-        print(f"[DB] Skipping pgvector tables: {PGVECTOR_TABLES}")
-        print(f"[DB] Creating {len(tables_to_create)} core tables")
-        Base.metadata.create_all(bind=engine, tables=tables_to_create, checkfirst=True)
+    Base.metadata.create_all(bind=engine, checkfirst=True)
 
     # 运行 schema 迁移（添加 create_all 不会处理的新列）
     _run_schema_migrations()

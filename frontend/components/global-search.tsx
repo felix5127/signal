@@ -171,21 +171,8 @@ export default function GlobalSearch() {
 
     // 根据类型导航到不同页面
     switch (result.type) {
-      case 'source':
-        if (result.metadata.project_id) {
-          router.push(`/research/${result.metadata.project_id}?source=${result.id}`)
-        }
-        break
-      case 'output':
-        if (result.metadata.project_id) {
-          router.push(`/research/${result.metadata.project_id}?output=${result.id}`)
-        }
-        break
       case 'resource':
         router.push(`/resources/${result.id}`)
-        break
-      case 'project':
-        router.push(`/research/${result.id}`)
         break
     }
   }

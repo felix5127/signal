@@ -65,6 +65,13 @@ const CATEGORY_FILTERS = [
   { value: '商业科技', label: 'Web3' },
 ] as const
 
+// 排序选项配置
+const SORT_OPTIONS = [
+  { value: 'time', label: '最新' },
+  { value: 'score', label: '评分' },
+  { value: 'default', label: '推荐' },
+] as const
+
 /**
  * 获取 API 地址
  */
@@ -94,6 +101,7 @@ export function ResourceListPage({
 
   // 状态管理
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [sortBy, setSortBy] = useState('time')
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -114,7 +122,7 @@ export function ResourceListPage({
       const params = new URLSearchParams({
         page: currentPage.toString(),
         pageSize: pageSize.toString(),
-        sort: 'default',
+        sort: sortBy,
         type: resourceType,
       })
 
@@ -135,13 +143,21 @@ export function ResourceListPage({
     } finally {
       setLoading(false)
     }
-  }, [currentPage, categoryFilter, resourceType, pageSize])
+  }, [currentPage, categoryFilter, sortBy, resourceType, pageSize])
 
   /**
    * 处理分类筛选变化
    */
   const handleCategoryChange = useCallback((value: string) => {
     setCategoryFilter(value)
+    setCurrentPage(1)
+  }, [])
+
+  /**
+   * 处理排序变化
+   */
+  const handleSortChange = useCallback((value: string) => {
+    setSortBy(value)
     setCurrentPage(1)
   }, [])
 
@@ -180,26 +196,51 @@ export function ResourceListPage({
       {/* 分类筛选标签 */}
       <div className="pb-6">
         <div className={cn(containerClass, "mx-auto px-4 sm:px-6 lg:px-8")}>
-          <div className="flex items-center gap-3 flex-wrap">
-            {CATEGORY_FILTERS.map((filter) => {
-              const isActive = categoryFilter === filter.value
-              return (
-                <button
-                  key={filter.value}
-                  onClick={() => handleCategoryChange(filter.value)}
-                  className={cn(
-                    'w-[80px] h-[36px] rounded-[16px] text-[14px] font-medium',
-                    'transition-all duration-200',
-                    'flex items-center justify-center',
-                    isActive
-                      ? 'bg-[#1E3A5F] text-white'
-                      : 'bg-white text-[#6B6B6B] border border-[#E5E5E5] hover:border-[#1E3A5F] hover:text-[#1E3A5F]'
-                  )}
-                >
-                  {filter.label}
-                </button>
-              )
-            })}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            {/* 分类筛选 */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {CATEGORY_FILTERS.map((filter) => {
+                const isActive = categoryFilter === filter.value
+                return (
+                  <button
+                    key={filter.value}
+                    onClick={() => handleCategoryChange(filter.value)}
+                    className={cn(
+                      'w-[80px] h-[36px] rounded-[16px] text-[14px] font-medium',
+                      'transition-all duration-200',
+                      'flex items-center justify-center',
+                      isActive
+                        ? 'bg-[#1E3A5F] text-white'
+                        : 'bg-white text-[#6B6B6B] border border-[#E5E5E5] hover:border-[#1E3A5F] hover:text-[#1E3A5F]'
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* 排序选项 */}
+            <div className="flex items-center gap-2">
+              {SORT_OPTIONS.map((option) => {
+                const isActive = sortBy === option.value
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleSortChange(option.value)}
+                    className={cn(
+                      'h-[32px] px-3 rounded-[8px] text-[13px] font-medium',
+                      'transition-all duration-200',
+                      isActive
+                        ? 'bg-[#F0F4F8] text-[#1E3A5F]'
+                        : 'text-[#9A9A9A] hover:text-[#6B6B6B]'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>

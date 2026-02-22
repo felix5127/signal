@@ -13,28 +13,6 @@ from app.models.task import TaskStatus
 from app.models.source_run import SourceRun
 from app.models.source_config import SourceConfig, SOURCE_TYPES
 
-# 研究助手模型 (需要 pgvector 扩展)
-# 在没有 pgvector 的环境中，这些模型不可用
-try:
-    from app.models.research import (
-        ResearchProject,
-        ResearchSource,
-        SourceEmbedding,
-        ResearchOutput,
-        ChatSession,
-        AgentTask,
-        PGVECTOR_AVAILABLE,
-    )
-    RESEARCH_MODELS_AVAILABLE = PGVECTOR_AVAILABLE
-except ImportError:
-    RESEARCH_MODELS_AVAILABLE = False
-    ResearchProject = None
-    ResearchSource = None
-    SourceEmbedding = None
-    ResearchOutput = None
-    ChatSession = None
-    AgentTask = None
-
 __all__ = [
     # v1.0 旧模型（保留兼容）
     "Signal",
@@ -49,12 +27,4 @@ __all__ = [
     "SourceRun",
     "SourceConfig",
     "SOURCE_TYPES",
-    # v3.0 研究助手模型 (可选)
-    "RESEARCH_MODELS_AVAILABLE",
-    "ResearchProject",
-    "ResearchSource",
-    "SourceEmbedding",
-    "ResearchOutput",
-    "ChatSession",
-    "AgentTask",
 ]

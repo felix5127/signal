@@ -1,6 +1,6 @@
 # Signal 部署指南
 
-> 版本: 1.0 | 更新: 2026-01-30 | 状态: Active
+> 版本: 1.2 | 更新: 2026-02-22 | 状态: Active
 
 本文档提供 Signal 的本地开发、生产部署和运维指南。
 
@@ -81,7 +81,7 @@ MOONSHOT_API_KEY=sk-xxxxxxxxxxxxx
 # Tavily - 网络搜索增强
 TAVILY_API_KEY=tvly-xxxxxxxxxxxxx
 
-# 百炼 (DashScope) - 文本嵌入
+# 百炼 (DashScope) - 播客语音合成
 DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxx
 
 # ============================================
@@ -316,7 +316,7 @@ railway init
 ```
 
 **2. 配置环境变量**:
-在 Railway Dashboard 中设置所有必需的环境变量。
+在 Railway Dashboard 中设置所有必需的环境变量 (参见 Section 2.1)。
 
 **3. 部署**:
 ```bash

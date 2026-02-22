@@ -17,7 +17,6 @@ import { ChapterOverview, Chapter } from './chapter-overview'
 import { TranscriptView } from './transcript-view'
 import { QARecap, QAPair } from './qa-recap'
 import { formatTime } from './utils'
-import DeepResearchButton from '../deep-research-button'
 
 export interface PodcastResource {
   id: number
@@ -255,12 +254,6 @@ export function PodcastDetail({ resource }: PodcastDetailProps) {
             >
               <span>收听原节目</span>
             </a>
-            <DeepResearchButton
-              resourceId={resource.id}
-              resourceTitle={displayTitle}
-              resourceContent={resource.content_markdown || displaySummary}
-              resourceUrl={resource.url}
-            />
           </div>
         </main>
       </div>

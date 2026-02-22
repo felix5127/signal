@@ -7,7 +7,6 @@
 ## 成员清单
 resource_service.py: 资源 CRUD、筛选、搜索服务 (v2 核心)
 signal_service.py: 信号查询、统计服务 (v1 Legacy)
-deep_research_service.py: 深度研究统一入口，策略选择、成本控制、缓存管理
 cache_service.py: Redis 缓存管理，key 生成、TTL 控制
 source_service.py: 信号源管理，状态查询、配置管理、采集记录、漏斗统计 (基于 SourceConfig)
 source_manage_service.py: 数据源 CRUD 管理，白名单设置，启用/禁用，统计更新 (基于 Source 模型)
@@ -15,7 +14,7 @@ source_health.py: 信号源健康检查，状态监控
 prompt_service.py: Prompt 版本管理，创建/激活/归档版本，使用统计更新
 stats_service.py: 统计数据服务，整体统计、数据源统计、时间统计、LLM 评分分布
 review_service.py: 内容审核服务，待审核列表、审核操作、批量审核、审核统计
-storage_service.py: R2/S3 文件存储服务，上传/下载/预签名URL/文件管理 (研究助手 v3)
+storage_service.py: R2/S3 文件存储服务，上传/下载/预签名URL/文件管理
 feishu_service.py: 飞书多维表格 API 封装，token 管理、批量记录写入
 data_tracker.py: 数据追踪器，Pipeline 各节点调用，收集并批量写入飞书追踪记录
 
@@ -29,12 +28,6 @@ data_tracker.py: 数据追踪器，Pipeline 各节点调用，收集并批量写
 ### SignalService (Legacy)
 - get_signals(): 信号列表查询
 - get_signal_stats(): 统计信息
-
-### DeepResearchService
-- generate_research(): 生成深度研究报告
-- 策略选择: LIGHTWEIGHT (当前) / AUTO
-- 成本控制: 单篇限额检查、每日限额检查
-- 缓存管理: 检查已有报告、避免重复生成
 
 ### CacheService
 - cache_result(): 装饰器，自动缓存函数结果
@@ -89,7 +82,7 @@ data_tracker.py: 数据追踪器，Pipeline 各节点调用，收集并批量写
 - get_review_stats(): 获取审核统计 (按状态/来源分组，人工改判数)
 
 ### StorageService (R2/S3)
-- generate_path(): 生成存储路径 (research/{project_id}/{category}/{entity_id}/{filename})
+- generate_path(): 生成存储路径
 - validate_file(): 验证文件类型和大小
 - upload_file(): 上传文件到 R2
 - upload_from_bytes(): 从字节数据上传
@@ -112,7 +105,6 @@ data_tracker.py: 数据追踪器，Pipeline 各节点调用，收集并批量写
 - flush(): 批量写入飞书，失败不影响主流程
 
 ## 设计模式
-- **策略模式**: DeepResearchService 支持多种研究策略
 - **装饰器模式**: CacheService 提供缓存装饰器
 - **单例模式**: 全局 service 实例
 - **追踪模式**: DataTracker 在 Pipeline 各节点收集数据，最后批量写入

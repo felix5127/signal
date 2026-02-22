@@ -15,7 +15,6 @@ source_run.py: 采集运行记录，记录每次信号源采集的漏斗数据
 source_config.py: 信号源动态配置，运行时覆盖 config.yaml
 review.py: 人工审核记录，记录 approve/reject/restore 操作
 prompt.py: Prompt 版本管理，支持 A/B 测试，(type, version) 唯一约束
-research.py: v3 研究助手模型，ResearchProject/ResearchSource/SourceEmbedding/ResearchOutput/ChatSession/AgentTask
 
 ## 模型关系
 ```
@@ -24,7 +23,6 @@ Resource (v2 核心)
   ├── 分类信息: type (article/podcast/tweet/video), domain, subdomain, tags
   ├── LLM 分析: one_sentence_summary, summary, main_points, key_quotes, score
   ├── 多语言: title_translated, summary_zh, main_points_zh
-  ├── 深度研究: deep_research, deep_research_tokens, deep_research_cost, deep_research_strategy
   ├── LLM 过滤: llm_score (0-5), llm_reason, llm_prompt_version
   ├── 人工审核: review_status (approved/rejected), review_comment, reviewed_at, reviewed_by
   ├── 来源关联: source_id → Source
@@ -72,41 +70,6 @@ Prompt (Prompt 版本管理)
   ├── 统计: total_used, avg_score, approval_rate
   └── 时间: created_at, activated_at
 
-ResearchProject (v3 研究项目)
-  ├── 基础: name, description, status (active/archived)
-  ├── 统计: source_count, output_count
-  ├── 关系: → ResearchSource[], ResearchOutput[], ChatSession[], AgentTask[]
-  └── 时间: created_at, updated_at, last_researched_at
-
-ResearchSource (研究源材料)
-  ├── 关联: project_id → ResearchProject, resource_id → Resource (可选)
-  ├── 源信息: source_type (url/pdf/audio/video/text), title, original_url, file_path
-  ├── 内容: full_text, summary, metadata (JSONB)
-  ├── 状态: processing_status (pending/processing/completed/failed)
-  └── 关系: → SourceEmbedding[]
-
-SourceEmbedding (向量嵌入)
-  ├── 关联: source_id → ResearchSource
-  ├── 分块: chunk_index, chunk_text, chunk_tokens
-  ├── 向量: embedding (vector(512), 百炼 通用文本向量-v3)
-  └── 索引: HNSW (m=16, ef_construction=64)
-
-ResearchOutput (研究输出)
-  ├── 关联: project_id → ResearchProject
-  ├── 输出: output_type (summary/mindmap/report/podcast/slides), title, content
-  ├── 文件: file_path, file_size, duration
-  └── 统计: tokens_used, cost_usd, source_refs[]
-
-ChatSession (对话会话)
-  ├── 关联: project_id → ResearchProject
-  ├── 会话: title, context_source_ids[], messages (JSONB)
-  └── 统计: message_count, tokens_used
-
-AgentTask (Agent 任务)
-  ├── 关联: project_id → ResearchProject
-  ├── 任务: task_type (research/chat/podcast/mindmap), status
-  ├── 进度: progress, current_step, steps_completed/total_steps
-  └── 统计: tokens_used, cost_usd, duration_seconds
 ```
 
 ## 索引优化
@@ -117,11 +80,5 @@ AgentTask (Agent 任务)
 - SourceRun: (source_type, started_at) 复合索引
 - Review: resource_id (索引)
 - Prompt: type (索引), status (索引), (type, version) 复合唯一
-- ResearchProject: owner_id, status, created_at (降序)
-- ResearchSource: project_id, resource_id, processing_status, source_type
-- SourceEmbedding: source_id, (source_id, chunk_index) 唯一, embedding (HNSW vector_cosine_ops)
-- ResearchOutput: project_id, output_type, created_at (降序)
-- ChatSession: project_id, updated_at (降序)
-- AgentTask: project_id, status, task_type, created_at (降序)
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

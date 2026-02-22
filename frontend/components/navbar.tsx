@@ -6,19 +6,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, Mic, Twitter, Search, Menu, X, Sparkles, Radar, Home } from 'lucide-react'
+import { FileText, Mic, Twitter, Search, Menu, X, Radar, Home } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
-// 导航项配置 - 按设计稿顺序: 首页/文章/播客/推文/研究 (视频功能已禁用)
+// 导航项配置 - 按设计稿顺序: 首页/文章/播客/推文 (视频功能已禁用)
 const NAV_ITEMS = [
   { id: 'home', label: '首页', href: '/', icon: Home },
   { id: 'articles', label: '文章', href: '/articles', icon: FileText },
   { id: 'podcasts', label: '播客', href: '/podcasts', icon: Mic },
   { id: 'tweets', label: '推文', href: '/tweets', icon: Twitter },
-  { id: 'research', label: '研究', href: '/research', icon: Sparkles },
 ] as const
 
 export default function Navbar() {

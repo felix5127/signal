@@ -152,44 +152,6 @@ class SignalService:
             ),
         }
 
-    def get_deep_research(self, signal_id: int) -> Optional[Dict[str, Any]]:
-        """
-        获取深度研究报告
-
-        Args:
-            signal_id: 信号ID
-
-        Returns:
-            深度研究报告字典，如果不存在返回None
-        """
-        signal = self.db.query(Signal).filter(Signal.id == signal_id).first()
-
-        if not signal:
-            return None
-
-        if not signal.deep_research:
-            return None
-
-        return {
-            "signal_id": signal.id,
-            "title": signal.title,
-            "content": signal.deep_research,
-            "generated_at": (
-                signal.deep_research_generated_at.isoformat()
-                if signal.deep_research_generated_at
-                else None
-            ),
-            "tokens_used": signal.deep_research_tokens,
-            "cost_usd": signal.deep_research_cost,
-            "strategy": signal.deep_research_strategy,
-            "sources": (
-                json.loads(signal.deep_research_sources) if signal.deep_research_sources else []
-            ),
-            "metadata": (
-                json.loads(signal.deep_research_metadata) if signal.deep_research_metadata else {}
-            ),
-        }
-
     def _apply_filters(self, query, filters: SignalFilter):
         """应用筛选条件到查询"""
         if filters.min_score:

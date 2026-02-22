@@ -1,14 +1,11 @@
 FROM node:20-alpine AS base
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Dependencies
 FROM base AS deps
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --no-frozen-lockfile
+COPY package.json package-lock.json* ./
+RUN npm install
 
 # Builder
 FROM base AS builder
@@ -17,7 +14,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN pnpm build
+RUN npm run build
 
 # Runner
 FROM base AS runner

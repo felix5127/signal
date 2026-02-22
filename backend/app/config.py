@@ -133,17 +133,6 @@ class FilterConfig(BaseSettings):
     similarity_threshold: float = 0.7
 
 
-class DeepResearchConfig(BaseSettings):
-    """Deep Research 配置"""
-    search_provider: str = "tavily"
-    max_questions: int = 3
-    max_searches_per_question: int = 2
-    report_max_tokens: int = 2000
-    max_cost_per_report: float = 0.10
-    max_reports_per_day: int = 10
-    cache_duration_hours: int = 24
-
-
 class ScheduleConfig(BaseSettings):
     """定时任务配置"""
     interval_hours: int = 1
@@ -224,7 +213,6 @@ class AppConfig(BaseSettings):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     filter: FilterConfig = Field(default_factory=FilterConfig)
-    deep_research: DeepResearchConfig = Field(default_factory=DeepResearchConfig)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
 
     class Config:
@@ -287,8 +275,6 @@ def load_config() -> AppConfig:
                     config.output = OutputConfig(**yaml_config["output"])
                 if "filter" in yaml_config:
                     config.filter = FilterConfig(**yaml_config["filter"])
-                if "deep_research" in yaml_config:
-                    config.deep_research = DeepResearchConfig(**yaml_config["deep_research"])
                 if "schedule" in yaml_config:
                     config.schedule = ScheduleConfig(**yaml_config["schedule"])
                 # Redis 缓存配置

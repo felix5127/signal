@@ -12,7 +12,6 @@ import Link from 'next/link'
 import { FileText, BookOpen, MessageSquare, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VideoPlayer } from './video-player'
-import DeepResearchButton from '../deep-research-button'
 
 export interface VideoResource {
   id: number
@@ -356,12 +355,6 @@ export function VideoDetail({ resource }: VideoDetailProps) {
           >
             <span>观看原视频</span>
           </a>
-          <DeepResearchButton
-            resourceId={resource.id}
-            resourceTitle={displayTitle}
-            resourceContent={resource.content_markdown || displaySummary}
-            resourceUrl={resource.url}
-          />
         </div>
       </main>
     </div>

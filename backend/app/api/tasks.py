@@ -75,7 +75,7 @@ class TaskListResponse(BaseModel):
 
 @router.get("/tasks", response_model=TaskListResponse)
 def get_tasks(
-    task_type: Optional[str] = Query(default="deep_research", description="任务类型"),
+    task_type: Optional[str] = Query(default=None, description="任务类型"),
     status: Optional[str] = Query(default=None, description="状态过滤"),
     limit: int = Query(default=20, ge=1, le=100, description="返回数量"),
     db: Session = Depends(get_db),
@@ -91,7 +91,9 @@ def get_tasks(
     Returns:
         任务列表（按创建时间倒序）
     """
-    query = db.query(TaskStatus).filter(TaskStatus.task_type == task_type)
+    query = db.query(TaskStatus)
+    if task_type:
+        query = query.filter(TaskStatus.task_type == task_type)
 
     if status:
         query = query.filter(TaskStatus.status == status)

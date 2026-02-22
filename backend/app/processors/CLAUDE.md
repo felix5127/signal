@@ -16,11 +16,6 @@ batch_processor.py: 批量处理协调器
 transcriber.py: 音频转写器 (播客/视频)
 podcast_analyzer.py: 播客内容分析器，从转录文本提取章节(chapters)和问答对(qa_pairs)
 
-deep_research/: 深度研究引擎子模块
-  ├── base.py: BaseResearchEngine 抽象类
-  ├── v1_lightweight.py: 轻量级研究引擎 (当前实现)
-  └── search_providers.py: 搜索提供商 (Tavily)
-
 ## 处理流程
 
 ### 统一过滤 (UnifiedFilter) [推荐]
@@ -57,14 +52,6 @@ Step 1: 全文分析 → 摘要(200-400字) + 观点(3-5) + 金句(3-5) + 标签
 Step 2: 反思检查 → LLM 审视 Step1 结果，提出改进建议
   ↓
 Step 3: 优化改进 → 整合反思意见，输出最终版本
-```
-
-### 深度研究 (LightweightResearchEngine)
-```
-1. 生成研究问题 (3-5 个)
-2. Tavily 搜索每个问题
-3. 整合搜索结果 + 原文内容
-4. LLM 生成 1500 字研究报告
 ```
 
 ## 使用示例

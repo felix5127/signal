@@ -1,6 +1,6 @@
 # Signal API 参考
 
-> 版本: 1.0 | 更新: 2026-01-30 | Base URL: `http://localhost:8000/api`
+> 版本: 1.2 | 更新: 2026-02-22 | Base URL: `http://localhost:8000/api`
 
 本文档定义 Signal 所有 REST API 端点的请求/响应格式。
 
@@ -10,10 +10,9 @@
 
 1. [概述](#1-概述)
 2. [Resources API](#2-resources-api)
-3. [Research API](#3-research-api)
-4. [Podcast API](#4-podcast-api)
-5. [Admin API](#5-admin-api)
-6. [其他 API](#6-其他-api)
+3. [Podcast API](#3-podcast-api)
+4. [Admin API](#4-admin-api)
+5. [其他 API](#5-其他-api)
 
 ---
 
@@ -145,7 +144,6 @@ GET /api/resources/{id}
       {"quote": "...", "quote_zh": "..."}
     ],
     "tags": ["AI", "LLM"],
-    "deep_research": "深度研究报告...",
     "published_at": "2026-01-30T10:00:00Z"
   }
 }
@@ -171,269 +169,11 @@ GET /api/resources/search
 
 ---
 
-### 2.4 生成深度研究
-
-```http
-POST /api/resources/{id}/deep-research
-```
-
-**请求体**:
-```json
-{
-  "strategy": "LIGHTWEIGHT",
-  "force": false
-}
-```
-
-**参数说明**:
-
-| 参数 | 类型 | 描述 |
-|------|------|------|
-| `strategy` | string | 研究策略 (LIGHTWEIGHT/AUTO) |
-| `force` | bool | 强制重新生成 |
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "data": {
-    "research": "# 深度研究报告\n\n## 摘要\n...",
-    "tokens_used": 4500,
-    "cost_usd": 0.12,
-    "cached": false
-  }
-}
-```
-
----
-
-## 3. Research API
-
-研究工作台 API，支持 SSE 流式响应。
-
-### 3.1 项目管理
-
-#### 获取项目列表
-
-```http
-GET /api/research/projects
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "data": {
-    "items": [
-      {
-        "id": "uuid",
-        "name": "AI Agent 研究",
-        "description": "研究 AI Agent 架构",
-        "status": "active",
-        "source_count": 5,
-        "output_count": 2,
-        "created_at": "2026-01-20T10:00:00Z",
-        "updated_at": "2026-01-30T15:00:00Z"
-      }
-    ]
-  }
-}
-```
-
-#### 创建项目
-
-```http
-POST /api/research/projects
-```
-
-**请求体**:
-```json
-{
-  "name": "项目名称",
-  "description": "项目描述"
-}
-```
-
-#### 获取项目详情
-
-```http
-GET /api/research/projects/{project_id}
-```
-
-#### 归档项目
-
-```http
-POST /api/research/projects/{project_id}/archive
-```
-
-#### 删除项目
-
-```http
-DELETE /api/research/projects/{project_id}
-```
-
----
-
-### 3.2 源材料管理
-
-#### 获取材料列表
-
-```http
-GET /api/research/projects/{project_id}/sources
-```
-
-#### 添加 URL 源材料
-
-```http
-POST /api/research/projects/{project_id}/sources/url
-```
-
-**请求体**:
-```json
-{
-  "url": "https://example.com/article",
-  "title": "可选标题"
-}
-```
-
-#### 上传文件
-
-```http
-POST /api/research/projects/{project_id}/sources/upload
-Content-Type: multipart/form-data
-```
-
-**表单字段**:
-- `file`: 文件 (PDF/音频/视频)
-- `title`: 标题 (可选)
-
-#### 导入系统资源
-
-```http
-POST /api/research/projects/{project_id}/sources/import
-```
-
-**请求体**:
-```json
-{
-  "resource_id": "uuid"
-}
-```
-
-#### 删除材料
-
-```http
-DELETE /api/research/sources/{source_id}
-```
-
----
-
-### 3.3 研究任务
-
-#### 执行研究 (SSE 流式)
-
-```http
-POST /api/research/projects/{project_id}/research
-Accept: text/event-stream
-```
-
-**请求体**:
-```json
-{
-  "query": "分析 AI Agent 的核心架构模式",
-  "use_web_search": true,
-  "use_vector_search": true
-}
-```
-
-**SSE 事件格式**:
-```
-event: progress
-data: {"step": "searching", "message": "搜索相关材料..."}
-
-event: tool_call
-data: {"tool": "tavily_search", "query": "AI Agent architecture"}
-
-event: content
-data: {"text": "根据分析..."}
-
-event: done
-data: {"tokens_used": 3500, "cost_usd": 0.08}
-```
-
-#### 获取任务状态
-
-```http
-GET /api/research/tasks/{task_id}
-```
-
----
-
-### 3.4 对话会话
-
-#### 创建会话
-
-```http
-POST /api/research/projects/{project_id}/chat/sessions
-```
-
-**请求体**:
-```json
-{
-  "title": "会话标题",
-  "source_ids": ["uuid1", "uuid2"]
-}
-```
-
-#### 发送消息 (SSE 流式)
-
-```http
-POST /api/research/chat/sessions/{session_id}/messages
-Accept: text/event-stream
-```
-
-**请求体**:
-```json
-{
-  "content": "这篇文章的核心观点是什么?"
-}
-```
-
-#### 获取会话历史
-
-```http
-GET /api/research/chat/sessions/{session_id}
-```
-
----
-
-### 3.5 研究输出
-
-#### 获取输出列表
-
-```http
-GET /api/research/projects/{project_id}/outputs
-```
-
-#### 生成摘要报告
-
-```http
-POST /api/research/projects/{project_id}/outputs/summary
-```
-
-#### 生成播客
-
-```http
-POST /api/research/projects/{project_id}/outputs/podcast
-```
-
----
-
-## 4. Podcast API
+## 3. Podcast API
 
 播客生成 API，支持 SSE 流式响应。
 
-### 4.1 文本转播客 (SSE)
+### 3.1 文本转播客 (SSE)
 
 ```http
 POST /api/podcast/generate
@@ -468,18 +208,18 @@ data: {"audio_url": "https://...", "duration": 300}
 
 ---
 
-### 4.2 项目转播客 (SSE)
+### 3.2 项目转播客 (SSE)
 
 ```http
 POST /api/podcast/project/{project_id}/generate
 Accept: text/event-stream
 ```
 
-基于研究项目的所有材料生成播客。
+基于项目材料生成播客。
 
 ---
 
-### 4.3 获取音色列表
+### 3.3 获取音色列表
 
 ```http
 GET /api/podcast/voices
@@ -501,11 +241,11 @@ GET /api/podcast/voices
 
 ---
 
-## 5. Admin API
+## 4. Admin API
 
 管理后台 API，需要认证。
 
-### 5.1 审核 API
+### 4.1 审核 API
 
 #### 获取待审核列表
 
@@ -565,7 +305,7 @@ GET /api/admin/review/stats
 
 ---
 
-### 5.2 数据源管理 API
+### 4.2 数据源管理 API
 
 #### 获取数据源列表
 
@@ -637,7 +377,7 @@ GET /api/admin/sources/{id}/stats
 
 ---
 
-### 5.3 统计 API
+### 4.3 统计 API
 
 #### 获取总览统计
 
@@ -708,7 +448,7 @@ GET /api/admin/stats/score-distribution
 
 ---
 
-### 5.4 Prompt 管理 API
+### 4.4 Prompt 管理 API
 
 #### 获取 Prompt 列表
 
@@ -752,9 +492,9 @@ POST /api/admin/prompts/{id}/activate
 
 ---
 
-## 6. 其他 API
+## 5. 其他 API
 
-### 6.1 日周精选
+### 5.1 日周精选
 
 #### 获取今日精选
 
@@ -776,7 +516,7 @@ GET /api/digest/weeks
 
 ---
 
-### 6.2 Newsletter
+### 5.2 Newsletter
 
 #### 获取周刊列表
 
@@ -792,7 +532,7 @@ GET /api/newsletters/{id}
 
 ---
 
-### 6.3 RSS 订阅
+### 5.3 RSS 订阅
 
 ```http
 GET /api/feeds/{type}
@@ -808,7 +548,7 @@ GET /api/feeds/{type}
 
 ---
 
-### 6.4 健康检查
+### 5.4 健康检查
 
 ```http
 GET /health
@@ -825,7 +565,7 @@ GET /health
 
 ---
 
-### 6.5 任务管理
+### 5.5 任务管理
 
 #### 获取任务状态
 

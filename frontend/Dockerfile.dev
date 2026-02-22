@@ -17,6 +17,7 @@ RUN npm install
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
+COPY hooks ./hooks
 COPY app/globals.css ./app/globals.css
 COPY tsconfig.json ./
 COPY tailwind.config.ts ./
@@ -28,7 +29,7 @@ EXPOSE 3000
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget -q --spider http://localhost:3000 || exit 1
+    CMD node -e "fetch('http://localhost:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 # 开发模式启动（支持热重载）
 CMD ["npm", "run", "dev"]

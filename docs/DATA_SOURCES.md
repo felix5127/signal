@@ -1,6 +1,6 @@
 # Signal 数据源目录
 
-> 版本: 1.0 | 更新: 2026-01-30 | 状态: Active
+> 版本: 1.1 | 更新: 2026-02-09 | 状态: Active
 
 本文档记录 Signal 支持的所有数据源、数据模型及采集流水线。
 
@@ -20,12 +20,12 @@
 
 ### 1.1 数据源分类
 
-| 分类 | 数据源 | 采集器 | 内容类型 |
-|------|--------|--------|----------|
-| **RSS 订阅** | OPML 技术博客 | `rss.py` | article |
-| **社交媒体** | Twitter/X | `xgoing.py` | tweet |
-| **播客节目** | Podcast RSS | `podcast.py` | podcast |
-| **视频内容** | YouTube RSS | `video.py` | video |
+| 分类 | 数据源 | 采集器 | 内容类型 | 数量 |
+|------|--------|--------|----------|------|
+| **RSS 订阅** | OPML 技术博客 | `rss.py` | article | 16 个 |
+| **社交媒体** | Twitter/X | `xgoing.py` | tweet | 76 个 |
+| **播客节目** | Podcast RSS | `podcast.py` | podcast | 11 个 |
+| **视频内容** | YouTube RSS | `video.py` | video | 26 个 |
 
 ### 1.2 采集频率
 
@@ -57,11 +57,18 @@
 
 **采集器**: `backend/app/scrapers/rss.py`
 
-**数据源**:
-- BestBlog OPML (技术博客精选)
-- 自定义 RSS 订阅
+**配置位置**: `backend/BestBlog/BestBlogs_RSS_Articles.opml`
 
-**配置位置**: `BestBlog/` 目录
+**数据源 (16 个)**:
+
+| 分类 | 数据源 | 数量 |
+|------|--------|------|
+| **AI 公司官方** | OpenAI Blog, Anthropic News, Google DeepMind Blog | 3 |
+| **AI 工具框架** | LangChain Blog | 1 |
+| **顶级博主** | 宝玉的分享 | 1 |
+| **综合媒体** | 硅谷101, 晚点LatePost | 2 |
+| **投资商业** | 海外独角兽, 真格基金 | 2 |
+| **小众公众号** | 超人的电话亭, 深思圈, 赛博禅心, 向阳乔木推荐看, 花叔, 语言即世界, 十字路口Crossing | 7 |
 
 **采集流程**:
 ```
@@ -87,11 +94,27 @@
 
 **采集器**: `backend/app/scrapers/xgoing.py`
 
-**数据源**: XGoing 平台 (Twitter 数据聚合)
+**配置位置**: `backend/BestBlog/BestBlogs_RSS_Twitters.opml`
+
+**数据源 (76 个)**:
+
+| 分类 | 账号类型 | 数量 |
+|------|----------|------|
+| **OpenAI 系** | OpenAI, ChatGPT, Sam Altman, Greg Brockman, Kevin Weil, Logan Kilpatrick, Lilian Weng 等 | 8 |
+| **Anthropic 系** | Anthropic, Claude, Dario Amodei, Alex Albert, Mike Krieger, Jan Leike | 6 |
+| **Google 系** | Google AI, DeepMind, Gemini, Demis Hassabis, Jeff Dean, Sundar Pichai 等 | 7 |
+| **xAI** | xAI | 1 |
+| **Microsoft** | MSFTResearch, Mustafa Suleyman, Satya Nadella | 3 |
+| **AI 大佬** | Andrej Karpathy, Fei-Fei Li, Andrew Ng, DeepLearning.AI, Jim Fan 等 | 7 |
+| **AI 开发工具** | Cursor, LangChain, Harrison Chase, mem0, Cognition, ManusAI 等 | 10 |
+| **AI 媒体/播客** | Lex Fridman, Rowan Cheung, AI Engineer, Latent.Space | 4 |
+| **投资人/企业家** | Marc Andreessen, a16z, Y Combinator, Justine Moore, andrew chen | 5 |
+| **中文 AI 账号** | 宝玉, 歸藏, 小互, 向阳乔木, Yangyi, hidecloud | 6 |
 
 **特点**:
 - 跳过 LLM 分析，直接存储
 - 高频采集 (每小时)
+- 覆盖全球 AI 行业核心人物与组织
 
 **采集流程**:
 ```
@@ -116,7 +139,22 @@
 
 **采集器**: `backend/app/scrapers/podcast.py`
 
-**数据源**: 播客 RSS Feed
+**配置位置**: `backend/BestBlog/BestBlogs_RSS_Podcasts.opml`
+
+**数据源 (11 个)**:
+- What's Next｜科技早知道
+- 无人知晓
+- 硅谷101
+- 乱翻书
+- 硬地骇客
+- AI炼金术
+- 人民公园说AI
+- 保持偏见
+- 枫言枫语
+- 屠龙之术
+- 晚点聊 LateTalk
+
+**特点**: 主要为中文科技/AI 播客节目
 
 **处理流程**:
 ```
@@ -145,7 +183,21 @@
 
 **采集器**: `backend/app/scrapers/video.py`
 
-**数据源**: YouTube 频道 RSS Feed
+**配置位置**: `backend/BestBlog/BestBlogs_RSS_Videos.opml`
+
+**数据源 (26 个)**:
+
+| 分类 | 频道名称 |
+|------|----------|
+| **AI 公司官方** | Anthropic, OpenAI, Google DeepMind |
+| **顶级播客** | AI Engineer, No Priors, Lenny's Podcast, Lex Fridman, Dwarkesh Patel |
+| **技术教育** | Fireship, leerob, freeCodeCamp.org, ByteByteGo, LangChain |
+| **AI 研究者** | Andrej Karpathy, Hung-yi Lee (李宏毅) |
+| **AI 资讯** | AI Master, Matt Wolfe, Wes Roth, Last Week in AI, AI Explained |
+| **AI 分析** | Two Minute Papers, Matthew Berman, AICodeKing, Liam Ottley |
+| **其他** | Product School, Siraj Raval |
+
+**特点**: 涵盖 AI 公司官方、顶级播客、技术教育、研究者、资讯分析等全方位内容
 
 **处理流程**:
 ```
@@ -209,9 +261,6 @@ class ResourceType(Enum):
 | **人工审核** | review_status | Enum | 审核状态 |
 | | review_comment | Text | 审核备注 |
 | | reviewed_at | DateTime | 审核时间 |
-| **深度研究** | deep_research | Text | 研究报告 |
-| | deep_research_tokens | Integer | Token 消耗 |
-| | deep_research_cost | Float | 成本 |
 | **播客/视频** | audio_url | String | 音频链接 |
 | | duration | Integer | 时长 (秒) |
 | | transcript | Text | 转录文本 |
@@ -411,9 +460,16 @@ SourceConfig(
 
 ### 5.2 OPML 订阅管理
 
-**位置**: `BestBlog/` 目录
+**位置**: `backend/BestBlog/` 目录
 
-**格式**: 标准 OPML 文件
+**文件清单**:
+- `BestBlogs_RSS_Articles.opml` - 技术博客订阅 (16 个)
+- `BestBlogs_RSS_Twitters.opml` - Twitter 账号订阅 (76 个)
+- `BestBlogs_RSS_Podcasts.opml` - 播客节目订阅 (11 个)
+- `BestBlogs_RSS_Videos.opml` - YouTube 频道订阅 (26 个)
+- `current_sources.md` - 数据源清单文档
+
+**格式**: 标准 OPML 2.0 文件
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -428,6 +484,11 @@ SourceConfig(
   </body>
 </opml>
 ```
+
+**管理方式**:
+- 直接编辑 OPML 文件
+- 重启后端服务生效
+- 使用管理后台动态启用/禁用
 
 ### 5.3 白名单机制
 

@@ -8,6 +8,8 @@
 
 > CLAUDE.md 体系描述"怎么做"，需求文档体系描述"做什么"和"为什么"
 
+### 核心文档
+
 | 文档 | 描述 | 类型 |
 |------|------|------|
 | [PRODUCT.md](PRODUCT.md) | 产品愿景与路线图 | 需求文档 |
@@ -17,6 +19,14 @@
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计决策 | 需求文档 |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 部署运维指南 | 需求文档 |
 
+### 项目文档
+
+| 文档 | 描述 | 类型 |
+|------|------|------|
+| [docs/architecture/design.md](docs/architecture/design.md) | Pipeline 重构设计方案 | 架构文档 |
+| [docs/architecture/final-refactor-plan.md](docs/architecture/final-refactor-plan.md) | 最终重构方案 | 架构文档 |
+| [docs/review/refactor-completion-report.md](docs/review/refactor-completion-report.md) | Pipeline 重构完成报告 | 审查报告 |
+
 ## <directory>
 
 ### backend/ - Python 后端 (FastAPI + SQLAlchemy)
@@ -25,7 +35,7 @@
 - **app/processors/** - 内容处理器 (analyzer, generator, translator, podcast_analyzer)
 - **app/scrapers/** - 数据抓取器 (rss, xgoing, podcast, video)
 - **app/tasks/** - 异步任务队列 (pipeline, digest, newsletter)
-- **app/services/** - 业务服务 (resource, source, cache, deep_research, feishu, data_tracker)
+- **app/services/** - 业务服务 (resource, source, cache, feishu, data_tracker)
 - **app/utils/** - 工具函数 (llm, cache, jina, logger)
 - **app/schemas/** - Pydantic 数据传输对象
 - **app/agents/** - AI Agent (mindmap, multimodal, podcast)
@@ -36,12 +46,11 @@
 - **components/landing/** - Landing Page Sections (10 个 Section 组件)
 - **components/detail/** - 详情页子组件 (FeaturedReason, AuthorInfo, AISidebar, ContentArea)
 - **components/podcast/** - 播客详情页组件 (AudioPlayer, ChapterOverview, TranscriptView, QARecap)
-- **components/research/** - 研究工作台 (project-list, workspace, panels)
 - **lib/design-system/** - 设计系统令牌 (colors, spacing, typography)
 - **lib/motion.ts** - Apple 级 Spring 动画预设库
 
 ### docs/ - 项目文档
-- **archive/** - 归档文档 (BestBlog/, ANIMATION_GUIDE, DEEP_RESEARCH_API 等)
+- **archive/** - 归档文档 (BestBlog/, ANIMATION_GUIDE 等)
 
 
 

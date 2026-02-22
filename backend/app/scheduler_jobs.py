@@ -1,6 +1,6 @@
 """
-[INPUT]: 依赖 tasks/pipeline 的 run_full_pipeline, tasks/digest 的 generate_daily/weekly_digest, tasks/newsletter 的 generate_newsletter_sync
-[OUTPUT]: 对外提供 scheduled_pipeline, scheduled_twitter_pipeline, scheduled_main_pipeline, daily_digest_job, weekly_digest_job, newsletter_job
+[INPUT]: 依赖 tasks/pipeline 的 run_article_pipeline/run_twitter_pipeline/run_podcast_pipeline, tasks/digest, tasks/newsletter
+[OUTPUT]: 对外提供 scheduled_twitter_pipeline, scheduled_main_pipeline, daily_digest_job, weekly_digest_job, newsletter_job
 [OUTPUT]: 对外提供 pipeline_state 全局状态对象（供 API 查询）
 [POS]: 定时任务函数定义，被 startup.py 的调度器配置引用
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -42,56 +42,108 @@ pipeline_state = PipelineState()
 last_run_time: Optional[datetime] = None
 
 
-def scheduled_pipeline(sources: Optional[list[str]] = None):
+def _run_async_pipeline(coro):
     """
-    APScheduler 调用的同步包装函数
+    在新事件循环中运行异步 pipeline
 
-    在新的事件循环中运行异步任务
-    更新全局 pipeline_state 供 Admin Dashboard 查询
+    APScheduler 在线程池中运行 job，需要独立的事件循环。
     """
-    from app.tasks.pipeline import run_full_pipeline
-
-    global last_run_time, pipeline_state
-
-    # 更新状态：开始运行
-    pipeline_state.is_running = True
-    pipeline_state.started_at = datetime.now()
-    pipeline_state.sources_to_run = sources or []
-    pipeline_state.sources_completed = []
-    pipeline_state.current_source = sources[0] if sources else "all"
-
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(run_full_pipeline(sources=sources))
-        last_run_time = datetime.now()
-        pipeline_state.last_run_status = "success"
-        print(f"[Scheduler] Pipeline completed at {last_run_time}")
-    except Exception as e:
-        pipeline_state.last_run_status = "failed"
-        print(f"[Scheduler] Pipeline failed: {e}")
-        raise
+        return loop.run_until_complete(coro)
     finally:
-        # 更新状态：运行结束
-        pipeline_state.is_running = False
-        pipeline_state.current_source = None
-        pipeline_state.last_run_finished_at = datetime.now()
         loop.close()
 
 
 def scheduled_twitter_pipeline():
     """Twitter 专用调度任务（每小时）"""
+    from app.tasks.pipeline import run_twitter_pipeline
+
+    global last_run_time, pipeline_state
+
     print("[Scheduler] Starting Twitter pipeline...")
-    scheduled_pipeline(sources=["twitter"])
+
+    pipeline_state.is_running = True
+    pipeline_state.started_at = datetime.now()
+    pipeline_state.sources_to_run = ["twitter"]
+    pipeline_state.sources_completed = []
+    pipeline_state.current_source = "twitter"
+
+    try:
+        stats = _run_async_pipeline(run_twitter_pipeline())
+        last_run_time = datetime.now()
+        pipeline_state.last_run_status = "success"
+        pipeline_state.last_run_saved_count = getattr(stats, "saved_count", 0)
+        print(f"[Scheduler] Twitter pipeline completed at {last_run_time}")
+    except Exception as e:
+        pipeline_state.last_run_status = "failed"
+        print(f"[Scheduler] Twitter pipeline failed: {e}")
+        raise
+    finally:
+        pipeline_state.is_running = False
+        pipeline_state.current_source = None
+        pipeline_state.last_run_finished_at = datetime.now()
 
 
 def scheduled_main_pipeline():
-    """主要数据源调度任务（每12小时）"""
-    print("[Scheduler] Starting main pipeline...")
-    # 已移除: hn, github, huggingface, arxiv, producthunt (scraper 已删除)
-    scheduled_pipeline(
-        sources=["blog", "podcast"]
-    )
+    """
+    主要数据源调度任务（每12小时）
+
+    依次运行文章和播客 pipeline（新版独立 pipeline）。
+    """
+    from app.tasks.pipeline import run_article_pipeline, run_podcast_pipeline
+
+    global last_run_time, pipeline_state
+
+    print("[Scheduler] Starting main pipeline (article + podcast)...")
+
+    pipeline_state.is_running = True
+    pipeline_state.started_at = datetime.now()
+    pipeline_state.sources_to_run = ["blog", "podcast"]
+    pipeline_state.sources_completed = []
+    pipeline_state.current_source = "blog"
+
+    total_saved = 0
+    has_failure = False
+
+    # ── 文章 Pipeline ──
+    try:
+        stats = _run_async_pipeline(run_article_pipeline())
+        total_saved += getattr(stats, "saved_count", 0)
+        pipeline_state.sources_completed.append("blog")
+        print(f"[Scheduler] Article pipeline completed (saved: {getattr(stats, 'saved_count', 0)})")
+    except Exception as e:
+        has_failure = True
+        print(f"[Scheduler] Article pipeline failed: {e}")
+
+    # ── 播客 Pipeline ──
+    pipeline_state.current_source = "podcast"
+    try:
+        stats = _run_async_pipeline(run_podcast_pipeline())
+        total_saved += getattr(stats, "saved_count", 0)
+        pipeline_state.sources_completed.append("podcast")
+        print(f"[Scheduler] Podcast pipeline completed (saved: {getattr(stats, 'saved_count', 0)})")
+    except Exception as e:
+        has_failure = True
+        print(f"[Scheduler] Podcast pipeline failed: {e}")
+
+    # ── 汇总 ──
+    last_run_time = datetime.now()
+    pipeline_state.last_run_saved_count = total_saved
+
+    if has_failure and not pipeline_state.sources_completed:
+        pipeline_state.last_run_status = "failed"
+    elif has_failure:
+        pipeline_state.last_run_status = "partial"
+    else:
+        pipeline_state.last_run_status = "success"
+
+    pipeline_state.is_running = False
+    pipeline_state.current_source = None
+    pipeline_state.last_run_finished_at = datetime.now()
+
+    print(f"[Scheduler] Main pipeline finished at {last_run_time} (status: {pipeline_state.last_run_status}, saved: {total_saved})")
 
 
 def daily_digest_job():

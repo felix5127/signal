@@ -14,7 +14,6 @@ import Link from 'next/link'
 import { ExternalLink, Star } from 'lucide-react'
 import { AISummaryCard, AIAssistantCard } from './detail'
 import MarkdownRenderer from './markdown-renderer'
-import DeepResearchButton from './deep-research-button'
 
 export interface ResourceDetailProps {
   resource: {
@@ -313,12 +312,6 @@ export default function ResourceDetail({ resource }: ResourceDetailProps) {
                 <span>阅读原文</span>
                 <ExternalLink className="w-[18px] h-[18px] transition-transform group-hover:translate-x-0.5" />
               </a>
-              <DeepResearchButton
-                resourceId={resource.id}
-                resourceTitle={displayTitle}
-                resourceContent={resource.content_markdown || displaySummary}
-                resourceUrl={resource.url}
-              />
             </div>
           </article>
 

@@ -81,6 +81,7 @@ services:
       - ./frontend/app:/app/app
       - ./frontend/components:/app/components
       - ./frontend/lib:/app/lib
+      - ./frontend/hooks:/app/hooks
       - ./frontend/design-system:/app/design-system
       - /app/node_modules
       - /app/.next
@@ -101,10 +102,10 @@ services:
       - signal-network
 
   # ============================================
-  # PostgreSQL 数据库 (with pgvector)
+  # PostgreSQL 数据库
   # ============================================
   db:
-    image: pgvector/pgvector:pg15
+    image: postgres:15
     container_name: signal-db
     hostname: db
     ports:
