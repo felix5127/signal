@@ -70,7 +70,7 @@ export default function Navbar() {
                 <Link key={item.id} href={item.href}>
                   <span
                     className={cn(
-                      "text-[15px] font-medium transition-colors duration-200",
+                      "text-[18px] font-medium transition-colors duration-200",
                       isActive
                         ? "text-[#1E3A5F]"
                         : "text-[#6B6B6B] hover:text-[#272735]"
