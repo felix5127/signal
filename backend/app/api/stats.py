@@ -80,6 +80,8 @@ async def health_check():
 
     # 调度器状态
     scheduler_status = "unknown"
+    last_run_time = None
+    next_run_time = None
     try:
         from app.main import last_run_time, next_run_time
         scheduler_status = "running"
