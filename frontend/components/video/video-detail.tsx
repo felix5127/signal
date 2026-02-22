@@ -229,7 +229,7 @@ export function VideoDetail({ resource }: VideoDetailProps) {
   return (
     <div className="min-h-screen bg-[#FBFCFD]">
       {/* 主要内容 */}
-      <main className="max-w-[1280px] mx-auto px-20 py-10">
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-20 py-10">
         {/* ====== Breadcrumb 面包屑 ====== */}
         <nav className="flex items-center gap-2 text-[13px] mb-8">
           <Link

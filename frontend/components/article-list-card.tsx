@@ -40,12 +40,6 @@ interface ArticleListCardProps {
   className?: string
 }
 
-const SOURCE_NAMES: Record<string, string> = {
-  twitter: 'Twitter',
-  blog: 'Blog',
-  podcast: 'Podcast',
-}
-
 // 域名对应的颜色配置
 const DOMAIN_COLORS: Record<string, { bg: string; text: string; placeholder: string }> = {
   '人工智能': { bg: '#EEF2FF', text: '#4F46E5', placeholder: '#818CF8' },
