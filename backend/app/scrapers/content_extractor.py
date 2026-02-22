@@ -1,6 +1,6 @@
 # [INPUT]: URL 字符串, httpx (Jina Reader 降级)
-# [OUTPUT]: ExtractedContent (HTML、Markdown、字数、阅读时长)
-# [POS]: 全文提取模块，Playwright 优先 + Jina Reader 降级 + 重试 + 浏览器复用
+# [OUTPUT]: ExtractedContent (HTML、Markdown、字数、阅读时长、OG Image URL)
+# [POS]: 全文提取模块，Playwright 优先 + Jina Reader 降级 + 重试 + 浏览器复用 + OG Image 提取
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 
 import re
@@ -39,6 +39,7 @@ class ExtractedContent:
         word_count: 字数统计（中文按字符，英文按单词）
         read_time: 预估阅读时长（分钟）
         extraction_method: 提取方式 (playwright/jina)
+        og_image_url: Open Graph 封面图 URL (og:image / twitter:image)
         error: 错误信息 (提取失败时设置)
     """
     html: str
@@ -46,6 +47,7 @@ class ExtractedContent:
     word_count: int
     read_time: int  # 分钟
     extraction_method: str = "playwright"  # playwright / jina
+    og_image_url: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -271,7 +273,10 @@ class ContentExtractor:
                 logger.warning("content_extractor.playwright.content_short", url=url[:80])
                 return None
 
-            return self._build_result(html_content, method="playwright")
+            # 提取 OG Image (og:image > twitter:image > twitter:image:src)
+            og_image_url = await self._extract_og_image_from_page(page)
+
+            return self._build_result(html_content, method="playwright", og_image_url=og_image_url)
 
         finally:
             await context.close()
@@ -303,6 +308,9 @@ class ContentExtractor:
             word_count = self._count_words(markdown)
             read_time = self._calculate_read_time(markdown)
 
+            # Jina 不返回 HTML，单独提取 OG Image
+            og_image_url = await self._extract_og_image_from_url(url)
+
             logger.info("content_extractor.jina.success",
                         url=url[:80], word_count=word_count)
 
@@ -312,6 +320,7 @@ class ContentExtractor:
                 word_count=word_count,
                 read_time=read_time,
                 extraction_method="jina",
+                og_image_url=og_image_url,
             )
 
     # ============================================================
@@ -361,7 +370,12 @@ class ContentExtractor:
     # 结果构建
     # ============================================================
 
-    def _build_result(self, html_content: str, method: str = "playwright") -> ExtractedContent:
+    def _build_result(
+        self,
+        html_content: str,
+        method: str = "playwright",
+        og_image_url: Optional[str] = None,
+    ) -> ExtractedContent:
         """从 HTML 构建 ExtractedContent"""
         markdown_content = self._html_to_markdown(html_content)
         word_count = self._count_words(markdown_content)
@@ -373,7 +387,70 @@ class ContentExtractor:
             word_count=word_count,
             read_time=read_time,
             extraction_method=method,
+            og_image_url=og_image_url,
         )
+
+    # ============================================================
+    # OG Image 提取
+    # ============================================================
+
+    @staticmethod
+    async def _extract_og_image_from_page(page: Page) -> Optional[str]:
+        """
+        从 Playwright 页面提取 OG Image URL
+
+        优先级: og:image > twitter:image > twitter:image:src
+        """
+        selectors = [
+            'meta[property="og:image"]',
+            'meta[name="twitter:image"]',
+            'meta[name="twitter:image:src"]',
+        ]
+        for selector in selectors:
+            try:
+                el = await page.query_selector(selector)
+                if el:
+                    url = await el.get_attribute("content")
+                    if url and url.startswith("http"):
+                        return url
+            except Exception:
+                continue
+        return None
+
+    @staticmethod
+    async def _extract_og_image_from_url(url: str) -> Optional[str]:
+        """
+        轻量 httpx 请求提取 OG Image (Jina 降级路径使用)
+
+        只读取前 ~30KB 的 HTML <head> 区域，正则匹配 meta 标签。
+        超时 5s，失败静默返回 None。
+        """
+        # 匹配两种属性顺序: property...content 和 content...property
+        OG_IMAGE_RE = re.compile(
+            r'<meta\s+(?:'
+            r'(?:[^>]*?(?:property=["\']og:image["\']|name=["\']twitter:image(?::src)?["\'])[^>]*?content=["\']([^"\']+)["\'])'
+            r'|'
+            r'(?:[^>]*?content=["\']([^"\']+)["\'][^>]*?(?:property=["\']og:image["\']|name=["\']twitter:image(?::src)?["\']))'
+            r')',
+            re.IGNORECASE,
+        )
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 Signal-Bot/1.0"},
+                    follow_redirects=True,
+                )
+                # 只读 head 部分 (前 30KB 足够)
+                head_html = response.text[:30_000]
+                match = OG_IMAGE_RE.search(head_html)
+                if match:
+                    img_url = match.group(1) or match.group(2)
+                    if img_url and img_url.startswith("http"):
+                        return img_url
+        except Exception as e:
+            logger.debug("content_extractor.og_image.fallback_failed", url=url[:80], error=str(e))
+        return None
 
     # ============================================================
     # 格式转换 + 计算

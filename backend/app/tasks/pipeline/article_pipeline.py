@@ -328,8 +328,10 @@ async def run_article_pipeline(
                 # 获取来源图标
                 source_icon_url = FaviconFetcher.get_favicon(signal.url)
 
-                # 获取缩略图 (从 RSS metadata)
+                # 获取缩略图 (RSS metadata 优先, OG Image 兜底)
                 thumbnail_url = signal.metadata.get("thumbnail_url") if signal.metadata else None
+                if not thumbnail_url and content.og_image_url:
+                    thumbnail_url = content.og_image_url
 
                 # 构建 Resource 记录
                 resource = Resource(

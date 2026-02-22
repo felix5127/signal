@@ -14,6 +14,7 @@ export interface ArticleResource {
   source?: string
   source_name?: string
   source_icon_url?: string
+  thumbnail_url?: string
   url: string
   title: string
   title_translated?: string
@@ -111,15 +112,24 @@ export function ArticleListCard({ resource, className }: ArticleListCardProps) {
         className
       )}
     >
-      {/* 左侧：彩色占位图 */}
+      {/* 左侧：封面图 / 彩色占位图 */}
       <div
-        className="flex-shrink-0 w-[100px] h-[80px] rounded-[12px] flex items-center justify-center"
+        className="flex-shrink-0 w-[100px] h-[80px] rounded-[12px] overflow-hidden flex items-center justify-center"
         style={{ backgroundColor: colorConfig.bg }}
       >
-        <div
-          className="w-10 h-10 rounded-[8px] opacity-60"
-          style={{ backgroundColor: colorConfig.placeholder }}
-        />
+        {resource.thumbnail_url ? (
+          <img
+            src={resource.thumbnail_url}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-[8px] opacity-60"
+            style={{ backgroundColor: colorConfig.placeholder }}
+          />
+        )}
       </div>
 
       {/* 右侧：内容区域 */}
