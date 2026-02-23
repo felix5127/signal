@@ -35,9 +35,9 @@ logger = structlog.get_logger("pipeline")
 
 async def run_podcast_pipeline(
     opml_path: Optional[str] = None,
-    max_items_per_feed: int = 2,
+    max_items_per_feed: Optional[int] = None,
     enable_transcription: bool = True,
-    max_daily_transcription: int = 5,
+    max_daily_transcription: Optional[int] = None,
     dry_run: bool = False,
 ) -> PodcastPipelineStats:
     """
@@ -61,7 +61,17 @@ async def run_podcast_pipeline(
     """
     stats = PodcastPipelineStats()
     tracker = DataTracker(pipeline="podcast")
-    logger.info("podcast.pipeline.started", transcription_enabled=enable_transcription)
+
+    # 从 config 读取默认值（不再硬编码）
+    if max_items_per_feed is None:
+        max_items_per_feed = config.podcast.max_items_per_feed
+    if max_daily_transcription is None:
+        max_daily_transcription = config.podcast.max_daily_items
+
+    logger.info("podcast.pipeline.started",
+                transcription_enabled=enable_transcription,
+                max_items_per_feed=max_items_per_feed,
+                max_daily_transcription=max_daily_transcription)
 
     # ========== 1. RSS 采集 ==========
     logger.info("podcast.scrape.started")
@@ -73,7 +83,8 @@ async def run_podcast_pipeline(
     podcast_scraper = PodcastScraper()
     raw_signals = await podcast_scraper.scrape(
         opml_path=opml_path,
-        max_items_per_feed=max_items_per_feed
+        max_items_per_feed=max_items_per_feed,
+        max_age_days=config.podcast.max_age_days,
     )
     stats.scraped_count = len(raw_signals)
 
@@ -251,7 +262,7 @@ async def run_podcast_pipeline(
                     thumbnail_url=metadata.get("thumbnail_url"),
                     url=signal.url,
                     title=signal.title,
-                    one_sentence_summary=signal.title,
+                    one_sentence_summary=signal.title[:500],
                     content_markdown=signal.content,  # 原始描述 (Show Notes)
                     content_html=signal.content,
                     domain="科技播客",
@@ -297,6 +308,7 @@ async def run_podcast_pipeline(
                 failed=stats.failed_count)
 
     # ========== 记录采集结果 ==========
+    record_db = None
     try:
         record_db = SessionLocal()
         source_service = SourceService(record_db)
@@ -304,13 +316,15 @@ async def run_podcast_pipeline(
             source_type="podcast",
             status="success" if stats.failed_count == 0 else "partial",
             fetched_count=stats.scraped_count,
-            dedup_filtered_count=len(raw_signals),
+            dedup_filtered_count=stats.scraped_count - len(raw_signals),
             saved_count=stats.saved_count,
             error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
         )
-        record_db.close()
     except Exception as e:
         logger.error("podcast.record_run.failed", error=str(e))
+    finally:
+        if record_db:
+            record_db.close()
 
     # ========== 飞书数据追踪 ==========
     try:

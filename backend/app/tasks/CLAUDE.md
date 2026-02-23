@@ -18,9 +18,9 @@ queue.py: 任务队列管理 (APScheduler 配置)
 ## 流水线概览
 | 流水线 | 数据源 | 采集频率 | 特点 |
 |--------|--------|---------|------|
-| ArticlePipeline | RSS/OPML | 每小时 | 完整 8 步处理 (Deduper + UnifiedFilter) |
+| ArticlePipeline | RSS/OPML | 每12小时 | 完整 8 步处理 (Deduper + UnifiedFilter) |
 | TwitterPipeline | XGoing | 每小时 | 跳过 LLM 分析，直接存储 |
-| PodcastPipeline | Podcast RSS | 按需 | 转写 + PodcastAnalyzer 章节/Q&A 分析 |
+| PodcastPipeline | Podcast RSS | 每6小时 | 转写 + PodcastAnalyzer 章节/Q&A 分析 + 日期过滤 |
 | VideoPipeline | YouTube RSS | 按需 | 转写 + PodcastAnalyzer 章节/Q&A 分析 |
 
 ## ArticlePipeline 流程
@@ -67,8 +67,9 @@ queue.py: 任务队列管理 (APScheduler 配置)
 ## 定时任务配置
 | 任务 | 触发时间 | 函数 |
 |------|---------|------|
-| Article Pipeline | 每小时 | scheduled_article_pipeline |
+| Article Pipeline | 每12小时 | scheduled_main_pipeline |
 | Twitter Pipeline | 每小时 | scheduled_twitter_pipeline |
+| Podcast Pipeline | 每6小时 | scheduled_podcast_pipeline |
 | Daily Digest | 每天 07:00 | daily_digest_job |
 | Weekly Digest | 每周一 08:00 | weekly_digest_job |
 | Newsletter | 每周五 17:00 | newsletter_job |

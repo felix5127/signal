@@ -9,6 +9,7 @@
 
 import { User, Globe, Calendar, Clock, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 
 interface AuthorInfoProps {
   author?: string
@@ -18,13 +19,6 @@ interface AuthorInfoProps {
   readTime?: number
   wordCount?: number
   className?: string
-}
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  twitter: 'Twitter / X',
-  blog: '博客',
-  podcast: '播客',
 }
 
 // 格式化阅读时间

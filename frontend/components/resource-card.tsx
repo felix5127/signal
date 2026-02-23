@@ -5,6 +5,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 import { Badge } from '@/components/ui/badge'
 
 export interface Resource {
@@ -38,13 +39,6 @@ export interface Resource {
 interface ResourceCardProps {
   resource: Resource
   className?: string
-}
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  twitter: 'Twitter',
-  blog: 'Blog',
-  podcast: 'Podcast',
 }
 
 // 格式化时间

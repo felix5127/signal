@@ -46,6 +46,16 @@ class FeishuService:
         self._token: Optional[str] = None
         self._token_expires_at: float = 0
 
+    def is_configured(self) -> bool:
+        """检查飞书配置是否完整（enabled 且 4 个必填字段非空）"""
+        return bool(
+            self.enabled
+            and self.app_id
+            and self.app_secret
+            and self.app_token
+            and self.table_id
+        )
+
     # --------------------------------------------------------------------------
     #                           TOKEN 管理
     # --------------------------------------------------------------------------

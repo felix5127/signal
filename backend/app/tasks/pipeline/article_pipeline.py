@@ -451,6 +451,7 @@ async def run_article_pipeline(
     llm_client.reset_token_counter()
 
     # ========== 9. 记录采集结果 ==========
+    record_db = None
     try:
         record_db = SessionLocal()
         source_service = SourceService(record_db)
@@ -464,9 +465,11 @@ async def run_article_pipeline(
             saved_count=stats.saved_count,
             error_message=None if stats.failed_count == 0 else f"Failed: {stats.failed_count}",
         )
-        record_db.close()
     except Exception as e:
         logger.error("article.record_run.failed", error=str(e))
+    finally:
+        if record_db:
+            record_db.close()
 
     # ========== 10. 写入追踪数据到飞书 ==========
     logger.info("article.tracking.flushing")

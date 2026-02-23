@@ -10,6 +10,7 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 import { AudioPlayer } from './audio-player'
 import { AudioPlayerProvider } from './audio-player-context'
 import { ContentTabs, TabKey } from './content-tabs'
@@ -52,13 +53,6 @@ export interface PodcastResource {
 
 interface PodcastDetailProps {
   resource: PodcastResource
-}
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  twitter: 'Twitter / X',
-  blog: '博客',
-  podcast: '播客',
 }
 
 // 格式化时长

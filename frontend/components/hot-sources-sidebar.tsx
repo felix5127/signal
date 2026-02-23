@@ -119,7 +119,7 @@ export function HotSourcesSidebar({ type, onSourceSelect, currentSource }: HotSo
                     <img
                       src={source.icon}
                       className="w-5 h-5 rounded-md flex-shrink-0"
-                      alt=""
+                      alt={`${source.name} 图标`}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
                         target.style.display = 'none'

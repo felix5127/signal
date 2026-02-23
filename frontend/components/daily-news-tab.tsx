@@ -140,7 +140,6 @@ export function DailyNewsTab() {
 
       // 检查数据源是否在请求期间发生了变化,如果变了就丢弃这个响应
       if (currentSources !== selectedSources.join(',')) {
-        console.log('数据源已变化,丢弃过期响应')
         setLoading(false)
         return
       }

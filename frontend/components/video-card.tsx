@@ -9,6 +9,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 import { Play } from 'lucide-react'
 import type { Resource } from '@/components/resource-list-page'
 
@@ -68,14 +69,6 @@ function formatRelativeTime(dateString?: string): string {
       day: 'numeric'
     })
   }
-}
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  youtube: 'YouTube',
-  bilibili: 'Bilibili',
-  twitter: 'Twitter',
-  vimeo: 'Vimeo',
 }
 
 export function VideoCard({ resource, className }: VideoCardProps) {

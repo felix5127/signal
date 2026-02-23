@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { ExternalLink, Star } from 'lucide-react'
 import { AISummaryCard, AIAssistantCard } from './detail'
 import MarkdownRenderer from './markdown-renderer'
+import { SOURCE_NAMES } from '@/lib/constants'
 
 export interface ResourceDetailProps {
   resource: {
@@ -64,17 +65,6 @@ const TYPE_ROUTES: Record<string, { label: string; href: string }> = {
   podcast: { label: '播客', href: '/podcasts' },
   tweet: { label: '推文', href: '/tweets' },
   video: { label: '视频', href: '/videos' },
-}
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  hn: 'Hacker News',
-  github: 'GitHub',
-  huggingface: 'Hugging Face',
-  twitter: 'Twitter / X',
-  arxiv: 'ArXiv',
-  producthunt: 'Product Hunt',
-  blog: '博客',
 }
 
 // 格式化日期
@@ -152,9 +142,8 @@ export default function ResourceDetail({ resource }: ResourceDetailProps) {
   const displaySourceName = SOURCE_NAMES[resource.source_name] || resource.source_name
 
   // 处理 AI 助手问题
-  const handleAskQuestion = (question: string) => {
+  const handleAskQuestion = (_question: string) => {
     // TODO: 实现 AI 问答功能
-    console.log('Ask question:', question)
   }
 
   return (

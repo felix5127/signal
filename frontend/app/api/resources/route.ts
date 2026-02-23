@@ -19,10 +19,6 @@ export async function GET(request: NextRequest) {
 
   const backendUrl = `${BACKEND_URL}/api/resources${queryString}`
 
-  // 调试日志
-  console.log('[API Proxy] INTERNAL_API_URL:', BACKEND_URL)
-  console.log('[API Proxy] Backend URL:', backendUrl)
-
   try {
     const response = await fetch(backendUrl, {
       headers: {
@@ -43,8 +39,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    console.log('[API Proxy] Response items count:', data.items?.length || 0, 'total:', data.total || 0)
-
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[API Proxy] Fetch error:', error)

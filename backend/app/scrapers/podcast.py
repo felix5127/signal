@@ -4,7 +4,7 @@
 # 更新提醒：一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 import feedparser
@@ -29,7 +29,8 @@ class PodcastScraper(BaseScraper):
     async def scrape(
         self,
         opml_path: Optional[str] = None,
-        max_items_per_feed: int = 5
+        max_items_per_feed: int = 5,
+        max_age_days: int = 7,
     ) -> List[RawSignal]:
         """
         采集播客内容
@@ -59,7 +60,8 @@ class PodcastScraper(BaseScraper):
                 feed_signals = await self.scrape_single_feed(
                     feed["url"],
                     feed["name"],
-                    max_items_per_feed
+                    max_items_per_feed,
+                    max_age_days=max_age_days,
                 )
                 return feed_signals
 
@@ -83,7 +85,8 @@ class PodcastScraper(BaseScraper):
         self,
         feed_url: str,
         feed_name: str,
-        max_items: int = 5
+        max_items: int = 5,
+        max_age_days: int = 7,
     ) -> List[RawSignal]:
         """
         抓取单个播客 RSS feed
@@ -162,6 +165,12 @@ class PodcastScraper(BaseScraper):
                 # 如果没有音频URL，跳过
                 if not audio_url:
                     continue
+
+                # 日期过滤：仅保留最近 max_age_days 天内的集数
+                if published_at and max_age_days > 0:
+                    cutoff = datetime.now() - timedelta(days=max_age_days)
+                    if published_at < cutoff:
+                        continue
 
                 # 构建 RawSignal
                 signal = RawSignal(

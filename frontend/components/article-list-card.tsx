@@ -8,6 +8,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 
 export interface ArticleResource {
   id: number
@@ -114,7 +115,7 @@ export function ArticleListCard({ resource, className }: ArticleListCardProps) {
         {resource.thumbnail_url ? (
           <img
             src={resource.thumbnail_url}
-            alt=""
+            alt={displayTitle}
             className="w-full h-full object-cover"
             loading="lazy"
           />

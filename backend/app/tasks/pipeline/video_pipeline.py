@@ -226,7 +226,7 @@ async def run_video_pipeline(
                     thumbnail_url=metadata.get("thumbnail_url"),
                     url=signal.url,
                     title=signal.title,
-                    one_sentence_summary=signal.title,
+                    one_sentence_summary=signal.title[:500],
                     content_markdown=signal.content,  # 原始描述
                     content_html=signal.content,
                     domain="科技视频",

@@ -23,8 +23,6 @@ export async function GET(
 
   const backendUrl = `${BACKEND_URL}/api/resources/${path.join('/')}${queryString}`
 
-  console.log('[API Proxy catch-all] Backend URL:', backendUrl)
-
   try {
     const response = await fetch(backendUrl, {
       headers: {

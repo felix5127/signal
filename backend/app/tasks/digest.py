@@ -38,7 +38,7 @@ def generate_daily_digest(target_date: str = None) -> DailyDigest:
     try:
         # 确定目标日期
         if target_date is None:
-            target_date = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+            target_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
         logger.info(f"[DailyDigest] 开始生成 {target_date} 的每日精选")
 
@@ -48,9 +48,10 @@ def generate_daily_digest(target_date: str = None) -> DailyDigest:
             logger.warning(f"[DailyDigest] {target_date} 已存在，跳过生成")
             return existing
 
-        # 查询当天所有资源
-        start_time = f"{target_date} 00:00:00"
-        end_time = f"{target_date} 23:59:59"
+        # 查询当天所有资源（使用 datetime 对象，避免字符串隐式转换）
+        target_dt = datetime.strptime(target_date, "%Y-%m-%d")
+        start_time = target_dt.replace(hour=0, minute=0, second=0)
+        end_time = target_dt.replace(hour=23, minute=59, second=59)
 
         all_resources = db.query(Resource).filter(
             Resource.created_at >= start_time,
@@ -155,7 +156,7 @@ def generate_weekly_digest(week_start: str = None) -> WeeklyDigest:
     try:
         # 确定周一和周日
         if week_start is None:
-            today = datetime.utcnow()
+            today = datetime.now()
             days_since_monday = today.weekday()
             last_monday = today - timedelta(days=days_since_monday + 7)
             week_start = last_monday.strftime("%Y-%m-%d")
@@ -172,9 +173,9 @@ def generate_weekly_digest(week_start: str = None) -> WeeklyDigest:
             logger.warning(f"[WeeklyDigest] {week_start} 已存在，跳过生成")
             return existing
 
-        # 查询本周所有资源
-        start_time = f"{week_start} 00:00:00"
-        end_time = f"{week_end} 23:59:59"
+        # 查询本周所有资源（使用 datetime 对象，避免字符串隐式转换）
+        start_time = week_start_dt.replace(hour=0, minute=0, second=0)
+        end_time = week_end_dt.replace(hour=23, minute=59, second=59)
 
         all_resources = db.query(Resource).filter(
             Resource.created_at >= start_time,

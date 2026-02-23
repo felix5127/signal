@@ -9,6 +9,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 import { Play } from 'lucide-react'
 import type { Resource } from '@/components/resource-list-page'
 
@@ -67,15 +68,6 @@ function formatRelativeTime(dateString?: string): string {
       day: 'numeric'
     })
   }
-}
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  'Lex Fridman Podcast': 'Lex Fridman Podcast',
-  'spotify': 'Spotify',
-  'apple_podcasts': 'Apple Podcasts',
-  '硅谷早知道': '硅谷早知道',
-  'AI 技术前沿': 'AI 技术前沿',
 }
 
 export function PodcastCard({ resource, className }: PodcastCardProps) {

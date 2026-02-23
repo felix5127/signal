@@ -151,9 +151,9 @@ class Resource(Base):
         return hashlib.sha256(url.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def should_be_featured(score: int) -> bool:
-        """判断是否应该标记为精选"""
-        return score >= 85
+    def should_be_featured(score: Optional[int]) -> bool:
+        """判断是否应该标记为精选（None 安全）"""
+        return score is not None and score >= 85
 
     def to_dict(self) -> dict:
         """转换为字典（用于 API 响应）"""

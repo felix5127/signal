@@ -115,6 +115,7 @@ def register_startup_events(app: FastAPI):
         from app.scheduler_jobs import (
             scheduled_twitter_pipeline,
             scheduled_main_pipeline,
+            scheduled_podcast_pipeline,
             daily_digest_job,
             weekly_digest_job,
             newsletter_job,
@@ -152,13 +153,23 @@ def register_startup_events(app: FastAPI):
                 replace_existing=True,
             )
 
-            # 主要数据源：每12小时抓取一次
+            # 文章数据源：每12小时抓取一次
             scheduler.add_job(
                 scheduled_main_pipeline,
                 trigger="interval",
                 hours=12,
                 id="main_pipeline_job",
-                name="Main Pipeline (12-hourly)",
+                name="Article Pipeline (12-hourly)",
+                replace_existing=True,
+            )
+
+            # 播客数据源：每6小时独立抓取
+            scheduler.add_job(
+                scheduled_podcast_pipeline,
+                trigger="interval",
+                hours=6,
+                id="podcast_pipeline_job",
+                name="Podcast Pipeline (6-hourly)",
                 replace_existing=True,
             )
 
@@ -202,10 +213,12 @@ def register_startup_events(app: FastAPI):
             # 获取下次运行时间
             twitter_job = scheduler.get_job("twitter_pipeline_job")
             main_job = scheduler.get_job("main_pipeline_job")
+            podcast_job = scheduler.get_job("podcast_pipeline_job")
 
             print("[Startup] Scheduler started:")
             print(f"  - Twitter: Every 1 hour (next: {twitter_job.next_run_time})")
-            print(f"  - Main sources: Every 12 hours (next: {main_job.next_run_time})")
+            print(f"  - Articles: Every 12 hours (next: {main_job.next_run_time})")
+            print(f"  - Podcasts: Every 6 hours (next: {podcast_job.next_run_time})")
             print(f"  - Daily digest: Every day at 07:00")
             print(f"  - Weekly digest: Every Monday at 08:00")
             print(f"  - Weekly newsletter: Every Friday at 17:00\n")

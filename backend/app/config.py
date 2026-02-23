@@ -50,10 +50,11 @@ class PodcastConfig(BaseSettings):
     """播客数据源配置"""
     enabled: bool = True  # 启用播客抓取
     opml_path: str = "BestBlog/BestBlogs_RSS_Podcasts.opml"  # OPML 文件路径（相对路径）
-    max_items_per_feed: int = 2  # 每个 feed 最多抓取条目数（控制每日总量）
+    max_items_per_feed: int = 5  # 每个 feed 最多抓取条目数（11 源 × 5 = 55 集/次）
+    max_age_days: int = 7  # 仅抓取最近 N 天的集数
     max_duration_seconds: int = 7200  # 最大音频时长（秒），默认 2 小时
     transcribe_enabled: bool = True  # 是否启用转写
-    max_daily_items: int = 5  # 每日最多处理播客数（控制转写成本）
+    max_daily_items: int = 20  # 每日最多转写播客数（控制成本，覆盖 11 源 × ~2 集/源）
 
     class Config:
         env_file = ".env"

@@ -15,7 +15,13 @@ export async function POST(request: NextRequest) {
     const { password } = await request.json()
 
     // 从环境变量获取密码
-    const adminPassword = process.env.ADMIN_PASSWORD || '512780808'
+    const adminPassword = process.env.ADMIN_PASSWORD
+    if (!adminPassword) {
+      return NextResponse.json(
+        { success: false, message: '服务器未配置管理员密码' },
+        { status: 500 }
+      )
+    }
 
     if (password === adminPassword) {
       // 设置认证 Cookie（7天有效期）

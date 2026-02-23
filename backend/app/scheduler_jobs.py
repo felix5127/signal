@@ -1,6 +1,6 @@
 """
 [INPUT]: 依赖 tasks/pipeline 的 run_article_pipeline/run_twitter_pipeline/run_podcast_pipeline, tasks/digest, tasks/newsletter
-[OUTPUT]: 对外提供 scheduled_twitter_pipeline, scheduled_main_pipeline, daily_digest_job, weekly_digest_job, newsletter_job
+[OUTPUT]: 对外提供 scheduled_twitter_pipeline, scheduled_main_pipeline, scheduled_podcast_pipeline, daily_digest_job, weekly_digest_job, newsletter_job
 [OUTPUT]: 对外提供 pipeline_state 全局状态对象（供 API 查询）
 [POS]: 定时任务函数定义，被 startup.py 的调度器配置引用
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -88,19 +88,19 @@ def scheduled_twitter_pipeline():
 
 def scheduled_main_pipeline():
     """
-    主要数据源调度任务（每12小时）
+    文章数据源调度任务（每12小时）
 
-    依次运行文章和播客 pipeline（新版独立 pipeline）。
+    仅运行文章 pipeline。播客已独立调度。
     """
-    from app.tasks.pipeline import run_article_pipeline, run_podcast_pipeline
+    from app.tasks.pipeline import run_article_pipeline
 
     global last_run_time, pipeline_state
 
-    print("[Scheduler] Starting main pipeline (article + podcast)...")
+    print("[Scheduler] Starting article pipeline...")
 
     pipeline_state.is_running = True
     pipeline_state.started_at = datetime.now()
-    pipeline_state.sources_to_run = ["blog", "podcast"]
+    pipeline_state.sources_to_run = ["blog"]
     pipeline_state.sources_completed = []
     pipeline_state.current_source = "blog"
 
@@ -117,10 +117,45 @@ def scheduled_main_pipeline():
         has_failure = True
         print(f"[Scheduler] Article pipeline failed: {e}")
 
-    # ── 播客 Pipeline ──
+    # ── 汇总 ──
+    last_run_time = datetime.now()
+    pipeline_state.last_run_saved_count = total_saved
+    pipeline_state.last_run_status = "failed" if has_failure else "success"
+    pipeline_state.is_running = False
+    pipeline_state.current_source = None
+    pipeline_state.last_run_finished_at = datetime.now()
+
+    print(f"[Scheduler] Article pipeline finished at {last_run_time} (status: {pipeline_state.last_run_status}, saved: {total_saved})")
+
+
+def scheduled_podcast_pipeline():
+    """
+    播客数据源独立调度任务（每6小时）
+
+    独立于文章调度，确保播客内容及时更新。
+    使用 config.podcast 的配置参数。
+    """
+    from app.tasks.pipeline import run_podcast_pipeline
+    from app.config import config
+
+    global last_run_time, pipeline_state
+
+    print("[Scheduler] Starting podcast pipeline...")
+
+    pipeline_state.is_running = True
+    pipeline_state.started_at = datetime.now()
+    pipeline_state.sources_to_run = ["podcast"]
+    pipeline_state.sources_completed = []
     pipeline_state.current_source = "podcast"
+
+    total_saved = 0
+    has_failure = False
+
     try:
-        stats = _run_async_pipeline(run_podcast_pipeline())
+        stats = _run_async_pipeline(run_podcast_pipeline(
+            max_items_per_feed=config.podcast.max_items_per_feed,
+            max_daily_transcription=config.podcast.max_daily_items,
+        ))
         total_saved += getattr(stats, "saved_count", 0)
         pipeline_state.sources_completed.append("podcast")
         print(f"[Scheduler] Podcast pipeline completed (saved: {getattr(stats, 'saved_count', 0)})")
@@ -131,19 +166,12 @@ def scheduled_main_pipeline():
     # ── 汇总 ──
     last_run_time = datetime.now()
     pipeline_state.last_run_saved_count = total_saved
-
-    if has_failure and not pipeline_state.sources_completed:
-        pipeline_state.last_run_status = "failed"
-    elif has_failure:
-        pipeline_state.last_run_status = "partial"
-    else:
-        pipeline_state.last_run_status = "success"
-
+    pipeline_state.last_run_status = "failed" if has_failure else "success"
     pipeline_state.is_running = False
     pipeline_state.current_source = None
     pipeline_state.last_run_finished_at = datetime.now()
 
-    print(f"[Scheduler] Main pipeline finished at {last_run_time} (status: {pipeline_state.last_run_status}, saved: {total_saved})")
+    print(f"[Scheduler] Podcast pipeline finished at {last_run_time} (status: {pipeline_state.last_run_status}, saved: {total_saved})")
 
 
 def daily_digest_job():

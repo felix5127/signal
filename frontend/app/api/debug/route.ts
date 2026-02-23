@@ -21,8 +21,6 @@ export async function GET() {
   if (INTERNAL_API_URL) {
     try {
       const testUrl = `${INTERNAL_API_URL}/api/resources?pageSize=1`
-      console.log('[Debug] Testing backend URL:', testUrl)
-
       const response = await fetch(testUrl, {
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },

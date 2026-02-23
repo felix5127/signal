@@ -11,6 +11,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { FileText, BookOpen, MessageSquare, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SOURCE_NAMES } from '@/lib/constants'
 import { VideoPlayer } from './video-player'
 
 export interface VideoResource {
@@ -65,15 +66,6 @@ const TABS: Tab[] = [
   { key: 'transcript', label: '转录文本', icon: <MessageSquare className="w-4 h-4" /> },
   { key: 'qa', label: 'Q&A 回顾', icon: <HelpCircle className="w-4 h-4" /> },
 ]
-
-// 来源名称映射
-const SOURCE_NAMES: Record<string, string> = {
-  youtube: 'YouTube',
-  bilibili: 'Bilibili',
-  openai: 'OpenAI',
-  hn: 'Hacker News',
-  github: 'GitHub',
-}
 
 // 格式化时长
 function formatDuration(seconds?: number): string {

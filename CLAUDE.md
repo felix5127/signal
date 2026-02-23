@@ -69,7 +69,7 @@
 - feedparser: RSS 解析
 
 ### frontend/package.json - Node 依赖
-- Next.js 14.2.0: React 框架
+- Next.js 14.2.35: React 框架
 - shadcn/ui: UI 组件库
 - Framer Motion: 动画库
 - React Icons: 图标库

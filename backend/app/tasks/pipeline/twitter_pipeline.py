@@ -136,7 +136,7 @@ async def run_twitter_pipeline(
                     source_icon_url=FaviconFetcher.get_favicon(signal.url),
                     url=signal.url,
                     title=signal.title,
-                    one_sentence_summary=signal.title,  # 使用标题作为摘要
+                    one_sentence_summary=signal.title[:500],  # 使用标题作为摘要
                     content_html=signal.content,  # HTML 内容存储在 content_html
                     domain=metadata.get("domain", ""),
                     tags=metadata.get("tags", []),
