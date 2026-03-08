@@ -15,15 +15,10 @@ def migrate_postgresql():
 
     # 从环境变量获取数据库连接信息
     db_url = os.environ.get("DATABASE_URL", "")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL 环境变量未设置")
 
-    # 解析 docker-compose 中的数据库配置
-    conn = psycopg2.connect(
-        host="localhost",
-        port=5432,
-        database="signal_db",
-        user="signal_user",
-        password="signal_pass"
-    )
+    conn = psycopg2.connect(db_url)
 
     cursor = conn.cursor()
 

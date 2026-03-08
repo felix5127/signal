@@ -182,8 +182,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: signal-pgadmin
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@signalhunter.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@signalhunter.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-changeme}
       - PGADMIN_CONFIG_SERVER_MODE=False
     ports:
       - "5050:80"
