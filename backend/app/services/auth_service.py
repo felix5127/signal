@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 # JWT 配置
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET_KEY 环境变量未设置，请在 .env 中配置")
+    if os.getenv("ENVIRONMENT") == "production":
+        raise RuntimeError("JWT_SECRET_KEY 环境变量未设置，请在 .env 中配置")
+    SECRET_KEY = secrets.token_urlsafe(32)
+    logger.warning("JWT_SECRET_KEY 未设置，已自动生成临时密钥（仅限开发环境）")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 30
